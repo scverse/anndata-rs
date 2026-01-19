@@ -62,6 +62,28 @@ pub enum ScalarType {
     String,
 }
 
+impl ScalarType {
+    pub fn is_numeric(&self) -> bool {
+        matches!(self, ScalarType::I8 | ScalarType::I16 | ScalarType::I32 | ScalarType::I64 | ScalarType::U8 | ScalarType::U16 | ScalarType::U32 | ScalarType::U64 | ScalarType::F32 | ScalarType::F64)
+    }
+
+    pub fn is_integer(&self) -> bool {
+        matches!(self, ScalarType::I8 | ScalarType::I16 | ScalarType::I32 | ScalarType::I64 | ScalarType::U8 | ScalarType::U16 | ScalarType::U32 | ScalarType::U64)
+    }
+
+    pub fn is_floating(&self) -> bool {
+        matches!(self, ScalarType::F32 | ScalarType::F64)
+    }
+
+    pub fn is_bool(&self) -> bool {
+        matches!(self, ScalarType::Bool)
+    }
+
+    pub fn is_string(&self) -> bool {
+        matches!(self, ScalarType::String)
+    }
+}
+
 impl Display for ScalarType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
