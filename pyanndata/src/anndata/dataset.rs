@@ -40,13 +40,16 @@ use super::get_backend;
 
     Note
     ----
-    AnnDataSet does not copy underlying AnnData objects. It stores the references
+    - AnnDataSet does not copy underlying AnnData objects. It stores the references
     to individual anndata files. If you move the anndata files to a new location,
     remember to update the anndata file locations when opening an AnnDataSet object.
+    - AnnDataSet requires all component anndata files to have the same set of var names.
+    To concatenate AnnData objects with different var names, please use `concat` function.
 
     See Also
     --------
     read_dataset
+    concat
 */
 #[pyclass]
 #[repr(transparent)]

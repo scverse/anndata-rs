@@ -75,18 +75,36 @@ pub fn read<'py>(
 }
 
 /// Concatenates AnnData objects.
+/// 
+/// When `file` is provided, this function saves the merged AnnData object on disk
+/// in a streaming fashion. This is memory efficient and allows merging large datasets
+/// that do not fit into memory.
 ///
 /// Parameters
 /// ----------
 ///
-/// filename: Path
-///     File name of data file.
-/// backed: Literal['r', 'r+'] | None
-///     Default is `r+`.
-///     If `'r'`, the file is opened in read-only mode.
-///     If `'r+'`, the file is opened in read/write mode.
-///     If `None`, the AnnData object is read into memory.
-/// backend: Literal['hdf5'] | None
+/// adatas: list[AnnData]
+///     List of AnnData objects to concatenate.
+/// join: Literal['inner', 'outer']
+///     How to handle observations and variables that are not shared between all AnnData objects.
+/// label: str | None
+///     Column in axis annotation (i.e. .obs or .var) to place batch information in. If it’s None, no column is added.
+/// keys
+///     Names for each object being added. These values are used for column values for label.
+/// file: Path | None
+///     If provided, the concatenated AnnData will be saved to this file.
+/// backend: Literal['hdf5', 'zarr']
+///     Backend to use for writing the output file.
+/// 
+/// Returns
+/// -------
+/// 
+/// AnnData
+///     The concatenated AnnData object.
+/// 
+/// See Also
+/// --------
+/// AnnDataSet
 #[pyfunction]
 #[pyo3(
     signature = (adatas, *, join="inner", label=None, keys=None, file=None, backend=None),

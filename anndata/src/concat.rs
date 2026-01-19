@@ -1,10 +1,10 @@
-use crate::backend::ScalarType;
 use crate::data::utils::{array_major_minor_index_default, cs_major_minor_index2};
 use crate::data::{DataFrameIndex, DynCsrMatrix};
-use crate::{AnnDataOp, ArrayElemOp};
+use crate::{AnnDataOp, ArrayElemOp, AxisArraysOp, HasShape};
 use anyhow::{ensure, Result};
 use indexmap::IndexSet;
 use itertools::Itertools;
+use log::warn;
 use nalgebra_sparse::csr::CsrMatrix;
 use nalgebra_sparse::pattern::SparsityPattern;
 use polars::chunked_array::builder::CategoricalChunkedBuilder;
@@ -104,44 +104,51 @@ where
     }
 
     // Concatenate X
+    if adatas.iter().any(|adata| adata.x().is_none()) {
+        warn!("Some AnnData objects have no X matrix. The concatenated X matrix will be None.");
+    } else {
+        out.set_x_from_iter(concat_x(adatas, &common_vars))?;
+    }
+
+    // Concatenate obsm
     {
-        if adatas.iter().any(|adata| !adata.x().is_none()) {
-            let dtype = adatas
-                .iter()
-                .flat_map(|x| x.x().dtype().and_then(|d| d.scalar_type()))
-                .next()
-                .unwrap();
-            let x_arr = adatas.iter().map(|adata| {
-                let n_obs = adata.n_obs();
-                let n_vars = adata.n_vars();
-                let var_names = adata.var_names();
+        let obsm: Vec<_> = adatas.iter().map(|x| x.obsm()).collect();
+        let common_keys = obsm
+            .iter()
+            .map(|x| x.keys().into_iter().collect::<IndexSet<_>>())
+            .reduce(|a, b| a.intersection(&b).cloned().collect())
+            .unwrap();
+        for key in common_keys {
+            let arr = concat_axis_arrays(&obsm, &key);
+            out.obsm().add_iter(&key, arr)?;
+        }
+    }
 
-                macro_rules! fun {
-                    ($variant:ident) => {
-                        CsrMatrix::<$variant>::zeros(n_obs, n_vars).into()
-                    };
-                }
+    // Concatenate obsp
+    {
+        let obsp: Vec<_> = adatas.iter().map(|x| x.obsp()).collect();
+        let common_keys = obsp
+            .iter()
+            .map(|x| x.keys().into_iter().collect::<IndexSet<_>>())
+            .reduce(|a, b| a.intersection(&b).cloned().collect())
+            .unwrap();
+        for key in common_keys {
+            let arr = concat_axis_arrays(&obsp, &key);
+            out.obsp().add_iter(&key, arr)?;
+        }
+    }
 
-                adata
-                    .x()
-                    .get()
-                    .unwrap()
-                    .map(|arr| {
-                        index_array(
-                            arr,
-                            &(0..adata.n_obs())
-                                .into_iter()
-                                .map(|x| Some(x))
-                                .collect::<Vec<_>>(),
-                            &common_vars
-                                .iter()
-                                .map(|x| var_names.get_index(x))
-                                .collect::<Vec<_>>(),
-                        )
-                    })
-                    .unwrap_or_else(|| crate::macros::dyn_match!(dtype, ScalarType, fun))
-            });
-            out.set_x_from_iter(x_arr)?;
+    // Concat layers
+    {
+        let layers: Vec<_> = adatas.iter().map(|x| x.layers()).collect();
+        let common_keys = layers
+            .iter()
+            .map(|x| x.keys().into_iter().collect::<IndexSet<_>>())
+            .reduce(|a, b| a.intersection(&b).cloned().collect())
+            .unwrap();
+        for key in common_keys {
+            let arr = concat_axis_arrays(&layers, &key);
+            out.layers().add_iter(&key, arr)?;
         }
     }
 
@@ -291,4 +298,31 @@ fn index_array(
         ArrayData::CsrMatrix(x) => crate::macros::dyn_map!(x, DynCsrMatrix, fun_csr),
         _ => todo!(),
     }
+}
+
+fn concat_x<A: AnnDataOp>(adatas: &[A], common_vars: &IndexSet<String>) -> impl Iterator<Item = ArrayData> {
+    adatas.iter().map(move |adata| {
+        let var_names = adata.var_names();
+        let arr = adata.x().get().unwrap().unwrap();
+        index_array(
+            arr,
+            &(0..adata.n_obs())
+                .into_iter()
+                .map(|x| Some(x))
+                .collect::<Vec<_>>(),
+            &common_vars
+                .iter()
+                .map(|x| var_names.get_index(x))
+                .collect::<Vec<_>>(),
+        )
+    })
+}
+
+fn concat_axis_arrays<A: AxisArraysOp>(axis_arrays: &[A], key: &str) -> impl Iterator<Item = ArrayData> {
+    let size = axis_arrays[0].get(key).unwrap().shape().unwrap()[1];
+    axis_arrays.iter().map(move |arr| {
+        let arr: ArrayData = arr.get_item(key).unwrap().unwrap();
+        assert_eq!(arr.shape()[1], size, "dimension mismatch for key: {}", key);
+        arr
+    })
 }
