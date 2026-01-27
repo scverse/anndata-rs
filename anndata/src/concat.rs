@@ -1,5 +1,5 @@
 use crate::data::utils::{array_major_minor_index_default, cs_major_minor_index2};
-use crate::data::{DataFrameIndex, DynCsrMatrix, Data, ArrayData, DynArray};
+use crate::data::{ArrayData, Data, DataFrameIndex, DynArray, DynIndSparseMatrix};
 use crate::{AnnDataOp, ArrayElemOp, AxisArraysOp, ElemCollectionOp, HasShape};
 use anyhow::{Result, ensure};
 use indexmap::IndexSet;
@@ -19,7 +19,7 @@ pub enum JoinType {
 }
 
 /// Concatenate multiple AnnData objects into one.
-/// 
+///
 /// This function concatenates multiple AnnData objects along the observation axis (`obs`),
 /// aligning the variable axis (`var`) according to the specified join type (inner or outer).
 /// It also concatenates associated data structures such as `obsm`, `obsp`, `layers`, and shared `uns` elements.
@@ -315,7 +315,9 @@ fn index_array(
 
     match arr {
         ArrayData::Array(x) => crate::macros::dyn_map!(x, DynArray, fun_array),
-        ArrayData::CsrMatrix(x) => crate::macros::dyn_map!(x, DynCsrMatrix, fun_csr),
+        // ArrayData::CsrMatrix(x) => {
+        //     crate::macros::dyn_sparse_map!(x, DynIndSparseMatrix, fun_csr)
+        // }
         _ => todo!(),
     }
 }

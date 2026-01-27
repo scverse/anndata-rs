@@ -1,16 +1,17 @@
 use crate::data::{DynArray, DynCowArray, DynScalar};
 
-use anyhow::{bail, Result};
-use core::fmt::{Display, Formatter, Debug};
+use anyhow::{Result, bail};
+use core::fmt::{Debug, Display, Formatter};
 use ndarray::{ArrayD, CowArray, IxDyn};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// All data types that can be stored in an AnnData object.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum DataType {
     Array(ScalarType),
-    CsrMatrix(ScalarType),
-    CscMatrix(ScalarType),
+    CsrMatrix(ScalarType, ScalarType),
+    CscMatrix(ScalarType, ScalarType),
+
     DataFrame,
     Mapping,
     Scalar(ScalarType),
@@ -22,8 +23,8 @@ impl DataType {
     pub fn scalar_type(&self) -> Option<ScalarType> {
         match self {
             DataType::Array(t) => Some(*t),
-            DataType::CsrMatrix(t) => Some(*t),
-            DataType::CscMatrix(t) => Some(*t),
+            DataType::CsrMatrix(t, _) => Some(*t),
+            DataType::CscMatrix(t, _) => Some(*t),
             DataType::Scalar(t) => Some(*t),
             _ => None,
         }
@@ -35,8 +36,8 @@ impl Display for DataType {
         match self {
             DataType::Array(t) => write!(f, "Array({})", t),
             DataType::Categorical => write!(f, "Categorical"),
-            DataType::CsrMatrix(t) => write!(f, "CsrMatrix({})", t),
-            DataType::CscMatrix(t) => write!(f, "CscMatrix({})", t),
+            DataType::CsrMatrix(t, i) => write!(f, "CsrMatrix({}, {})", t, i),
+            DataType::CscMatrix(t, i) => write!(f, "CscMatrix({}, {})", t, i),
             DataType::DataFrame => write!(f, "DataFrame"),
             DataType::Scalar(t) => write!(f, "Scalar({})", t),
             DataType::Mapping => write!(f, "Mapping"),
@@ -64,11 +65,33 @@ pub enum ScalarType {
 
 impl ScalarType {
     pub fn is_numeric(&self) -> bool {
-        matches!(self, ScalarType::I8 | ScalarType::I16 | ScalarType::I32 | ScalarType::I64 | ScalarType::U8 | ScalarType::U16 | ScalarType::U32 | ScalarType::U64 | ScalarType::F32 | ScalarType::F64)
+        matches!(
+            self,
+            ScalarType::I8
+                | ScalarType::I16
+                | ScalarType::I32
+                | ScalarType::I64
+                | ScalarType::U8
+                | ScalarType::U16
+                | ScalarType::U32
+                | ScalarType::U64
+                | ScalarType::F32
+                | ScalarType::F64
+        )
     }
 
     pub fn is_integer(&self) -> bool {
-        matches!(self, ScalarType::I8 | ScalarType::I16 | ScalarType::I32 | ScalarType::I64 | ScalarType::U8 | ScalarType::U16 | ScalarType::U32 | ScalarType::U64)
+        matches!(
+            self,
+            ScalarType::I8
+                | ScalarType::I16
+                | ScalarType::I32
+                | ScalarType::I64
+                | ScalarType::U8
+                | ScalarType::U16
+                | ScalarType::U32
+                | ScalarType::U64
+        )
     }
 
     pub fn is_floating(&self) -> bool {

@@ -2,12 +2,12 @@ mod datatype;
 use crate::data::{ArrayConvert, DynArray, SelectInfo, SelectInfoElem, Shape};
 pub use datatype::{BackendData, DataType, ScalarType};
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use core::fmt::{Debug, Formatter};
-use ndarray::{arr0, Array, CowArray, Dimension, Ix0, IxDyn};
-use std::path::{Path, PathBuf};
-pub use serde_json::Value;
+use ndarray::{Array, CowArray, Dimension, Ix0, IxDyn, arr0};
 use serde::Deserialize;
+pub use serde_json::Value;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Copy, Clone)]
 pub enum Compression {
@@ -170,7 +170,7 @@ pub trait DatasetOp<B: Backend + ?Sized> {
 
     fn read_dyn_array_slice<S>(&self, selection: &[S]) -> Result<DynArray>
     where
-        S: AsRef<SelectInfoElem>
+        S: AsRef<SelectInfoElem>,
     {
         let arr = match self.dtype()? {
             ScalarType::I8 => self.read_array_slice::<i8, _, IxDyn>(selection)?.into(),
@@ -193,7 +193,7 @@ pub trait DatasetOp<B: Backend + ?Sized> {
     where
         DynArray: ArrayConvert<Array<T, D>>,
         D: Dimension,
-        S: AsRef<SelectInfoElem>
+        S: AsRef<SelectInfoElem>,
     {
         self.read_dyn_array_slice(selection)?.try_convert()
     }
@@ -269,8 +269,7 @@ impl<B: Backend> AttributeOp<B> for DataContainer<B> {
         }
     }
 
-    fn new_json_attr(&mut self, name: &str, value: &Value) -> Result<()>
-    {
+    fn new_json_attr(&mut self, name: &str, value: &Value) -> Result<()> {
         match self {
             DataContainer::Group(g) => g.new_json_attr(name, value),
             DataContainer::Dataset(d) => d.new_json_attr(name, value),
@@ -291,14 +290,15 @@ impl<B: Backend> DataContainer<B> {
         if group.exists(name)? {
             match group.open_dataset(name) {
                 Ok(gr) => Ok(DataContainer::Dataset(gr)),
-                Err(e1) => {
-                    group.open_group(name).map(DataContainer::Group).map_err(|e2|
+                Err(e1) => group
+                    .open_group(name)
+                    .map(DataContainer::Group)
+                    .map_err(|e2| {
                         e2.context(e1).context(format!(
                             "Error opening group or dataset named '{}' in group",
                             name
                         ))
-                    )
-                }
+                    }),
             }
         } else {
             bail!("No group or dataset named '{}' in group", name);
@@ -329,16 +329,21 @@ impl<B: Backend> DataContainer<B> {
             "array" => DataType::Array(self.as_dataset()?.dtype()?),
             "csc_matrix" => {
                 let ty = self.as_group()?.open_dataset("data")?.dtype()?;
-                DataType::CscMatrix(ty)
+                let tp = self.as_group()?.open_dataset("indices")?.dtype()?;
+                DataType::CscMatrix(ty, tp)
             }
             "csr_matrix" => {
                 let ty = self.as_group()?.open_dataset("data")?.dtype()?;
-                DataType::CsrMatrix(ty)
+                let tp = self.as_group()?.open_dataset("indices")?.dtype()?;
+                DataType::CsrMatrix(ty, tp)
             }
             "dataframe" => DataType::DataFrame,
             "mapping" | "dict" => DataType::Mapping,
             "nullable-integer" | "nullable-boolean" => DataType::NullableArray,
-            ty => bail!("the anndata file contains an unsupported encoding type: '{}'", ty),
+            ty => bail!(
+                "the anndata file contains an unsupported encoding type: '{}'",
+                ty
+            ),
         };
         Ok(ty)
     }

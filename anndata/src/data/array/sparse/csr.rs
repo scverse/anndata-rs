@@ -18,7 +18,7 @@ use super::super::slice::SliceBounds;
 
 impl<T: BackendData> Element for CsrMatrix<T> {
     fn data_type(&self) -> DataType {
-        DataType::CsrMatrix(T::DTYPE)
+        DataType::CsrMatrix(T::DTYPE, u64::DTYPE)
     }
 
     fn metadata(&self) -> MetaData {
@@ -304,7 +304,7 @@ impl<T: BackendData> Writable for CsrMatrix<T> {
 impl<T: BackendData> Readable for CsrMatrix<T> {
     fn read<B: Backend>(container: &DataContainer<B>) -> Result<Self> {
         let data_type = container.encoding_type()?;
-        if let DataType::CsrMatrix(_) = data_type {
+        if let DataType::CsrMatrix(_, _) = data_type {
             let group = container.as_group()?;
             let shape: Vec<u64> = group.get_attr("shape")?;
             let data = group
@@ -355,7 +355,7 @@ impl<T: BackendData> ReadableArray for CsrMatrix<T> {
         S: AsRef<SelectInfoElem>,
     {
         let data_type = container.encoding_type()?;
-        if let DataType::CsrMatrix(_) = data_type {
+        if let DataType::CsrMatrix(_, _) = data_type {
             if info.as_ref().len() != 2 {
                 panic!("index must have length 2");
             }
@@ -413,7 +413,10 @@ impl<T: BackendData> WritableArray for CsrMatrix<T> {}
 
 impl<T: BackendData + Clone + ToPrimitive> ArrayArithmetic for CsrMatrix<T> {
     fn sum(&self) -> f64 {
-        self.values().iter().map(|x| <f64 as NumCast>::from(x.clone()).unwrap()).sum()
+        self.values()
+            .iter()
+            .map(|x| <f64 as NumCast>::from(x.clone()).unwrap())
+            .sum()
     }
 
     fn sum_axis(&self, axis: usize) -> Result<ArrayD<f64>> {
@@ -437,7 +440,12 @@ impl<T: BackendData + Clone + ToPrimitive> ArrayArithmetic for CsrMatrix<T> {
             }
             1 => Ok(self
                 .row_iter()
-                .map(|row| row.values().iter().map(|v| <f64 as NumCast>::from(v.clone()).unwrap()).sum())
+                .map(|row| {
+                    row.values()
+                        .iter()
+                        .map(|v| <f64 as NumCast>::from(v.clone()).unwrap())
+                        .sum()
+                })
                 .collect::<Array1<f64>>()
                 .into_dyn()),
             _ => anyhow::bail!("axis {} is out of bounds for 2D array", axis),

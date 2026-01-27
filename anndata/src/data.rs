@@ -9,9 +9,7 @@ pub use mapping::*;
 
 use crate::backend::{Backend, DataContainer, DataType, GroupOp};
 
-use anyhow::{bail, Ok, Result};
-use nalgebra_sparse::csc::CscMatrix;
-use nalgebra_sparse::csr::CsrMatrix;
+use anyhow::{Ok, Result, bail};
 use ndarray::{Array, RemoveAxis};
 use polars::frame::DataFrame;
 
@@ -47,18 +45,33 @@ macro_rules! impl_into_data {
                 Data::ArrayData(ArrayData::Array(DynArray::$to_type(data.into_dyn())))
             }
         }
-        impl From<CsrMatrix<$from_type>> for Data {
-            fn from(data: CsrMatrix<$from_type>) -> Self {
-                Data::ArrayData(ArrayData::CsrMatrix(DynCsrMatrix::$to_type(data)))
-            }
-        }
-        impl From<CscMatrix<$from_type>> for Data {
-            fn from(data: CscMatrix<$from_type>) -> Self {
-                Data::ArrayData(ArrayData::CscMatrix(DynCscMatrix::$to_type(data)))
+    };
+}
+
+macro_rules! impl_into_data_sparse {
+    ($from_type:ty, $to_type: ident) => {
+        impl From<DynSparseMatrix<$from_type>> for Data {
+            fn from(data: DynSparseMatrix<$from_type>) -> Self {
+                match data.get_sparse_layout() {
+                    SparseMatrixLayoutE::CSR => {
+                        Data::ArrayData(ArrayData::CsrMatrix(DynIndSparseMatrix::$to_type(data)))
+                    }
+                    SparseMatrixLayoutE::CSC => {
+                        Data::ArrayData(ArrayData::CscMatrix(DynIndSparseMatrix::$to_type(data)))
+                    }
+                    _ => panic!("Cannot convert types"),
+                }
             }
         }
     };
 }
+
+impl_into_data_sparse!(i16, I16);
+impl_into_data_sparse!(i32, I32);
+impl_into_data_sparse!(i64, I64);
+impl_into_data_sparse!(u16, U16);
+impl_into_data_sparse!(u32, U32);
+impl_into_data_sparse!(u64, U64);
 
 impl_into_data!(i8, I8);
 impl_into_data!(i16, I16);
@@ -150,8 +163,8 @@ impl Readable for Data {
             DataType::Categorical
             | DataType::Array(_)
             | DataType::DataFrame
-            | DataType::CscMatrix(_)
-            | DataType::CsrMatrix(_) => ArrayData::read(container).map(|x| x.into()),
+            | DataType::CscMatrix(_, _)
+            | DataType::CsrMatrix(_, _) => ArrayData::read(container).map(|x| x.into()),
             DataType::Scalar(_) => DynScalar::read(container).map(|x| x.into()),
             DataType::Mapping => Mapping::read(container).map(|x| x.into()),
             DataType::NullableArray => bail!("Cannot read NullableArray into Data"),
