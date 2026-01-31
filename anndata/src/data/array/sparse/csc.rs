@@ -427,8 +427,7 @@ mod csc_matrix_index_tests {
         I: Iterator<Item = usize>,
     {
         let i = row_indices.collect::<Vec<_>>();
-        let mut dm = DMatrix::<i64>::zeros(csc.nrows(), csc.ncols());
-        csc.triplet_iter().for_each(|(r, c, v)| dm[(r, c)] = *v);
+        let dm = csc_to_dmat(csc);
         CscMatrix::from(&dm.select_rows(&i))
     }
 
@@ -437,9 +436,18 @@ mod csc_matrix_index_tests {
         I: Iterator<Item = usize>,
     {
         let j = col_indices.collect::<Vec<_>>();
+        let dm = csc_to_dmat(csc);
+        CscMatrix::from(&dm.select_columns(&j))
+    }
+
+    fn csc_to_dmat(csc: &CscMatrix<i64>) -> DMatrix<i64> {
         let mut dm = DMatrix::<i64>::zeros(csc.nrows(), csc.ncols());
         csc.triplet_iter().for_each(|(r, c, v)| dm[(r, c)] = *v);
-        CscMatrix::from(&dm.select_columns(&j))
+        dm
+    }
+
+    fn assert_csc_eq(mat1: CscMatrix<i64>, mat2: CscMatrix<i64>) {
+        assert_eq!(csc_to_dmat(&mat1), csc_to_dmat(&mat2));
     }
 
     #[test]
@@ -448,58 +456,60 @@ mod csc_matrix_index_tests {
         let m: usize = 200;
         let nnz: usize = 1000;
 
-        let ridx = Array::random(220, Uniform::new(0, n)).to_vec();
-        let cidx = Array::random(100, Uniform::new(0, m)).to_vec();
+        for _ in 0..50 {
+            let ridx = Array::random(220, Uniform::new(0, n)).to_vec();
+            let cidx = Array::random(100, Uniform::new(0, m)).to_vec();
 
-        let row_indices = Array::random(nnz, Uniform::new(0, n)).to_vec();
-        let col_indices = Array::random(nnz, Uniform::new(0, m)).to_vec();
-        let values = Array::random(nnz, Uniform::new(-10000, 10000)).to_vec();
+            let row_indices = Array::random(nnz, Uniform::new(0, n)).to_vec();
+            let col_indices = Array::random(nnz, Uniform::new(0, m)).to_vec();
+            let values = Array::random(nnz, Uniform::new(-10000, 10000)).to_vec();
 
-        let csc_matrix: CscMatrix<i64> =
-            (&CooMatrix::try_from_triplets(n, m, row_indices, col_indices, values).unwrap()).into();
+            let csc_matrix: CscMatrix<i64> =
+                (&CooMatrix::try_from_triplets(n, m, row_indices, col_indices, values).unwrap()).into();
 
-        // Row slice
-        assert_eq!(
-            csc_matrix.select(s![2..177, ..].as_ref()),
-            csc_select_rows(&csc_matrix, 2..177),
-        );
-        assert_eq!(
-            csc_matrix.select(s![0..2, ..].as_ref()),
-            csc_select_rows(&csc_matrix, 0..2),
-        );
+            // Row slice
+            assert_csc_eq(
+                csc_matrix.select(s![2..177, ..].as_ref()),
+                csc_select_rows(&csc_matrix, 2..177),
+            );
+            assert_csc_eq(
+                csc_matrix.select(s![0..2, ..].as_ref()),
+                csc_select_rows(&csc_matrix, 0..2),
+            );
 
-        // Row fancy indexing
-        assert_eq!(
-            csc_matrix.select(s![&ridx, ..].as_ref()),
-            csc_select_rows(&csc_matrix, ridx.iter().cloned()),
-        );
+            // Row fancy indexing
+            assert_csc_eq(
+                csc_matrix.select(s![&ridx, ..].as_ref()),
+                csc_select_rows(&csc_matrix, ridx.iter().cloned()),
+            );
 
-        // Column slice
-        assert_eq!(
-            csc_matrix.select(s![.., 77..200].as_ref()),
-            csc_select_cols(&csc_matrix, 77..200),
-        );
+            // Column slice
+            assert_csc_eq(
+                csc_matrix.select(s![.., 77..200].as_ref()),
+                csc_select_cols(&csc_matrix, 77..200),
+            );
 
-        // Column fancy indexing
-        assert_eq!(
-            csc_matrix.select(s![.., &cidx].as_ref()),
-            csc_select_cols(&csc_matrix, cidx.iter().cloned()),
-        );
+            // Column fancy indexing
+            assert_csc_eq(
+                csc_matrix.select(s![.., &cidx].as_ref()),
+                csc_select_cols(&csc_matrix, cidx.iter().cloned()),
+            );
 
-        // Both
-        assert_eq!(
-            csc_matrix.select(s![2..49, 0..77].as_ref()),
-            csc_select(&csc_matrix, 2..49, 0..77),
-        );
+            // Both
+            assert_csc_eq(
+                csc_matrix.select(s![2..49, 0..77].as_ref()),
+                csc_select(&csc_matrix, 2..49, 0..77),
+            );
 
-        assert_eq!(
-            csc_matrix.select(s![2..177, &cidx].as_ref()),
-            csc_select(&csc_matrix, 2..177, cidx.iter().cloned()),
-        );
+            assert_csc_eq(
+                csc_matrix.select(s![2..177, &cidx].as_ref()),
+                csc_select(&csc_matrix, 2..177, cidx.iter().cloned()),
+            );
 
-        assert_eq!(
-            csc_matrix.select(s![&ridx, &cidx].as_ref()),
-            csc_select(&csc_matrix, ridx.iter().cloned(), cidx.iter().cloned()),
-        );
+            assert_csc_eq(
+                csc_matrix.select(s![&ridx, &cidx].as_ref()),
+                csc_select(&csc_matrix, ridx.iter().cloned(), cidx.iter().cloned()),
+            );
+        }
     }
 }

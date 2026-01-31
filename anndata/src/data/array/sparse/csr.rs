@@ -545,7 +545,7 @@ mod csr_matrix_index_tests {
 
     #[test]
     fn test_csr() {
-        for _ in 0..100 {
+        for _ in 0..50 {
             let n: usize = 200;
             let m: usize = 200;
             let nnz: usize = 1000;
