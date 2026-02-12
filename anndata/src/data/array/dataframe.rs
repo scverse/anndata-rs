@@ -93,8 +93,10 @@ impl Writable for DataFrame {
 
 impl Readable for DataFrame {
     fn read<B: Backend>(container: &DataContainer<B>) -> Result<Self> {
+        let shape = DataFrame::get_shape(container)?;
         let columns: Vec<String> = container.get_attr("column-order")?;
-        Ok(DataFrame::new_infer_height(
+        Ok(DataFrame::new(
+            shape[0],
             columns
                 .into_iter()
                 .map(|name| {

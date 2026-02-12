@@ -253,7 +253,7 @@ impl<'py> AnnDataOp for PyAnnData<'py> {
 
     fn set_obs(&self, obs: DataFrame) -> Result<()> {
         let py = self.py();
-        let is_empty = obs.height() == 0;
+        let is_empty = obs.height() == 0 || obs.width() == 0;
         let index = self.getattr("obs")?.getattr("index")?;
         let mut df = PyDataFrame(obs).into_pyobject(py)?
             .call_method0("to_pandas")?;
@@ -270,7 +270,7 @@ impl<'py> AnnDataOp for PyAnnData<'py> {
 
     fn set_var(&self, var: DataFrame) -> Result<()> {
         let py = self.py();
-        let is_empty = var.height() == 0;
+        let is_empty = var.height() == 0 || var.width() == 0;
         let index = self.getattr("var")?.getattr("index")?;
         let mut df = PyDataFrame(var).into_pyobject(py)?
             .call_method0("to_pandas")?;

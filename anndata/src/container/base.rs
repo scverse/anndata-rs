@@ -178,8 +178,11 @@ impl<B: Backend> InnerDataFrameElem<B> {
     /// Set a column with a Series.
     //TODO: this is not efficient. We should be able to replace a column without reading the whole dataframe.
     pub fn set_column<C: IntoColumn>(&mut self, name: &str, new_col: C) -> Result<()> {
+        let mut column = new_col.into_column();
+        column.rename(name.into());
+
         let mut df = self.data()?.clone();
-        df.replace(name.into(), new_col.into_column())?;
+        df.with_column(column)?;
         self.save(df)
     }
 
