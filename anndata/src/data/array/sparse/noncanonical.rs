@@ -2,13 +2,13 @@ use std::collections::HashMap;
 
 use crate::backend::*;
 use crate::data::{
+    SelectInfoBounds, SelectInfoElemBounds,
     array::utils::{cs_major_index, cs_major_minor_index, cs_major_slice},
     data_traits::*,
     slice::{SelectInfoElem, Shape},
-    SelectInfoBounds, SelectInfoElemBounds,
 };
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use nalgebra_sparse::pattern::SparsityPattern;
 use nalgebra_sparse::{coo::CooMatrix, csr::CsrMatrix};
 use ndarray::Ix1;
@@ -159,7 +159,7 @@ impl Readable for DynCsrNonCanonical {
                     };
                 }
                 crate::macros::dyn_match!(group.open_dataset("data")?.dtype()?, ScalarType, fun)
-            },
+            }
             _ => bail!("cannot read csr matrix from non-group container"),
         }
     }
@@ -246,13 +246,13 @@ impl ReadableArray for DynCsrNonCanonical {
         B: Backend,
         S: AsRef<SelectInfoElem>,
     {
-        if let DataType::CsrMatrix(ty) = container.encoding_type()? {
+        if let DataType::CsrMatrix(ty, tp) = container.encoding_type()? {
             macro_rules! fun {
                 ($variant:ident) => {
                     CsrNonCanonical::<$variant>::read_select(container, info).map(Into::into)
                 };
             }
-            crate::macros::dyn_match!(ty, ScalarType, fun)
+            crate::macros::dyn_match!(tp, ScalarType, fun)
         } else {
             bail!("the container does not contain a csr matrix");
         }
@@ -632,7 +632,7 @@ impl<T: Clone> Stackable for CsrNonCanonical<T> {
 
 impl<T: BackendData> Element for CsrNonCanonical<T> {
     fn data_type(&self) -> DataType {
-        DataType::CsrMatrix(T::DTYPE)
+        DataType::CsrMatrix(u64::DTYPE, T::DTYPE)
     }
 
     fn metadata(&self) -> MetaData {

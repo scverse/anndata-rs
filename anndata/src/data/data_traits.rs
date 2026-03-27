@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use crate::backend::{AttributeOp, Backend, DataContainer, DataType, GroupOp};
 use crate::data::{
-    array::slice::{SelectInfoElem, Shape},
     array::DynScalar,
+    array::slice::{SelectInfoElem, Shape},
 };
 
 use anyhow::Result;
@@ -214,4 +214,18 @@ pub trait ArrayArithmetic: HasShape {
 
     /// Compute the maximum value in the array
     fn max(&self) -> f64;
+}
+
+#[derive(Debug)]
+pub enum SparseMatrixLayoutE {
+    CSR,
+    CSC,
+    COO,
+    NONE,
+}
+
+pub trait SparseMatrixLayout {
+    fn get_sparse_layout(&self) -> SparseMatrixLayoutE {
+        SparseMatrixLayoutE::NONE
+    }
 }

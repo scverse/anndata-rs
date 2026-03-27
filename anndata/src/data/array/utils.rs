@@ -1,12 +1,12 @@
+use crate::ArrayData;
 use crate::backend::{Backend, BackendData, DatasetOp, GroupOp, WriteConfig};
 use crate::data::{SelectInfoElem, Shape};
-use crate::ArrayData;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use itertools::Itertools;
 use nalgebra_sparse::{
-    pattern::{SparsityPattern, SparsityPatternFormatError},
     CsrMatrix,
+    pattern::{SparsityPattern, SparsityPatternFormatError},
 };
 use ndarray::{Array2, ArrayView, RemoveAxis};
 use smallvec::SmallVec;
@@ -245,14 +245,13 @@ pub(crate) fn cs_major_minor_index2<T: Clone>(
     offsets: &[usize],
     indices: &[usize],
     data: &[T],
-) -> (Vec<usize>, Vec<usize>, Vec<T>)
-{
+) -> (Vec<usize>, Vec<usize>, Vec<T>) {
     let num_added_minors = minor_idx.iter().filter(|&j| j.is_none()).count();
     let len_minor = len_minor + num_added_minors;
 
     // Compute the occurrence of each minor index, as the same index can occur multiple times
     let mut minor_idx_count = vec![0; len_minor];
-    minor_idx_count[(len_minor-num_added_minors) .. len_minor].fill(1);
+    minor_idx_count[(len_minor - num_added_minors)..len_minor].fill(1);
     minor_idx.iter().for_each(|j| {
         if let Some(j) = j {
             minor_idx_count[*j] += 1;
@@ -264,8 +263,9 @@ pub(crate) fn cs_major_minor_index2<T: Clone>(
     let new_offsets = std::iter::once(0)
         .chain(major_idx.iter().map(|i| {
             if let Some(i) = i {
-                (offsets[*i]..offsets[i + 1]).for_each(|jj| new_nnz += minor_idx_count[indices[jj]]);
-            } 
+                (offsets[*i]..offsets[i + 1])
+                    .for_each(|jj| new_nnz += minor_idx_count[indices[jj]]);
+            }
             new_nnz
         }))
         .collect();
@@ -531,13 +531,10 @@ pub(crate) fn check_format(
     }
 }
 
-pub fn to_csr_data<I, In, T>(
-    iter: I,
-    num_cols: usize,
-) -> (usize, usize, Vec<usize>, Vec<usize>, Vec<T>)
+pub fn to_csr_data<I, In, T>(iter: I, num_cols: usize) -> (usize, usize, Vec<u64>, Vec<u64>, Vec<T>)
 where
     I: IntoIterator<IntoIter = In>,
-    In: ExactSizeIterator<Item = Vec<(usize, T)>>,
+    In: ExactSizeIterator<Item = Vec<(u64, T)>>,
 {
     let rows = iter.into_iter();
     let num_rows = rows.len();
@@ -563,26 +560,21 @@ pub(crate) fn array_major_minor_index<T: Clone>(
     minor_idx: &[Option<usize>],
     data: &Array2<T>,
     fill_value: &T,
-) -> Array2<T>
-{
-    Array2::from_shape_fn(
-        (major_idx.len(), minor_idx.len()),
-        |(i, j)| {
-            if let (Some(i), Some(j)) = (major_idx[i], minor_idx[j]) {
-                data.get((i, j)).unwrap().clone()
-            } else {
-                fill_value.clone()
-            }
-        },
-    )
+) -> Array2<T> {
+    Array2::from_shape_fn((major_idx.len(), minor_idx.len()), |(i, j)| {
+        if let (Some(i), Some(j)) = (major_idx[i], minor_idx[j]) {
+            data.get((i, j)).unwrap().clone()
+        } else {
+            fill_value.clone()
+        }
+    })
 }
 
 pub(crate) fn array_major_minor_index_default<T: Default + Clone>(
     major_idx: &[Option<usize>],
     minor_idx: &[Option<usize>],
     data: &Array2<T>,
-) -> Array2<T>
-{
+) -> Array2<T> {
     array_major_minor_index(major_idx, minor_idx, data, &T::default())
 }
 
@@ -610,3 +602,4 @@ pub(crate) fn alloc_block_size_with_shape(shape: &Shape, total: usize) -> Shape 
 fn get_block_size(n: usize, total: usize) -> usize {
     (total as f64).powf(1.0 / n as f64).ceil() as usize
 }
+

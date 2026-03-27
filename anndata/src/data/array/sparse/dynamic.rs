@@ -7,11 +7,41 @@ use crate::data::{
     slice::{SelectInfoElem, Shape},
 };
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use nalgebra_sparse::csc::CscMatrix;
 use nalgebra_sparse::csr::CsrMatrix;
 use ndarray::ArrayD;
 use num::FromPrimitive;
+use sprs::{CsMatI, SpIndex};
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum DynIndSparseMatrix {
+    I16(DynSparseMatrix<i16>),
+    I32(DynSparseMatrix<i32>),
+    I64(DynSparseMatrix<i64>),
+    U16(DynSparseMatrix<u16>),
+    U32(DynSparseMatrix<u32>),
+    U64(DynSparseMatrix<u64>),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum DynSparseMatrix<T>
+where
+    T: SpIndex,
+{
+    I8(CsMatI<i8, T, u64>),
+    I16(CsMatI<i16, T, u64>),
+    I32(CsMatI<i32, T, u64>),
+    I64(CsMatI<i64, T, u64>),
+    U8(CsMatI<u8, T, u64>),
+    U16(CsMatI<u16, T, u64>),
+    U32(CsMatI<u32, T, u64>),
+    U64(CsMatI<u64, T, u64>),
+    F32(CsMatI<f32, T, u64>),
+    F64(CsMatI<f64, T, u64>),
+    Bool(CsMatI<bool, T, u64>),
+    String(CsMatI<String, T, u64>),
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DynCsrMatrix {
@@ -244,13 +274,13 @@ impl ReadableArray for DynCsrMatrix {
         B: Backend,
         S: AsRef<SelectInfoElem>,
     {
-        if let DataType::CsrMatrix(ty) = container.encoding_type()? {
+        if let DataType::CsrMatrix(ty, tp) = container.encoding_type()? {
             macro_rules! fun {
                 ($variant:ident) => {
                     CsrMatrix::<$variant>::read_select(container, info)?.into()
                 };
             }
-            Ok(crate::macros::dyn_match!(ty, ScalarType, fun))
+            Ok(crate::macros::dyn_match!(tp, ScalarType, fun))
         } else {
             bail!("the container does not contain a csr matrix");
         }
@@ -374,13 +404,13 @@ impl ReadableArray for DynCscMatrix {
         B: Backend,
         S: AsRef<SelectInfoElem>,
     {
-        if let DataType::CscMatrix(ty) = container.encoding_type()? {
+        if let DataType::CscMatrix(ty, tp) = container.encoding_type()? {
             macro_rules! fun {
                 ($variant:ident) => {
                     CscMatrix::<$variant>::read_select(container, info).map(Into::into)
                 };
             }
-            crate::macros::dyn_match!(ty, ScalarType, fun)
+            crate::macros::dyn_match!(tp, ScalarType, fun)
         } else {
             bail!("the container does not contain a csc matrix");
         }
@@ -481,3 +511,410 @@ where
     .unwrap();
     Ok(out)
 }
+
+///// New DynIndSparseMatrix
+///
+///
+
+impl<T: SpIndex + BackendData> Element for DynSparseMatrix<T> {
+    fn data_type(&self) -> DataType {
+        crate::macros::dyn_map_fun!(self, DynSparseMatrix, data_type)
+    }
+
+    fn metadata(&self) -> MetaData {
+        crate::macros::dyn_map_fun!(self, DynSparseMatrix, metadata)
+    }
+}
+
+impl<T: BackendData + SpIndex> Writable for DynSparseMatrix<T> {
+    fn write<B: Backend, G: GroupOp<B>>(
+        &self,
+        location: &G,
+        name: &str,
+    ) -> Result<DataContainer<B>> {
+        crate::macros::dyn_map_fun!(self, DynSparseMatrix, write, location, name)
+    }
+}
+
+impl<T: BackendData + SpIndex> Readable for DynSparseMatrix<T> {
+    fn read<B: Backend>(container: &DataContainer<B>) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        match container {
+            DataContainer::Group(group) => {
+                macro_rules! fun {
+                    ($type:ident, $variant:ident) => {
+                        CsMatI::<$type, T, u64>::read(container).map(DynSparseMatrix::$variant)
+                    };
+                }
+                crate::macros::dyn_match_new!(group.open_dataset("data")?.dtype()?, ScalarType, fun)
+            }
+            _ => bail!("Can't read sparse matrix from non-group container!"),
+        }
+    }
+}
+
+impl<T: BackendData + SpIndex> HasShape for DynSparseMatrix<T> {
+    fn shape(&self) -> Shape {
+        match self {
+            DynSparseMatrix::I8(data) => HasShape::shape(data),
+            DynSparseMatrix::I16(data) => HasShape::shape(data),
+            DynSparseMatrix::I32(data) => HasShape::shape(data),
+            DynSparseMatrix::I64(data) => HasShape::shape(data),
+            DynSparseMatrix::U8(data) => HasShape::shape(data),
+            DynSparseMatrix::U16(data) => HasShape::shape(data),
+            DynSparseMatrix::U32(data) => HasShape::shape(data),
+            DynSparseMatrix::U64(data) => HasShape::shape(data),
+            DynSparseMatrix::F32(data) => HasShape::shape(data),
+            DynSparseMatrix::F64(data) => HasShape::shape(data),
+            DynSparseMatrix::Bool(data) => HasShape::shape(data),
+            DynSparseMatrix::String(data) => HasShape::shape(data),
+        }
+    }
+}
+
+impl<T: BackendData + SpIndex> Selectable for DynSparseMatrix<T> {
+    fn select<S>(&self, info: &[S]) -> Self
+    where
+        S: AsRef<SelectInfoElem>,
+    {
+        crate::macros::dyn_sparse_map!(self, DynSparseMatrix, select, info)
+    }
+}
+
+impl<T: BackendData + SpIndex> SparseMatrixLayout for DynSparseMatrix<T> {
+    fn get_sparse_layout(&self) -> SparseMatrixLayoutE {
+        crate::macros::dyn_map_fun!(self, DynSparseMatrix, get_sparse_layout)
+    }
+}
+
+// no stackable yet implemented. TODO later
+
+impl<T: BackendData + SpIndex> WritableArray for DynSparseMatrix<T> {}
+
+impl<T: BackendData + SpIndex> ReadableArray for DynSparseMatrix<T> {
+    fn get_shape<B: Backend>(container: &DataContainer<B>) -> Result<Shape> {
+        Ok(container
+            .as_group()?
+            .get_attr::<Vec<usize>>("shape")?
+            .into_iter()
+            .collect())
+    }
+
+    fn read_select<B, S>(container: &DataContainer<B>, info: &[S]) -> Result<Self>
+    where
+        B: Backend,
+        S: AsRef<SelectInfoElem>,
+        Self: Sized,
+    {
+        match container {
+            DataContainer::Group(group) => {
+                macro_rules! fun {
+                    ($type: ident, $variant:ident) => {
+                        CsMatI::<$type, T, u64>::read_select(container, info)
+                            .map(DynSparseMatrix::$variant)
+                    };
+                }
+                crate::macros::dyn_match_new!(group.open_dataset("data")?.dtype()?, ScalarType, fun)
+            }
+            _ => bail!("Unable to read sparse matrix from non-group container"),
+        }
+    }
+}
+
+// trait impls for dynsparsematrix
+
+impl Element for DynIndSparseMatrix {
+    fn data_type(&self) -> DataType {
+        crate::macros::dyn_index_map_fun!(self, DynIndSparseMatrix, data_type)
+    }
+
+    fn metadata(&self) -> MetaData {
+        crate::macros::dyn_index_map_fun!(self, DynIndSparseMatrix, metadata)
+    }
+}
+
+impl Writable for DynIndSparseMatrix {
+    fn write<B: Backend, G: GroupOp<B>>(
+        &self,
+        location: &G,
+        name: &str,
+    ) -> Result<DataContainer<B>> {
+        crate::macros::dyn_index_map_fun!(self, DynIndSparseMatrix, write, location, name)
+    }
+}
+
+impl Readable for DynIndSparseMatrix {
+    fn read<B: Backend>(container: &DataContainer<B>) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        match container {
+            DataContainer::Group(group) => {
+                let indices_dtype = group.open_dataset("indices")?.dtype()?;
+                macro_rules! fun {
+                    ($type:ident, $variant:ident) => {
+                        DynSparseMatrix::<$type>::read(container).map(DynIndSparseMatrix::$variant)
+                    };
+                }
+
+                crate::macros::dyn_index_match!(indices_dtype, ScalarType, fun)
+            }
+            _ => bail!("Can't read sparse amtrix from non-group container"),
+        }
+    }
+}
+
+impl HasShape for DynIndSparseMatrix {
+    fn shape(&self) -> Shape {
+        crate::macros::dyn_index_map_fun!(self, DynIndSparseMatrix, shape)
+    }
+}
+
+impl Selectable for DynIndSparseMatrix {
+    fn select<S>(&self, info: &[S]) -> Self
+    where
+        S: AsRef<SelectInfoElem>,
+    {
+        crate::macros::dyn_index_sparse_map!(self, DynIndSparseMatrix, select, info)
+    }
+}
+
+impl WritableArray for DynIndSparseMatrix {}
+
+impl ReadableArray for DynIndSparseMatrix {
+    fn get_shape<B: Backend>(container: &DataContainer<B>) -> Result<Shape> {
+        Ok(container
+            .as_group()?
+            .get_attr::<Vec<usize>>("shape")?
+            .into_iter()
+            .collect())
+    }
+
+    fn read_select<B, S>(container: &DataContainer<B>, info: &[S]) -> Result<Self>
+    where
+        B: Backend,
+        S: AsRef<SelectInfoElem>,
+        Self: Sized,
+    {
+        match container {
+            DataContainer::Group(group) => {
+                let indices_type = group.open_dataset("indices")?.dtype()?;
+                macro_rules! fun {
+                    ($type:ident, $variant:ident) => {
+                        DynSparseMatrix::<$type>::read_select(container, info)
+                            .map(DynIndSparseMatrix::$variant)
+                    };
+                }
+                crate::macros::dyn_index_match!(indices_type, ScalarType, fun)
+            }
+            _ => bail!("Cant read sparse matrix from non group container"),
+        }
+    }
+}
+
+impl SparseMatrixLayout for DynIndSparseMatrix {
+    fn get_sparse_layout(&self) -> SparseMatrixLayoutE {
+        crate::macros::dyn_index_map_fun!(self, DynIndSparseMatrix, get_sparse_layout)
+    }
+}
+
+impl From<DynCsrMatrix> for DynIndSparseMatrix {
+    fn from(value: DynCsrMatrix) -> Self {
+        match value {
+            DynCsrMatrix::I8(csr) => {
+                DynIndSparseMatrix::U64(DynSparseMatrix::I8(csr_matrix_conv_csmati(csr)))
+            }
+            DynCsrMatrix::I16(csr) => {
+                DynIndSparseMatrix::U64(DynSparseMatrix::I16(csr_matrix_conv_csmati(csr)))
+            }
+            DynCsrMatrix::I32(csr) => {
+                DynIndSparseMatrix::U64(DynSparseMatrix::I32(csr_matrix_conv_csmati(csr)))
+            }
+            DynCsrMatrix::I64(csr) => {
+                DynIndSparseMatrix::U64(DynSparseMatrix::I64(csr_matrix_conv_csmati(csr)))
+            }
+            DynCsrMatrix::U8(csr) => {
+                DynIndSparseMatrix::U64(DynSparseMatrix::U8(csr_matrix_conv_csmati(csr)))
+            }
+            DynCsrMatrix::U16(csr) => {
+                DynIndSparseMatrix::U64(DynSparseMatrix::U16(csr_matrix_conv_csmati(csr)))
+            }
+            DynCsrMatrix::U32(csr) => {
+                DynIndSparseMatrix::U64(DynSparseMatrix::U32(csr_matrix_conv_csmati(csr)))
+            }
+            DynCsrMatrix::U64(csr) => {
+                DynIndSparseMatrix::U64(DynSparseMatrix::U64(csr_matrix_conv_csmati(csr)))
+            }
+            DynCsrMatrix::F32(csr) => {
+                DynIndSparseMatrix::U64(DynSparseMatrix::F32(csr_matrix_conv_csmati(csr)))
+            }
+            DynCsrMatrix::F64(csr) => {
+                DynIndSparseMatrix::U64(DynSparseMatrix::F64(csr_matrix_conv_csmati(csr)))
+            }
+            DynCsrMatrix::Bool(csr) => {
+                DynIndSparseMatrix::U64(DynSparseMatrix::Bool(csr_matrix_conv_csmati(csr)))
+            }
+            DynCsrMatrix::String(csr) => {
+                DynIndSparseMatrix::U64(DynSparseMatrix::String(csr_matrix_conv_csmati(csr)))
+            }
+        }
+    }
+}
+
+impl From<DynCscMatrix> for DynIndSparseMatrix {
+    fn from(value: DynCscMatrix) -> Self {
+        match value {
+            DynCscMatrix::I8(csc) => {
+                DynIndSparseMatrix::U64(DynSparseMatrix::I8(csc_matrix_conv_csmati(csc)))
+            }
+            DynCscMatrix::I16(csc) => {
+                DynIndSparseMatrix::U64(DynSparseMatrix::I16(csc_matrix_conv_csmati(csc)))
+            }
+            DynCscMatrix::I32(csc) => {
+                DynIndSparseMatrix::U64(DynSparseMatrix::I32(csc_matrix_conv_csmati(csc)))
+            }
+            DynCscMatrix::I64(csc) => {
+                DynIndSparseMatrix::U64(DynSparseMatrix::I64(csc_matrix_conv_csmati(csc)))
+            }
+            DynCscMatrix::U8(csc) => {
+                DynIndSparseMatrix::U64(DynSparseMatrix::U8(csc_matrix_conv_csmati(csc)))
+            }
+            DynCscMatrix::U16(csc) => {
+                DynIndSparseMatrix::U64(DynSparseMatrix::U16(csc_matrix_conv_csmati(csc)))
+            }
+            DynCscMatrix::U32(csc) => {
+                DynIndSparseMatrix::U64(DynSparseMatrix::U32(csc_matrix_conv_csmati(csc)))
+            }
+            DynCscMatrix::U64(csc) => {
+                DynIndSparseMatrix::U64(DynSparseMatrix::U64(csc_matrix_conv_csmati(csc)))
+            }
+            DynCscMatrix::F32(csc) => {
+                DynIndSparseMatrix::U64(DynSparseMatrix::F32(csc_matrix_conv_csmati(csc)))
+            }
+            DynCscMatrix::F64(csc) => {
+                DynIndSparseMatrix::U64(DynSparseMatrix::F64(csc_matrix_conv_csmati(csc)))
+            }
+            DynCscMatrix::Bool(csc) => {
+                DynIndSparseMatrix::U64(DynSparseMatrix::Bool(csc_matrix_conv_csmati(csc)))
+            }
+            DynCscMatrix::String(csc) => {
+                DynIndSparseMatrix::U64(DynSparseMatrix::String(csc_matrix_conv_csmati(csc)))
+            }
+        }
+    }
+}
+
+fn csr_matrix_conv_csmati<T: BackendData>(csr: CsrMatrix<T>) -> CsMatI<T, u64, u64> {
+    let shape = (csr.nrows(), csr.ncols());
+    let (rows, col, data) = csr.disassemble();
+    let rows: Vec<u64> = vec_usize_to_u64(rows);
+    let cols: Vec<u64> = vec_usize_to_u64(col);
+    CsMatI::new(shape, rows, cols, data)
+}
+
+fn csc_matrix_conv_csmati<T: BackendData>(csc: CscMatrix<T>) -> CsMatI<T, u64, u64> {
+    let shape = (csc.nrows(), csc.ncols());
+    let (cols, rows, data) = csc.disassemble();
+    let cols: Vec<u64> = vec_usize_to_u64(cols);
+    let rows: Vec<u64> = vec_usize_to_u64(rows);
+    CsMatI::new_csc(shape, cols, rows, data)
+}
+
+#[inline]
+pub fn vec_usize_to_u64(v: Vec<usize>) -> Vec<u64> {
+    #[cfg(target_pointer_width = "64")]
+    unsafe {
+        use std::mem::ManuallyDrop;
+
+        let mut v = ManuallyDrop::new(v);
+        Vec::from_raw_parts(v.as_mut_ptr() as *mut u64, v.len(), v.capacity())
+    }
+
+    #[cfg(not(target_pointer_width = "64"))]
+    {
+        v.into_iter().map(|x| x as u64).collect()
+    }
+}
+
+macro_rules! impl_from_dynsparse_to_dynind {
+    ($($type:ty, $variant:ident),*) => {
+        $(
+            impl From<DynSparseMatrix<$type>> for DynIndSparseMatrix {
+                fn from(value: DynSparseMatrix<$type>) -> Self {
+                    DynIndSparseMatrix::$variant(value)
+                }
+            }
+        )*
+    };
+}
+
+impl_from_dynsparse_to_dynind!(i16, I16, i32, I32, i64, I64, u16, U16, u32, U32, u64, U64);
+
+macro_rules! impl_from_csmati_to_dynsparse {
+    ($($value_type:ty, $value_variant:ident),*) => {
+        $(
+            impl<T: SpIndex + BackendData> From<CsMatI<$value_type, T, u64>> for DynSparseMatrix<T> {
+                fn from(value: CsMatI<$value_type, T, u64>) -> Self {
+                    DynSparseMatrix::$value_variant(value)
+                }
+            }
+        )*
+    };
+}
+
+impl_from_csmati_to_dynsparse!(
+    i8, I8, i16, I16, i32, I32, i64, I64, u8, U8, u16, U16, u32, U32, u64, U64, f32, F32, f64, F64,
+    bool, Bool, String, String
+);
+
+macro_rules! impl_tryfrom_dynsparse_to_csmati {
+    ($($value_type:ty, $value_variant:ident),*) => {
+        $(
+            impl<T: SpIndex + BackendData> TryFrom<DynSparseMatrix<T>> for CsMatI<$value_type, T, u64> {
+                type Error = anyhow::Error;
+
+                fn try_from(value: DynSparseMatrix<T>) -> Result<Self> {
+                    match value {
+                        DynSparseMatrix::$value_variant(data) => Ok(data),
+                        _ => bail!(
+                            "Cannot convert {} to CsMatI<{}, {}, u64>",
+                            value.data_type(),
+                            stringify!($value_type),
+                            std::any::type_name::<T>()
+                        ),
+                    }
+                }
+            }
+        )*
+    };
+}
+
+impl_tryfrom_dynsparse_to_csmati!(
+    i8, I8, i16, I16, i32, I32, i64, I64, u8, U8, u16, U16, u32, U32, u64, U64, f32, F32, f64, F64,
+    bool, Bool, String, String
+);
+
+macro_rules! impl_tryfrom_dynind_to_dynsparse {
+    ($($index_type:ty, $index_variant:ident),*) => {
+        $(
+            impl TryFrom<DynIndSparseMatrix> for DynSparseMatrix<$index_type> {
+                type Error = anyhow::Error;
+
+                fn try_from(value: DynIndSparseMatrix) -> Result<Self> {
+                    match value {
+                        DynIndSparseMatrix::$index_variant(data) => Ok(data),
+                        _ => bail!(
+                            "Cannot convert DynIndSparseMatrix with index type {:?} to DynSparseMatrix<{}>",
+                            value.data_type(),
+                            stringify!($index_type)
+                        ),
+                    }
+                }
+            }
+        )*
+    };
+}
+
+impl_tryfrom_dynind_to_dynsparse!(i16, I16, i32, I32, i64, I64, u16, U16, u32, U32, u64, U64);

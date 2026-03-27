@@ -2,14 +2,14 @@ use std::collections::HashMap;
 
 use crate::backend::*;
 use crate::data::{
-    array::utils::{cs_major_index, cs_major_minor_index, cs_major_slice},
+    SelectInfoBounds, SelectInfoElemBounds,
     array::DynScalar,
+    array::utils::{cs_major_index, cs_major_minor_index, cs_major_slice},
     data_traits::*,
     slice::{SelectInfoElem, Shape},
-    SelectInfoBounds, SelectInfoElemBounds,
 };
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use nalgebra_sparse::csc::CscMatrix;
 use nalgebra_sparse::pattern::SparsityPattern;
 use ndarray::Ix1;
@@ -90,8 +90,8 @@ impl<T: BackendData + Clone> Selectable for CscMatrix<T> {
                             &SelectInfoElemBounds::Slice(row) => {
                                 if row.step < 0 {
                                     cs_major_minor_index(
-                                        (col_start..col_end).step_by(col_step.abs() as usize).rev(),
-                                        (row.start..row.end).step_by(row.step.abs() as usize).rev(),
+                                        (col_start..col_end).step_by(col_step.unsigned_abs()).rev(),
+                                        (row.start..row.end).step_by(row.step.unsigned_abs()).rev(),
                                         self.nrows(),
                                         col_offsets,
                                         row_indices,
@@ -200,7 +200,7 @@ impl<T: BackendData + Clone> Selectable for CscMatrix<T> {
 
 impl<T: BackendData> Element for CscMatrix<T> {
     fn data_type(&self) -> DataType {
-        DataType::CscMatrix(T::DTYPE)
+        DataType::CscMatrix(u64::DTYPE, T::DTYPE)
     }
 
     fn metadata(&self) -> MetaData {
@@ -294,7 +294,7 @@ impl<T: BackendData> Writable for CscMatrix<T> {
 impl<T: BackendData> Readable for CscMatrix<T> {
     fn read<B: Backend>(container: &DataContainer<B>) -> Result<Self> {
         let data_type = container.encoding_type()?;
-        if let DataType::CscMatrix(_) = data_type {
+        if let DataType::CscMatrix(_, _) = data_type {
             let group = container.as_group()?;
             let shape: Vec<u64> = group.get_attr("shape")?;
             let data = group
@@ -345,7 +345,7 @@ impl<T: BackendData> ReadableArray for CscMatrix<T> {
         S: AsRef<SelectInfoElem>,
     {
         let data_type = container.encoding_type()?;
-        if let DataType::CscMatrix(_) = data_type {
+        if let DataType::CscMatrix(_, _) = data_type {
             if info.as_ref().len() != 2 {
                 panic!("index must have length 2");
             }
@@ -408,8 +408,8 @@ mod csc_matrix_index_tests {
     use nalgebra::base::DMatrix;
     use nalgebra_sparse::CooMatrix;
     use ndarray::Array;
-    use ndarray_rand::rand_distr::Uniform;
     use ndarray_rand::RandomExt;
+    use ndarray_rand::rand_distr::Uniform;
 
     fn csc_select<I1, I2>(csc: &CscMatrix<i64>, row_indices: I1, col_indices: I2) -> CscMatrix<i64>
     where
