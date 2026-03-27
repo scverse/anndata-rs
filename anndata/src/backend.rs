@@ -4,12 +4,14 @@ pub use datatype::{BackendData, DataType, ScalarType};
 
 use anyhow::{Result, bail};
 use core::fmt::{Debug, Formatter};
-use ndarray::{Array, CowArray, Dimension, Ix0, IxDyn, arr0};
-use serde::Deserialize;
+use ndarray::{arr0, Array, CowArray, Dimension, Ix0, IxDyn};
+use std::path::{Path, PathBuf};
+use std::cell::RefCell;
 pub use serde_json::Value;
+use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Compression {
     Gzip(u8),
     Zst(u8),
@@ -28,6 +30,20 @@ impl Default for WriteConfig {
             block_size: None,
         }
     }
+}
+
+thread_local! {
+    static DEFAULT_WRITE_CONFIG: RefCell<WriteConfig> = RefCell::new(WriteConfig::default());
+}
+
+/// Set the default write configuration for all subsequent write operations.
+pub fn set_default_write_config(config: WriteConfig) {
+    DEFAULT_WRITE_CONFIG.with(|c| *c.borrow_mut() = config);
+}
+
+/// Get the current default write configuration.
+pub fn get_default_write_config() -> WriteConfig {
+    DEFAULT_WRITE_CONFIG.with(|c| c.borrow().clone())
 }
 
 pub trait Backend: 'static {
@@ -119,7 +135,7 @@ pub trait GroupOp<B: Backend + ?Sized> {
     }
 
     fn new_scalar_dataset<D: BackendData>(&self, name: &str, data: &D) -> Result<B::Dataset> {
-        self.new_array_dataset(name, arr0(data.clone()).into(), WriteConfig::default())
+        self.new_array_dataset(name, arr0(data.clone()).into(), get_default_write_config())
     }
 }
 

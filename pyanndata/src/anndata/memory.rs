@@ -22,10 +22,12 @@ impl<'py> Deref for PyAnnData<'py> {
     }
 }
 
-impl<'py> FromPyObject<'py> for PyAnnData<'py> {
-    fn extract_bound(obj: &Bound<'py, PyAny>) -> PyResult<Self> {
-        if isinstance_of_pyanndata(obj)? {
-            Ok(PyAnnData(obj.clone()))
+impl<'py> FromPyObject<'_, 'py> for PyAnnData<'py> {
+    type Error = PyErr;
+
+    fn extract(obj: Borrowed<'_, 'py, PyAny>) -> PyResult<Self> {
+        if isinstance_of_pyanndata(&obj)? {
+            Ok(PyAnnData(obj.to_owned()))
         } else {
             Err(PyTypeError::new_err("Not a Python AnnData object"))
         }
@@ -150,7 +152,7 @@ impl<'py> AnnDataOp for PyAnnData<'py> {
     }
 
     fn del_x(&self) -> Result<()> {
-        self.setattr("X", None::<PyObject>)?;
+        self.setattr("X", None::<Py<PyAny>>)?;
         Ok(())
     }
 
@@ -203,7 +205,7 @@ impl<'py> AnnDataOp for PyAnnData<'py> {
     }
 
     fn set_obs_names(&self, index: DataFrameIndex) -> Result<()> {
-        if self.getattr("obs")?.getattr("empty")?.downcast().unwrap().is_true() {
+        if self.getattr("obs")?.getattr("empty")?.cast().unwrap().is_true() {
             let py = self.py();
             let df = py.import("pandas")?.call_method(
                 "DataFrame",
@@ -217,7 +219,7 @@ impl<'py> AnnDataOp for PyAnnData<'py> {
         Ok(())
     }
     fn set_var_names(&self, index: DataFrameIndex) -> Result<()> {
-        if self.getattr("var")?.getattr("empty")?.downcast().unwrap().is_true() {
+        if self.getattr("var")?.getattr("empty")?.cast().unwrap().is_true() {
             let py = self.py();
             let df = py.import("pandas")?.call_method(
                 "DataFrame",
@@ -251,7 +253,7 @@ impl<'py> AnnDataOp for PyAnnData<'py> {
 
     fn set_obs(&self, obs: DataFrame) -> Result<()> {
         let py = self.py();
-        let is_empty = obs.is_empty();
+        let is_empty = obs.height() == 0 || obs.width() == 0;
         let index = self.getattr("obs")?.getattr("index")?;
         let mut df = PyDataFrame(obs).into_pyobject(py)?
             .call_method0("to_pandas")?;
@@ -268,7 +270,7 @@ impl<'py> AnnDataOp for PyAnnData<'py> {
 
     fn set_var(&self, var: DataFrame) -> Result<()> {
         let py = self.py();
-        let is_empty = var.is_empty();
+        let is_empty = var.height() == 0 || var.width() == 0;
         let index = self.getattr("var")?.getattr("index")?;
         let mut df = PyDataFrame(var).into_pyobject(py)?
             .call_method0("to_pandas")?;
@@ -284,12 +286,12 @@ impl<'py> AnnDataOp for PyAnnData<'py> {
     }
 
     fn del_obs(&self) -> Result<()> {
-        self.0.setattr("obs", None::<PyObject>)?;
+        self.0.setattr("obs", None::<Py<PyAny>>)?;
         Ok(())
     }
 
     fn del_var(&self) -> Result<()> {
-        self.0.setattr("var", None::<PyObject>)?;
+        self.0.setattr("var", None::<Py<PyAny>>)?;
         Ok(())
     }
 
@@ -339,27 +341,27 @@ impl<'py> AnnDataOp for PyAnnData<'py> {
     }
 
     fn del_obsm(&self) -> Result<()> {
-        self.0.setattr("obsm", None::<PyObject>)?;
+        self.0.setattr("obsm", None::<Py<PyAny>>)?;
         Ok(())
     }
 
     fn del_obsp(&self) -> Result<()> {
-        self.0.setattr("obsp", None::<PyObject>)?;
+        self.0.setattr("obsp", None::<Py<PyAny>>)?;
         Ok(())
     }
 
     fn del_varm(&self) -> Result<()> {
-        self.0.setattr("varm", None::<PyObject>)?;
+        self.0.setattr("varm", None::<Py<PyAny>>)?;
         Ok(())
     }
 
     fn del_varp(&self) -> Result<()> {
-        self.0.setattr("varp", None::<PyObject>)?;
+        self.0.setattr("varp", None::<Py<PyAny>>)?;
         Ok(())
     }
 
     fn del_layers(&self) -> Result<()> {
-        self.0.setattr("layers", None::<PyObject>)?;
+        self.0.setattr("layers", None::<Py<PyAny>>)?;
         Ok(())
     }
 }

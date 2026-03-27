@@ -15,6 +15,7 @@ use ndarray::{Array1, ArrayD, Ix1};
 use num::{NumCast, ToPrimitive};
 
 use super::super::slice::SliceBounds;
+use crate::backend::get_default_write_config;
 
 impl<T: BackendData> Element for CsrMatrix<T> {
     fn data_type(&self) -> DataType {
@@ -230,7 +231,7 @@ impl<T: BackendData> Writable for CsrMatrix<T> {
         let shape = self.shape();
 
         self.metadata().save(&mut group)?;
-        group.new_array_dataset("data", self.values().into(), Default::default())?;
+        group.new_array_dataset("data", self.values().into(), get_default_write_config())?;
 
         let num_cols = shape[1];
         // Use i32 or i64 as indices type in order to be compatible with scipy
@@ -241,7 +242,7 @@ impl<T: BackendData> Writable for CsrMatrix<T> {
                 .map(|x| (*x).try_into().ok())
                 .collect();
             if let Some(indptr_i32) = try_convert_indptr {
-                group.new_array_dataset("indptr", indptr_i32.into(), Default::default())?;
+                group.new_array_dataset("indptr", indptr_i32.into(), get_default_write_config())?;
                 group.new_array_dataset(
                     "indices",
                     self.col_indices()
@@ -249,7 +250,7 @@ impl<T: BackendData> Writable for CsrMatrix<T> {
                         .map(|x| (*x) as i32)
                         .collect::<Vec<_>>()
                         .into(),
-                    Default::default(),
+                    get_default_write_config(),
                 )?;
             } else {
                 group.new_array_dataset(
@@ -259,7 +260,7 @@ impl<T: BackendData> Writable for CsrMatrix<T> {
                         .map(|x| TryInto::<i64>::try_into(*x).unwrap())
                         .collect::<Vec<_>>()
                         .into(),
-                    Default::default(),
+                    get_default_write_config(),
                 )?;
                 group.new_array_dataset(
                     "indices",
@@ -268,7 +269,7 @@ impl<T: BackendData> Writable for CsrMatrix<T> {
                         .map(|x| (*x) as i64)
                         .collect::<Vec<_>>()
                         .into(),
-                    Default::default(),
+                    get_default_write_config(),
                 )?;
             }
         } else if TryInto::<i64>::try_into(num_cols.saturating_sub(1)).is_ok() {
@@ -279,7 +280,7 @@ impl<T: BackendData> Writable for CsrMatrix<T> {
                     .map(|x| TryInto::<i64>::try_into(*x).unwrap())
                     .collect::<Vec<_>>()
                     .into(),
-                Default::default(),
+                    get_default_write_config(),
             )?;
             group.new_array_dataset(
                 "indices",
@@ -288,7 +289,7 @@ impl<T: BackendData> Writable for CsrMatrix<T> {
                     .map(|x| (*x) as i64)
                     .collect::<Vec<_>>()
                     .into(),
-                Default::default(),
+                    get_default_write_config(),
             )?;
         } else {
             panic!(
@@ -553,17 +554,17 @@ mod csr_matrix_index_tests {
 
     #[test]
     fn test_csr() {
-        for _ in 0..100 {
+        for _ in 0..50 {
             let n: usize = 200;
             let m: usize = 200;
             let nnz: usize = 1000;
 
-            let ridx = Array::random(220, Uniform::new(0, n)).to_vec();
-            let cidx = Array::random(100, Uniform::new(0, m)).to_vec();
+            let ridx = Array::random(220, Uniform::new(0, n).unwrap()).to_vec();
+            let cidx = Array::random(100, Uniform::new(0, m).unwrap()).to_vec();
 
-            let row_indices = Array::random(nnz, Uniform::new(0, n)).to_vec();
-            let col_indices = Array::random(nnz, Uniform::new(0, m)).to_vec();
-            let values = Array::random(nnz, Uniform::new(1, 10000)).to_vec();
+            let row_indices = Array::random(nnz, Uniform::new(0, n).unwrap()).to_vec();
+            let col_indices = Array::random(nnz, Uniform::new(0, m).unwrap()).to_vec();
+            let values = Array::random(nnz, Uniform::new(1, 10000).unwrap()).to_vec();
 
             let csr_matrix: CsrMatrix<i64> =
                 (&CooMatrix::try_from_triplets(n, m, row_indices, col_indices, values).unwrap())

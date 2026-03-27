@@ -62,11 +62,11 @@ where
                 let var_names = adata.var_names();
                 // Creating the series
                 let columns = var
-                    .get_columns()
+                    .columns()
                     .iter()
                     .map(|s| align_series(s, &var_names, &common_vars))
                     .collect::<Result<Vec<_>>>()?;
-                Ok(DataFrame::new(columns)?)
+                Ok(DataFrame::new_infer_height(columns)?)
             })
             .reduce(|a, b| {
                 let mut a = a?;
@@ -92,7 +92,7 @@ where
                     label.unwrap_or("label").into(),
                     vec![key.to_string(); df.height()],
                 );
-                df.insert_column(0, s).unwrap();
+                df.insert_column(0, s.into()).unwrap();
             });
         }
         let dfs = dfs.into_iter().map(|df| df.lazy()).collect::<Vec<_>>();
@@ -180,14 +180,14 @@ where
 }
 
 fn merge_df(this: &mut DataFrame, other: &DataFrame) -> Result<()> {
-    if other.is_empty() {
+    if other.height() == 0 {
         return Ok(());
     }
     ensure!(
         this.height() == other.height(),
         "DataFrames must have the same number of rows"
     );
-    other.get_columns().iter().try_for_each(|other_s| {
+    other.columns().iter().try_for_each(|other_s| {
         let name = other_s.name();
         if let Some(i) = this.get_column_index(name) {
             let this_s = this.column(name)?;
@@ -224,7 +224,7 @@ fn merge_df(this: &mut DataFrame, other: &DataFrame) -> Result<()> {
                 }
                 _ => Series::from_any_values_and_dtype(name.clone(), &new_column, dtype, false)?,
             };
-            this.replace_column(i, new_column)?;
+            this.replace_column(i, new_column.into())?;
         } else {
             this.insert_column(this.width(), other_s.clone())?;
         }

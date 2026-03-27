@@ -4,15 +4,14 @@ use crate::{
     data::*,
 };
 
-use anyhow::{bail, ensure, Result};
+use anyhow::{Result, bail, ensure};
 use indexmap::set::IndexSet;
 use itertools::Itertools;
 use num::integer::div_rem;
 use parking_lot::{Mutex, MutexGuard};
 use polars::{
     frame::DataFrame,
-    prelude::{concat, Column, IntoLazy, UnionArgs},
-    series::IntoSeries,
+    prelude::{Column, IntoColumn, IntoLazy, UnionArgs, concat},
 };
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use smallvec::SmallVec;
@@ -178,9 +177,12 @@ impl<B: Backend> InnerDataFrameElem<B> {
 
     /// Set a column with a Series.
     //TODO: this is not efficient. We should be able to replace a column without reading the whole dataframe.
-    pub fn set_column<S: IntoSeries>(&mut self, name: &str, new_col: S) -> Result<()> {
+    pub fn set_column<C: IntoColumn>(&mut self, name: &str, new_col: C) -> Result<()> {
+        let mut column = new_col.into_column();
+        column.rename(name.into());
+
         let mut df = self.data()?.clone();
-        df.replace_or_add(name.into(), new_col)?;
+        df.with_column(column)?;
         self.save(df)
     }
 
@@ -617,32 +619,26 @@ impl<B: Backend> StackedDataFrame<B> {
     }
 
     pub fn data(&self) -> Result<DataFrame> {
-        let df = if self.column_names.is_empty() || self.elems.is_empty() {
-            DataFrame::empty()
-        } else {
-            let mut elems = self.elems.iter();
-            let mut columns = elems
-                .next()
-                .unwrap()
-                .inner()
-                .data()?
-                .columns(self.column_names.iter())?
-                .into_iter()
-                .cloned()
-                .collect::<Vec<_>>();
-            elems.try_for_each(|el| {
-                let mut inner = el.inner();
-                let col = inner.data()?.columns(self.column_names.iter())?;
-                columns
-                    .iter_mut()
-                    .zip(col.into_iter())
-                    .try_for_each(|(a, b)| {
-                        a.append(b)?;
-                        Ok::<_, anyhow::Error>(())
-                    })
-            })?;
-            DataFrame::new(columns)?
-        };
+        let names = &self.column_names;
+        let df = self
+            .elems
+            .iter()
+            .map(|x| {
+                let mut x = x.inner();
+                let df = x.data().unwrap();
+                names
+                    .iter()
+                    .map(|i| df[i.as_str()].clone())
+                    .collect::<Vec<_>>()
+            })
+            .reduce(|mut acc, next| {
+                acc.iter_mut().zip(next.into_iter()).for_each(|(a, b)| {
+                    a.append(&b).unwrap();
+                });
+                acc
+            })
+            .map(|columns| DataFrame::new_infer_height(columns).unwrap())
+            .unwrap_or(DataFrame::empty());
         Ok(df)
     }
 
@@ -1020,11 +1016,7 @@ where
 {
     fn len(&self) -> usize {
         let (n, remain) = div_rem(self.num_items, self.chunk_size);
-        if remain == 0 {
-            n
-        } else {
-            n + 1
-        }
+        if remain == 0 { n } else { n + 1 }
     }
 }
 

@@ -112,7 +112,7 @@ pub fn read<'py>(
 )]
 pub fn concat<'py>(
     py: Python<'py>,
-    adatas: Vec<PyObject>,
+    adatas: Vec<Py<PyAny>>,
     join: &str,
     label: Option<&str>,
     keys: Option<Vec<String>>,

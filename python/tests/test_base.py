@@ -130,11 +130,11 @@ def test_to_memory(tmp_path, backend):
     adata.obs_names = ['a', 'b']
     adata.var_names = ['a', 'b', 'c']
 
-    adata.to_memory()
+    adata = adata.to_memory()
     assert adata.n_obs == 2
     assert adata.n_vars == 3
-    assert adata.obs_names == ['a', 'b']
-    assert adata.var_names == ['a', 'b', 'c']
+    assert adata.obs_names.tolist() == ['a', 'b']
+    assert adata.var_names.tolist() == ['a', 'b', 'c']
 
 @pytest.mark.parametrize("backend", BACKENDS)
 def test_resize(tmp_path, backend):

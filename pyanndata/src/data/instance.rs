@@ -5,7 +5,7 @@ pub fn isinstance_of_csr<'py>(obj: &Bound<'py, PyAny>) -> PyResult<bool> {
         obj.py()
             .import("scipy.sparse")?
             .getattr("csr_matrix")?
-            .downcast::<PyType>()
+            .cast::<PyType>()
             .unwrap(),
     )
 }
@@ -15,7 +15,7 @@ pub fn isinstance_of_csc<'py>(obj: &Bound<'py, PyAny>) -> PyResult<bool> {
         obj.py()
             .import("scipy.sparse")?
             .getattr("csc_matrix")?
-            .downcast::<PyType>()
+            .cast::<PyType>()
             .unwrap(),
     )
 }
@@ -25,7 +25,7 @@ pub fn isinstance_of_arr<'py>(obj: &Bound<'py, PyAny>) -> PyResult<bool> {
         obj.py()
             .import("numpy")?
             .getattr("ndarray")?
-            .downcast::<PyType>()
+            .cast::<PyType>()
             .unwrap(),
     )
 }
@@ -35,7 +35,7 @@ pub fn isinstance_of_pyanndata<'py>(obj: &Bound<'py, PyAny>) -> PyResult<bool> {
         obj.py()
             .import("anndata")?
             .getattr("AnnData")?
-            .downcast::<PyType>()
+            .cast::<PyType>()
             .unwrap(),
     )
 }
@@ -45,7 +45,7 @@ pub fn isinstance_of_pandas<'py>(obj: &Bound<'py, PyAny>) -> PyResult<bool> {
         obj.py()
             .import("pandas")?
             .getattr("DataFrame")?
-            .downcast::<PyType>()
+            .cast::<PyType>()
             .unwrap(),
     )
 }
@@ -55,7 +55,7 @@ pub fn isinstance_of_polars<'py>(obj: &Bound<'py, PyAny>) -> PyResult<bool> {
         obj.py()
             .import("polars")?
             .getattr("DataFrame")?
-            .downcast::<PyType>()
+            .cast::<PyType>()
             .unwrap(),
     )
 }

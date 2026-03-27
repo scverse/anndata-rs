@@ -870,7 +870,7 @@ mod tests {
 
             let mut dataset =
                 file.new_empty_dataset::<i32>("test", &[20, 50].as_slice().into(), config)?;
-            let arr = Array::random((20, 50), Uniform::new(0, 100));
+            let arr = Array::random((20, 50), Uniform::new(0, 100).unwrap());
 
             // Repeatitive writes
             dataset.write_array_slice(arr.view().into(), s![.., ..].as_ref())?;

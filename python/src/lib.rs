@@ -8,11 +8,14 @@ fn anndata_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     m.add_class::<AnnData>().unwrap();
     m.add_class::<AnnDataSet>().unwrap();
+    m.add_class::<PyCompression>().unwrap();
 
     m.add_function(wrap_pyfunction!(read, m)?)?;
     m.add_function(wrap_pyfunction!(read_dataset, m)?)?;
     m.add_function(wrap_pyfunction!(read_mtx, m)?)?;
     m.add_function(wrap_pyfunction!(concat, m)?)?;
+    m.add_function(wrap_pyfunction!(py_get_default_write_config, m)?)?;
+    m.add_function(wrap_pyfunction!(py_set_default_write_config, m)?)?;
     /*
     m.add_class::<StackedAnnData>().unwrap();
     m.add_class::<element::PyElemCollection>().unwrap();

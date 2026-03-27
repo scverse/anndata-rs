@@ -16,6 +16,7 @@ use ndarray::{Array, Array1, ArrayD, ArrayView, Axis, Dimension, RemoveAxis, Sli
 use polars::series::Series;
 use std::collections::HashMap;
 use std::ops::Index;
+use crate::backend::get_default_write_config;
 
 impl<'a, T: BackendData, D> Element for ArrayView<'a, T, D> {
     fn metadata(&self) -> MetaData {
@@ -37,7 +38,7 @@ impl<'a, T: BackendData, D: Dimension> Writable for ArrayView<'a, T, D> {
         location: &G,
         name: &str,
     ) -> Result<DataContainer<B>> {
-        let dataset = location.new_array_dataset(name, self.into(), Default::default())?;
+        let dataset = location.new_array_dataset(name, self.into(), get_default_write_config())?;
         let mut container = DataContainer::<B>::Dataset(dataset);
         self.metadata().save(&mut container)?;
         Ok(container)
@@ -176,7 +177,8 @@ impl TryInto<Series> for CategoricalArray {
             return Err(anyhow!("Can only convert 1D CategoricalArray to Series"));
         }
         let series = self.codes.into_iter().map(|x|
-            x.and_then(|idx| self.categories.get(idx as usize).cloned())
+            x.and_then(|idx| 
+                ndarray::ArrayRef::get(&self.categories, idx as usize).cloned())
         ).collect();
         Ok(series)
     }
@@ -311,7 +313,7 @@ impl<T: BackendData + num::ToPrimitive + Clone, D: Dimension + RemoveAxis> Array
             anyhow::bail!("axis {} out of bounds for array of dimension {}", axis, self.ndim());
         }
         let arr = self.map(|x| <f64 as NumCast>::from(x.clone()).unwrap());
-        Ok(Array::sum_axis(&arr, Axis(axis)).into_dyn())
+        Ok(Array::sum_axis(&arr, axis)?.into_dyn())
     }
 
     fn min(&self) -> f64 {

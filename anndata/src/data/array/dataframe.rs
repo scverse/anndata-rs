@@ -2,18 +2,18 @@ use std::collections::HashMap;
 
 use crate::backend::{AttributeOp, Backend, DataContainer, DatasetOp, GroupOp, ScalarType};
 use crate::data::array::{
-    slice::{SelectInfoElem, Shape},
     CategoricalArray, DynArray,
+    slice::{SelectInfoElem, Shape},
 };
 use crate::data::data_traits::*;
 use crate::data::index::{Index, Interval};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use log::warn;
 use ndarray::{Array1, Ix1};
 use polars::chunked_array::ChunkedArray;
 use polars::datatypes::DataType;
-use polars::prelude::{DataFrame, Series};
+use polars::prelude::{Column, DataFrame, Series};
 
 use super::{BackendData, SelectInfoBounds, SelectInfoElemBounds};
 
@@ -49,8 +49,8 @@ impl Writable for DataFrame {
         };
         self.metadata().save(&mut group)?;
 
-        self.iter().try_for_each(|x| {
-            write_series(x, &group, x.name())?;
+        self.columns().iter().try_for_each(|x| {
+            write_column(x, &group, x.name())?;
             anyhow::Ok(())
         })?;
 
@@ -81,8 +81,8 @@ impl Writable for DataFrame {
             DataFrameIndex::from(self.height()).overwrite(&mut container)?;
         }
 
-        self.iter().try_for_each(|x| {
-            write_series(x, container.as_group()?, x.name())?;
+        self.columns().iter().try_for_each(|x| {
+            write_column(x, container.as_group()?, x.name())?;
             anyhow::Ok(())
         })?;
         self.metadata().save(&mut container)?;
@@ -93,18 +93,22 @@ impl Writable for DataFrame {
 
 impl Readable for DataFrame {
     fn read<B: Backend>(container: &DataContainer<B>) -> Result<Self> {
+        let shape = DataFrame::get_shape(container)?;
         let columns: Vec<String> = container.get_attr("column-order")?;
-        columns
-            .into_iter()
-            .map(|name| {
-                let name = name.as_str();
-                let series_container = DataContainer::<B>::open(container.as_group()?, name)?;
-                let mut series = read_series::<B>(&series_container)
-                    .with_context(|| format!("Failed to read series: {}", name))?;
-                series.rename(name.into());
-                Ok(series)
-            })
-            .collect()
+        Ok(DataFrame::new(
+            shape[0],
+            columns
+                .into_iter()
+                .map(|name| {
+                    let name = name.as_str();
+                    let series_container = DataContainer::<B>::open(container.as_group()?, name)?;
+                    let mut series = read_series::<B>(&series_container)
+                        .with_context(|| format!("Failed to read series: {}", name))?;
+                    series.rename(name.into());
+                    Ok(series.into())
+                })
+                .collect::<Result<Vec<_>>>()?,
+        )?)
     }
 }
 
@@ -131,9 +135,12 @@ impl Selectable for DataFrame {
                 .into_iter()
                 .map(|i| columns[i].as_str()),
         )
-        .unwrap()
+        .expect(&format!(
+            "Failed to select columns: {:?}",
+            select.as_ref()[1]
+        ))
         .take(&ChunkedArray::from_vec("idx".into(), ridx))
-        .unwrap()
+        .expect(&format!("Failed to select rows: {:?}, shape: {:?}", select.as_ref()[0], self.shape()))
     }
 }
 
@@ -163,26 +170,28 @@ impl ReadableArray for DataFrame {
         S: AsRef<SelectInfoElem>,
     {
         let columns: Vec<String> = container.get_attr("column-order")?;
-        SelectInfoElemBounds::new(&info.as_ref()[1], columns.len())
-            .iter()
-            .map(|i| {
-                let name = &columns[i];
-                let series = container
-                    .as_group()?
-                    .open_dataset(name)
-                    .map(DataContainer::Dataset)
-                    .and_then(|x| read_series::<B>(&x))
-                    .with_context(|| format!("Failed to read series: {}", name))?;
+        let columns: Result<Vec<Column>> =
+            SelectInfoElemBounds::new(&info.as_ref()[1], columns.len())
+                .iter()
+                .map(|i| {
+                    let name = &columns[i];
+                    let series = container
+                        .as_group()?
+                        .open_dataset(name)
+                        .map(DataContainer::Dataset)
+                        .and_then(|x| read_series::<B>(&x))
+                        .with_context(|| format!("Failed to read series: {}", name))?;
 
-                let indices: Vec<u32> = SelectInfoElemBounds::new(&info[0], series.len())
-                    .iter()
-                    .map(|x| x.try_into().unwrap())
-                    .collect();
-                let mut series = series.take_slice(indices.as_slice())?;
-                series.rename(name.into());
-                Ok(series)
-            })
-            .collect()
+                    let indices: Vec<u32> = SelectInfoElemBounds::new(&info[0], series.len())
+                        .iter()
+                        .map(|x| x.try_into().unwrap())
+                        .collect();
+                    let mut series = series.take_slice(indices.as_slice())?;
+                    series.rename(name.into());
+                    Ok(series.into())
+                })
+                .collect();
+        Ok(DataFrame::new_infer_height(columns?)?)
     }
 }
 
@@ -347,8 +356,8 @@ where
 /// Helper functions
 ////////////////////////////////////////////////////////////////////////////////
 
-fn write_series<B: Backend, G: GroupOp<B>>(
-    series: &Series,
+fn write_column<B: Backend, G: GroupOp<B>>(
+    series: &Column,
     location: &G,
     name: &str,
 ) -> Result<DataContainer<B>> {
@@ -376,12 +385,19 @@ fn write_series<B: Backend, G: GroupOp<B>>(
         DataType::Boolean => write_series_helper(series.bool()?, location, name),
         DataType::String => {
             let series = series.str()?;
-            if let Some(str_vec) = series.iter().map(|x| x.map(|s| s.to_string())).collect::<Option<Vec<_>>>() {
+            if let Some(str_vec) = series
+                .iter()
+                .map(|x| x.map(|s| s.to_string()))
+                .collect::<Option<Vec<_>>>()
+            {
                 Array1::from(str_vec).write(location, name)
             } else {
-                series.into_iter().collect::<CategoricalArray>().write(location, name)
+                series
+                    .into_iter()
+                    .collect::<CategoricalArray>()
+                    .write(location, name)
             }
-        },
+        }
         DataType::Categorical(_, _) => series
             .cat32()?
             .iter_str()

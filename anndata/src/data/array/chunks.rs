@@ -11,6 +11,7 @@ use anyhow::{Context, Result, bail};
 use nalgebra_sparse::na::Scalar;
 use nalgebra_sparse::{CscMatrix, CsrMatrix};
 use ndarray::{Array, Array1, ArrayD, ArrayView1, RemoveAxis};
+use crate::backend::get_default_write_config;
 use sprs::{CsMatI, SpIndex};
 
 pub enum MatrixBuilder<B: Backend> {
@@ -160,7 +161,7 @@ impl<B: Backend> CsrMatrixBuilder<B> {
         self.data.finish()?;
         self.indptr.push(self.nnz);
         self.group
-            .new_array_dataset("indptr", self.indptr.into(), Default::default())?;
+            .new_array_dataset("indptr", self.indptr.into(), get_default_write_config())?;
         self.group.new_attr(
             "shape",
             [self.num_rows as u64, self.num_cols.unwrap_or(0) as u64].as_slice(),
@@ -589,7 +590,7 @@ impl<T: BackendData> ArrayChunk for CsrMatrix<T> {
         indices.finish()?;
         data.finish()?;
         indptr.push(nnz);
-        group.new_array_dataset("indptr", indptr.into(), Default::default())?;
+        group.new_array_dataset("indptr", indptr.into(), get_default_write_config())?;
         group.new_attr(
             "shape",
             [num_rows as u64, num_cols.unwrap_or(0) as u64].as_slice(),
@@ -741,7 +742,7 @@ impl<T: BackendData> ArrayChunk for CsrNonCanonical<T> {
         indices.finish()?;
         data.finish()?;
         indptr.push(nnz);
-        group.new_array_dataset("indptr", indptr.into(), Default::default())?;
+        group.new_array_dataset("indptr", indptr.into(), get_default_write_config())?;
         group.new_attr(
             "shape",
             [num_rows as u64, num_cols.unwrap_or(0) as u64].as_slice(),
@@ -956,7 +957,7 @@ impl<T: BackendData + Scalar> ArrayChunk for CscMatrix<T> {
         indices.finish()?;
         data.finish()?;
         indptr.push(nnz);
-        group.create_array_data("indptr", &indptr, Default::default())?;
+        group.create_array_data("indptr", &indptr, get_default_write_config())?;
         group.write_array_attr("shape", &[num_rows.unwrap_or(0), num_cols])?;
         Ok(DataContainer::Group(group))
         */

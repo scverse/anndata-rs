@@ -16,8 +16,36 @@ pub fn to_select_info(ob: &Bound<'_, PyAny>, shape: &Shape) -> PyResult<SelectIn
     }
 }
 
+/// Converts a Python object into a `SelectInfoElem` for array indexing.
+///
+/// This function handles multiple Python indexing types and converts them to a unified
+/// `SelectInfoElem` representation:
+///
+/// - **PySlice**: Converts Python slice objects (e.g., `1:5:2`) into a `Slice` with
+///   start, stop, and step values.
+/// - **None**: Represents a full selection (equivalent to `:`).
+/// - **PyInt**: Extracts a single integer index.
+/// - **Boolean NumPy array**: Validates the array has dtype `bool` and matches the
+///   expected length, then converts to indices via `boolean_mask_to_indices`.
+/// - **Iterable of booleans**: Attempts to extract as a Python iterable of booleans.
+///   If successful and length matches, converts to indices. If length is 0, returns
+///   empty selection. If length mismatches, panics.
+/// - **Iterable of integers**: Falls back to extracting as a vector of `usize` indices.
+///
+/// # Arguments
+///
+/// * `ob` - A Python object to be interpreted as an index or mask.
+/// * `length` - The expected length of the dimension being indexed.
+///
+/// # Panics
+///
+/// Panics if a boolean mask's length does not match the expected `length`.
+///
+/// # Returns
+///
+/// A `SelectInfoElem` representing the selection operation.
 pub fn to_select_elem(ob: &Bound<'_, PyAny>, length: usize) -> PyResult<SelectInfoElem> {
-    let select = if let Ok(slice) = ob.downcast::<pyo3::types::PySlice>() {
+    let select = if let Ok(slice) = ob.cast::<pyo3::types::PySlice>() {
         let s = slice.indices(length.try_into()?)?;
         ndarray::Slice { 
             start: s.start,

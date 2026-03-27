@@ -32,22 +32,24 @@ impl Into<ArrayData> for PyArrayData {
     }
 }
 
-impl<'py> FromPyObject<'py> for PyArrayData {
-    fn extract_bound(ob: &Bound<'py, PyAny>) -> PyResult<Self> {
-        if isinstance_of_arr(ob)? {
-            Ok(ArrayData::from(array::to_array(ob)?).into())
-        } else if isinstance_of_csr(ob)? {
+impl FromPyObject<'_, '_> for PyArrayData {
+    type Error = PyErr;
+
+    fn extract(ob: Borrowed<'_, '_, PyAny>) -> PyResult<Self> {
+        if isinstance_of_arr(&ob)? {
+            Ok(ArrayData::from(array::to_array(&ob)?).into())
+        } else if isinstance_of_csr(&ob)? {
             if ob.getattr("has_canonical_format")?.extract()? {
-                Ok(ArrayData::from(array::to_csr(ob)?).into())
+                Ok(ArrayData::from(array::to_csr(&ob)?).into())
             } else {
-                Ok(ArrayData::from(array::to_csr_noncanonical(ob)?).into())
+                Ok(ArrayData::from(array::to_csr_noncanonical(&ob)?).into())
             }
-        } else if isinstance_of_csc(ob)? {
-            Ok(ArrayData::from(array::to_csc(ob)?).into())
-        } else if isinstance_of_pandas(ob)? {
+        } else if isinstance_of_csc(&ob)? {
+            Ok(ArrayData::from(array::to_csc(&ob)?).into())
+        } else if isinstance_of_pandas(&ob)? {
             let ob = ob.py().import("polars")?.call_method1("from_pandas", (ob, ))?;
             Ok(ArrayData::from(ob.extract::<PyDataFrame>()?.0).into())
-        } else if isinstance_of_polars(ob)? {
+        } else if isinstance_of_polars(&ob)? {
             Ok(ArrayData::from(ob.extract::<PyDataFrame>()?.0).into())
         } else {
             Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
@@ -87,12 +89,14 @@ impl Into<Data> for PyData {
     }
 }
 
-impl<'py> FromPyObject<'py> for PyData {
-    fn extract_bound(ob: &Bound<'py, PyAny>) -> PyResult<Self> {
-        let data = if let Ok(s) = to_scalar(ob) {
+impl<'py> FromPyObject<'_, '_> for PyData {
+    type Error = PyErr;
+
+    fn extract(ob: Borrowed<'_, '_, PyAny>) -> PyResult<Self> {
+        let data = if let Ok(s) = to_scalar(&ob) {
             PyData(Data::Scalar(s))
         } else if ob.is_instance_of::<pyo3::types::PyDict>() {
-            let m = to_mapping(ob)?;
+            let m = to_mapping(&ob)?;
             PyData(Data::Mapping(m))
         } else {
             let arr: PyArrayData = ob.extract()?;

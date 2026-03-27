@@ -344,6 +344,7 @@ impl SelectInfoElem {
 /// let select = SelectInfoBounds::new(&[SelectInfoElem::Slice(Slice { start: 0, end: Some(5), step: 1 })], &shape);
 /// assert_eq!(select.in_shape(), shape);
 /// ```
+#[derive(Debug, Clone)]
 pub struct SelectInfoBounds<'a> {
     input_shape: Shape,
     select: Vec<SelectInfoElemBounds<'a>>,
@@ -476,6 +477,7 @@ impl<'a> SelectInfoBounds<'a> {
 }
 
 /// Enum representing selection elements with bounds awareness.
+#[derive(Debug, Clone)]
 pub enum SelectInfoElemBounds<'a> {
     Index(&'a [usize]),
     Slice(SliceBounds),

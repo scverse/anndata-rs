@@ -15,6 +15,7 @@ use num::Zero;
 use proptest::prelude::*;
 use proptest::strategy::BoxedStrategy;
 use rand::seq::IteratorRandom;
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use tempfile::tempdir;
 
@@ -186,84 +187,84 @@ pub fn csc_strat(num_rows: usize, num_cols: usize) -> impl Strategy<Value = Arra
 fn dense_array_strat(shape: &Vec<usize>) -> impl Strategy<Value = ArrayData> {
     let s: Vec<_> = shape.clone().into_iter().rev().collect();
     prop_oneof![
-        Just(Array::random(shape.clone(), Uniform::new(0u8, 255u8)).into()),
-        Just(Array::random(shape.clone(), Uniform::new(0u16, 255u16)).into()),
-        Just(Array::random(shape.clone(), Uniform::new(0u32, 255u32)).into()),
-        Just(Array::random(shape.clone(), Uniform::new(0u64, 255u64)).into()),
-        Just(Array::random(shape.clone(), Uniform::new(-128i8, 127i8)).into()),
-        Just(Array::random(shape.clone(), Uniform::new(-128i16, 127i16)).into()),
-        Just(Array::random(shape.clone(), Uniform::new(-128i32, 127i32)).into()),
-        Just(Array::random(shape.clone(), Uniform::new(-128i64, 127i64)).into()),
-        Just(Array::random(shape.clone(), Uniform::new(-128f32, 127f32)).into()),
-        Just(Array::random(shape.clone(), Uniform::new(-128f64, 127f64)).into()),
+        Just(Array::random(shape.clone(), Uniform::new(0u8, 255u8).unwrap()).into()),
+        Just(Array::random(shape.clone(), Uniform::new(0u16, 255u16).unwrap()).into()),
+        Just(Array::random(shape.clone(), Uniform::new(0u32, 255u32).unwrap()).into()),
+        Just(Array::random(shape.clone(), Uniform::new(0u64, 255u64).unwrap()).into()),
+        Just(Array::random(shape.clone(), Uniform::new(-128i8, 127i8).unwrap()).into()),
+        Just(Array::random(shape.clone(), Uniform::new(-128i16, 127i16).unwrap()).into()),
+        Just(Array::random(shape.clone(), Uniform::new(-128i32, 127i32).unwrap()).into()),
+        Just(Array::random(shape.clone(), Uniform::new(-128i64, 127i64).unwrap()).into()),
+        Just(Array::random(shape.clone(), Uniform::new(-128f32, 127f32).unwrap()).into()),
+        Just(Array::random(shape.clone(), Uniform::new(-128f64, 127f64).unwrap()).into()),
         Just(
-            Array::random(shape.clone(), Uniform::new(0u8, 1u8))
+            Array::random(shape.clone(), Uniform::new(0u8, 1u8).unwrap())
                 .mapv(|x| x == 1)
                 .into()
         ),
         Just(
-            Array::random(shape.clone(), Uniform::new(-1000f32, 1000f32))
+            Array::random(shape.clone(), Uniform::new(-1000f32, 1000f32).unwrap())
                 .mapv(|x| x.to_string())
                 .into()
         ),
         Just(
-            Array::random(s.clone(), Uniform::new(0u8, 255u8))
+            Array::random(s.clone(), Uniform::new(0u8, 255u8).unwrap())
                 .reversed_axes()
                 .into()
         ),
         Just(
-            Array::random(s.clone(), Uniform::new(0u16, 255u16))
+            Array::random(s.clone(), Uniform::new(0u16, 255u16).unwrap())
                 .reversed_axes()
                 .into()
         ),
         Just(
-            Array::random(s.clone(), Uniform::new(0u32, 255u32))
+            Array::random(s.clone(), Uniform::new(0u32, 255u32).unwrap())
                 .reversed_axes()
                 .into()
         ),
         Just(
-            Array::random(s.clone(), Uniform::new(0u64, 255u64))
+            Array::random(s.clone(), Uniform::new(0u64, 255u64).unwrap())
                 .reversed_axes()
                 .into()
         ),
         Just(
-            Array::random(s.clone(), Uniform::new(-128i8, 127i8))
+            Array::random(s.clone(), Uniform::new(-128i8, 127i8).unwrap())
                 .reversed_axes()
                 .into()
         ),
         Just(
-            Array::random(s.clone(), Uniform::new(-128i16, 127i16))
+            Array::random(s.clone(), Uniform::new(-128i16, 127i16).unwrap())
                 .reversed_axes()
                 .into()
         ),
         Just(
-            Array::random(s.clone(), Uniform::new(-128i32, 127i32))
+            Array::random(s.clone(), Uniform::new(-128i32, 127i32).unwrap())
                 .reversed_axes()
                 .into()
         ),
         Just(
-            Array::random(s.clone(), Uniform::new(-128i64, 127i64))
+            Array::random(s.clone(), Uniform::new(-128i64, 127i64).unwrap())
                 .reversed_axes()
                 .into()
         ),
         Just(
-            Array::random(s.clone(), Uniform::new(-128f32, 127f32))
+            Array::random(s.clone(), Uniform::new(-128f32, 127f32).unwrap())
                 .reversed_axes()
                 .into()
         ),
         Just(
-            Array::random(s.clone(), Uniform::new(-128f64, 127f64))
+            Array::random(s.clone(), Uniform::new(-128f64, 127f64).unwrap())
                 .reversed_axes()
                 .into()
         ),
         Just(
-            Array::random(s.clone(), Uniform::new(0u8, 1u8))
+            Array::random(s.clone(), Uniform::new(0u8, 1u8).unwrap())
                 .mapv(|x| x == 1)
                 .reversed_axes()
                 .into()
         ),
         Just(
-            Array::random(s.clone(), Uniform::new(-1000f32, 1000f32))
+            Array::random(s.clone(), Uniform::new(-1000f32, 1000f32).unwrap())
                 .mapv(|x| x.to_string())
                 .reversed_axes()
                 .into()
@@ -277,7 +278,7 @@ where
     T: Scalar + Zero + ClosedAddAssign + SampleUniform,
 {
     let mut rng = rand::rng();
-    let values: Vec<T> = Array::random((nnz,), Uniform::new(low, high)).to_vec();
+    let values: Vec<T> = Array::random((nnz,), Uniform::new(low, high).unwrap()).to_vec();
     let (row_indices, col_indices) = (0..nrow)
         .cartesian_product(0..ncol)
         .choose_multiple(&mut rng, nnz)
@@ -292,7 +293,7 @@ where
     T: Scalar + Zero + ClosedAddAssign + SampleUniform,
 {
     let mut rng = rand::rng();
-    let values: Vec<T> = Array::random((nnz,), Uniform::new(low, high)).to_vec();
+    let values: Vec<T> = Array::random((nnz,), Uniform::new(low, high).unwrap()).to_vec();
     let (row_indices, col_indices) = (0..nrow)
         .cartesian_product(0..ncol)
         .choose_multiple(&mut rng, nnz)
@@ -328,12 +329,12 @@ pub fn anndata_eq<B1: Backend, B2: Backend>(
         && {
             let a = adata1.read_obs()?; 
             let b = adata2.read_obs()?;
-            a == b || (a.is_empty() && b.is_empty())
+            a == b || (a.height() == 0 && b.height() == 0)
         }
         && {
             let a = adata1.read_var()?; 
             let b = adata2.read_var()?;
-            a == b || (a.is_empty() && b.is_empty())
+            a == b || (a.height() == 0 && b.height() == 0)
         }
         && adata1.x().get::<ArrayData>()? == adata2.x().get()?
         && adata1.obsm().keys().iter().all(|k| {
@@ -516,7 +517,7 @@ fn dense_array_select<T: Clone, D: Dimension + RemoveAxis>(
     let mut result = array.clone();
     array.shape().into_iter().enumerate().for_each(|(i, &dim)| {
         let idx = SelectInfoElemBounds::new(&select[i], dim).to_vec();
-        result = result.select(Axis(i), idx.as_slice());
+        result = result.deref().select(Axis(i), idx.as_slice());
     });
     result
 }
@@ -532,6 +533,6 @@ where
     let nrow = array.shape()[0];
     (0..nrow).into_iter().step_by(chunk_size).map(move |i| {
         let j = (i + chunk_size).min(nrow);
-        array.select(Axis(0), (i..j).collect::<Vec<_>>().as_slice())
+        array.deref().select(Axis(0), (i..j).collect::<Vec<_>>().as_slice())
     })
 }

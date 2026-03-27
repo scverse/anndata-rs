@@ -346,7 +346,7 @@ fn update_anndata_locations_by_map<B: Backend, P: AsRef<Path>>(
             (k.to_string(), name)
         })
         .collect();
-    let data = DataFrame::new(vec![
+    let data = DataFrame::new_infer_height(vec![
         keys.clone(),
         Column::new(
             "file_path".into(),
@@ -390,7 +390,7 @@ fn update_anndata_location_dir<B: Backend, P: AsRef<Path>>(
             )
         })
         .collect();
-    let data = DataFrame::new(vec![
+    let data = DataFrame::new_infer_height(vec![
         keys.clone(),
         Column::new(
             "file_path".into(),
