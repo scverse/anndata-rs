@@ -6,10 +6,17 @@ use anyhow::{Result, anyhow};
 use itertools::Itertools;
 use num::traits::{FromPrimitive, ToPrimitive};
 use num::Integer;
-use nalgebra_sparse::{
-    CsrMatrix,
-    pattern::{SparsityPattern, SparsityPatternFormatError},
-};
+use sprs::CsMatI;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FormatError {
+    InvalidOffsetArrayLength,
+    InvalidOffsetFirstLast,
+    NonmonotonicOffsets,
+    MinorIndexOutOfBounds,
+    NonmonotonicMinorIndices,
+    DuplicateEntry,
+}
 use ndarray::{Array2, ArrayView, RemoveAxis};
 use smallvec::SmallVec;
 
@@ -379,23 +386,22 @@ pub fn from_csr_data<T>(
     data: Vec<T>,
 ) -> anyhow::Result<ArrayData>
 where
-    CsrMatrix<T>: Into<ArrayData>,
+    CsMatI<T, u64, u64>: Into<ArrayData>,
     CsrNonCanonical<T>: Into<ArrayData>,
 {
     match check_format(nrows, ncols, &indptr, &indices) {
         Ok(_) => {
-            let pattern = unsafe {
-                SparsityPattern::from_offset_and_indices_unchecked(nrows, ncols, indptr, indices)
-            };
-            let csr = CsrMatrix::try_from_pattern_and_values(pattern, data).unwrap();
+            let indptr_u64 = super::sparse::vec_usize_to_u64(indptr);
+            let indices_u64 = super::sparse::vec_usize_to_u64(indices);
+            let csr = CsMatI::new((nrows, ncols), indptr_u64, indices_u64, data);
             Ok(csr.into())
         }
         Err(e) => match e {
-            SparsityPatternFormatError::DuplicateEntry => {
+            FormatError::DuplicateEntry => {
                 let csr = CsrNonCanonical::from_csr_data(nrows, ncols, indptr, indices, data);
                 Ok(csr.into())
             }
-            _ => Err(anyhow!("cannot read csr matrix: {}", e)),
+            _ => Err(anyhow!("cannot read csr matrix: {:?}", e)),
         },
     }
 }
@@ -405,12 +411,12 @@ pub(crate) fn check_format<Ix, Iptr>(
     ncols: usize,
     indptr: &[Iptr],
     indices: &[Ix],
-) -> std::result::Result<(), SparsityPatternFormatError>
+) -> std::result::Result<(), FormatError>
 where
     Ix: Integer + ToPrimitive + Copy,
     Iptr: Integer + ToPrimitive,
 {
-    use SparsityPatternFormatError::*;
+    use FormatError::*;
 
     if indptr.len() != nrows + 1 {
         return Err(InvalidOffsetArrayLength);

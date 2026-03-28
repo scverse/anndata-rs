@@ -10,7 +10,7 @@ pub use dataframe::DataFrameIndex;
 pub use dense::{ArrayConvert, CategoricalArray, DynArray, DynCowArray, DynScalar};
 pub use slice::{SelectInfo, SelectInfoBounds, SelectInfoElem, SelectInfoElemBounds, Shape};
 pub use sparse::{
-    CsrNonCanonical, DynCscMatrix, DynCsrMatrix, DynCsrNonCanonical, DynIndSparseMatrix,
+    CsrNonCanonical, DynCsrNonCanonical, DynIndSparseMatrix,
     DynSparseMatrix,
 };
 use sprs::{CsMatI, SpIndex};
@@ -49,21 +49,9 @@ impl From<DynArray> for ArrayData {
     }
 }
 
-impl From<DynCsrMatrix> for ArrayData {
-    fn from(data: DynCsrMatrix) -> Self {
-        let dynamic: DynIndSparseMatrix = DynIndSparseMatrix::from(data);
-        ArrayData::CsrMatrix(dynamic)
-    }
-}
 impl From<DynCsrNonCanonical> for ArrayData {
     fn from(data: DynCsrNonCanonical) -> Self {
         ArrayData::CsrNonCanonical(data)
-    }
-}
-impl From<DynCscMatrix> for ArrayData {
-    fn from(data: DynCscMatrix) -> Self {
-        let dynamic: DynIndSparseMatrix = DynIndSparseMatrix::from(data);
-        ArrayData::CscMatrix(dynamic)
     }
 }
 
@@ -105,7 +93,8 @@ impl TryFrom<ArrayData> for DynIndSparseMatrix {
     fn try_from(value: ArrayData) -> Result<Self, Self::Error> {
         match value {
             ArrayData::CsrMatrix(data) => Ok(data),
-            _ => bail!("Cannot convert {:?} to DynCsrMatrix", value.data_type()),
+            ArrayData::CscMatrix(data) => Ok(data),
+            _ => bail!("Cannot convert {:?} to DynIndSparseMatrix", value.data_type()),
         }
     }
 }

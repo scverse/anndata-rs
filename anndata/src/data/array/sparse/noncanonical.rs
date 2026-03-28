@@ -9,12 +9,12 @@ use crate::data::{
 };
 
 use anyhow::{Result, bail};
-use nalgebra_sparse::pattern::SparsityPattern;
-use nalgebra_sparse::{coo::CooMatrix, csr::CsrMatrix};
+use sprs::{CsMatI, TriMatI};
+use super::vec_usize_to_u64;
 use ndarray::{Ix1, ArrayD};
 
 use super::super::slice::SliceBounds;
-use super::DynCsrMatrix;
+use super::{DynIndSparseMatrix, DynSparseMatrix};
 use crate::backend::get_default_write_config;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -34,55 +34,55 @@ pub enum DynCsrNonCanonical {
 }
 
 impl DynCsrNonCanonical {
-    pub fn canonicalize(self) -> Result<DynCsrMatrix, Self> {
+    pub fn canonicalize(self) -> Result<DynIndSparseMatrix, Self> {
         match self {
             DynCsrNonCanonical::I8(data) => data
                 .canonicalize()
-                .map(DynCsrMatrix::I8)
+                .map(|x| DynIndSparseMatrix::U64(DynSparseMatrix::I8(x)))
                 .map_err(Into::into),
             DynCsrNonCanonical::I16(data) => data
                 .canonicalize()
-                .map(DynCsrMatrix::I16)
+                .map(|x| DynIndSparseMatrix::U64(DynSparseMatrix::I16(x)))
                 .map_err(Into::into),
             DynCsrNonCanonical::I32(data) => data
                 .canonicalize()
-                .map(DynCsrMatrix::I32)
+                .map(|x| DynIndSparseMatrix::U64(DynSparseMatrix::I32(x)))
                 .map_err(Into::into),
             DynCsrNonCanonical::I64(data) => data
                 .canonicalize()
-                .map(DynCsrMatrix::I64)
+                .map(|x| DynIndSparseMatrix::U64(DynSparseMatrix::I64(x)))
                 .map_err(Into::into),
             DynCsrNonCanonical::U8(data) => data
                 .canonicalize()
-                .map(DynCsrMatrix::U8)
+                .map(|x| DynIndSparseMatrix::U64(DynSparseMatrix::U8(x)))
                 .map_err(Into::into),
             DynCsrNonCanonical::U16(data) => data
                 .canonicalize()
-                .map(DynCsrMatrix::U16)
+                .map(|x| DynIndSparseMatrix::U64(DynSparseMatrix::U16(x)))
                 .map_err(Into::into),
             DynCsrNonCanonical::U32(data) => data
                 .canonicalize()
-                .map(DynCsrMatrix::U32)
+                .map(|x| DynIndSparseMatrix::U64(DynSparseMatrix::U32(x)))
                 .map_err(Into::into),
             DynCsrNonCanonical::U64(data) => data
                 .canonicalize()
-                .map(DynCsrMatrix::U64)
+                .map(|x| DynIndSparseMatrix::U64(DynSparseMatrix::U64(x)))
                 .map_err(Into::into),
             DynCsrNonCanonical::F32(data) => data
                 .canonicalize()
-                .map(DynCsrMatrix::F32)
+                .map(|x| DynIndSparseMatrix::U64(DynSparseMatrix::F32(x)))
                 .map_err(Into::into),
             DynCsrNonCanonical::F64(data) => data
                 .canonicalize()
-                .map(DynCsrMatrix::F64)
+                .map(|x| DynIndSparseMatrix::U64(DynSparseMatrix::F64(x)))
                 .map_err(Into::into),
             DynCsrNonCanonical::Bool(data) => data
                 .canonicalize()
-                .map(DynCsrMatrix::Bool)
+                .map(|x| DynIndSparseMatrix::U64(DynSparseMatrix::Bool(x)))
                 .map_err(Into::into),
             DynCsrNonCanonical::String(data) => data
                 .canonicalize()
-                .map(DynCsrMatrix::String)
+                .map(|x| DynIndSparseMatrix::U64(DynSparseMatrix::String(x)))
                 .map_err(Into::into),
         }
     }
@@ -118,16 +118,7 @@ impl_noncanonicalcsr_traits!(
     bool, Bool, String, String
 );
 
-impl From<DynCsrMatrix> for DynCsrNonCanonical {
-    fn from(value: DynCsrMatrix) -> Self {
-        macro_rules! fun {
-            ($variant:ident, $data:expr) => {
-                DynCsrNonCanonical::$variant($data.into())
-            };
-        }
-        crate::macros::dyn_map!(value, DynCsrMatrix, fun)
-    }
-}
+
 
 impl Element for DynCsrNonCanonical {
     fn data_type(&self) -> DataType {
@@ -336,42 +327,39 @@ impl<T> CsrNonCanonical<T> {
         }
     }
 
-    pub fn canonicalize(self) -> Result<CsrMatrix<T>, Self> {
+    pub fn canonicalize(self) -> Result<CsMatI<T, u64, u64>, Self> {
         let nrows = self.nrows();
         let ncols = self.ncols();
         if crate::data::utils::check_format(nrows, ncols, self.row_offsets(), self.col_indices())
             .is_ok()
         {
-            let pattern = unsafe {
-                SparsityPattern::from_offset_and_indices_unchecked(
-                    nrows,
-                    ncols,
-                    self.offsets,
-                    self.indices,
-                )
-            };
-            Ok(CsrMatrix::try_from_pattern_and_values(pattern, self.values).unwrap())
+            let indptr = vec_usize_to_u64(self.offsets);
+            let indices = vec_usize_to_u64(self.indices);
+            Ok(CsMatI::new((nrows, ncols), indptr, indices, self.values))
         } else {
             Err(self)
         }
     }
 }
 
-impl<T> From<CsrMatrix<T>> for CsrNonCanonical<T> {
-    fn from(csr: CsrMatrix<T>) -> Self {
-        let num_rows = csr.nrows();
-        let num_cols = csr.ncols();
-        let (row_offsets, col_indices, data) = csr.disassemble();
+impl<T: Clone, Ix: sprs::SpIndex> From<CsMatI<T, Ix, u64>> for CsrNonCanonical<T> {
+    fn from(csr: CsMatI<T, Ix, u64>) -> Self {
+        assert!(csr.is_csr());
+        let num_rows = csr.rows();
+        let num_cols = csr.cols();
+        let row_offsets = csr.indptr().as_slice().unwrap().iter().map(|x| *x as usize).collect();
+        let col_indices = csr.indices().iter().map(|x| x.to_usize().unwrap()).collect();
+        let data = csr.data().to_vec();
         Self::from_csr_data(num_rows, num_cols, row_offsets, col_indices, data)
     }
 }
 
-impl<T: Clone + num::Zero> From<&CooMatrix<T>> for CsrNonCanonical<T> {
-    fn from(coo: &CooMatrix<T>) -> Self {
-        let major_dim = coo.nrows();
-        let major_indices = coo.row_indices();
-        let minor_indices = coo.col_indices();
-        let values = coo.values();
+impl<T: Clone + num::Zero> From<&TriMatI<T, usize>> for CsrNonCanonical<T> {
+    fn from(coo: &TriMatI<T, usize>) -> Self {
+        let major_dim = coo.rows();
+        let major_indices = coo.row_inds();
+        let minor_indices = coo.col_inds();
+        let values = coo.data();
         assert_eq!(major_indices.len(), minor_indices.len());
         assert_eq!(minor_indices.len(), values.len());
         let nnz = major_indices.len();
@@ -437,8 +425,8 @@ impl<T: Clone + num::Zero> From<&CooMatrix<T>> for CsrNonCanonical<T> {
         }
 
         Self::from_csr_data(
-            coo.nrows(),
-            coo.ncols(),
+            coo.rows(),
+            coo.cols(),
             sorted_major_offsets,
             sorted_minor_idx,
             sorted_vals,
@@ -446,14 +434,14 @@ impl<T: Clone + num::Zero> From<&CooMatrix<T>> for CsrNonCanonical<T> {
     }
 }
 
-impl<T: Clone> From<&CsrNonCanonical<T>> for CooMatrix<T> {
+impl<T: Clone> From<&CsrNonCanonical<T>> for TriMatI<T, usize> {
     fn from(csr: &CsrNonCanonical<T>) -> Self {
-        let mut coo: CooMatrix<T> = CooMatrix::new(csr.nrows(), csr.ncols());
+        let mut coo: TriMatI<T, usize> = TriMatI::new((csr.nrows(), csr.ncols()));
         for row in 0..csr.nrows() {
             let start = csr.row_offsets()[row];
             let end = csr.row_offsets()[row + 1];
             for i in start..end {
-                coo.push(row, csr.col_indices()[i], csr.values()[i].clone());
+                coo.add_triplet(row, csr.col_indices()[i], csr.values()[i].clone());
             }
         }
         coo
@@ -838,75 +826,66 @@ impl<T: BackendData> WritableArray for CsrNonCanonical<T> {}
 mod csr_noncanonical_index_tests {
     use super::*;
     use crate::s;
-    use nalgebra_sparse::CooMatrix;
+    
 
     fn csr_eq<T: std::cmp::PartialEq + std::fmt::Debug + Clone>(
         a: &CsrNonCanonical<T>,
-        b: &CooMatrix<T>,
+        b: &TriMatI<T, usize>,
     ) {
-        assert_eq!(&CooMatrix::from(a), b);
+        assert_eq!(&TriMatI::from(a), b);
     }
 
     #[test]
     fn test_csr_noncanonical() {
-        let coo = CooMatrix::try_from_triplets(
-            5,
-            4,
+        let coo = TriMatI::from_triplets(
+            (5, 4),
             vec![0, 1, 1, 1, 2, 3, 4],
             vec![0, 0, 0, 2, 3, 1, 3],
             vec![1, 2, 3, 4, 5, 6, 7],
-        )
-        .unwrap();
+        );
+        
         let csr = CsrNonCanonical::from(&coo);
 
         csr_eq(&csr, &coo);
 
         csr_eq(
             &csr.select(s![vec![0, 1], ..].as_ref()),
-            &CooMatrix::try_from_triplets(
-                2,
-                4,
+            &TriMatI::from_triplets(
+                (2, 4),
                 vec![0, 1, 1, 1],
                 vec![0, 0, 0, 2],
                 vec![1, 2, 3, 4],
-            )
-            .unwrap(),
+            ),
         );
 
         csr_eq(
             &csr.select(s![.., vec![0, 0, 1]].as_ref()),
-            &CooMatrix::try_from_triplets(
-                5,
-                3,
+            &TriMatI::from_triplets(
+                (5, 3),
                 vec![0, 0, 1, 1, 1, 1, 3],
                 vec![0, 1, 0, 0, 1, 1, 2],
                 vec![1, 1, 2, 3, 2, 3, 6],
-            )
-            .unwrap(),
+            ),
         );
 
         csr_eq(
             &csr.select(s![vec![0, 1, 1], ..].as_ref()),
-            &CooMatrix::try_from_triplets(
-                3,
-                4,
+            &TriMatI::from_triplets(
+                (3, 4),
                 vec![0, 1, 1, 1, 2, 2, 2],
                 vec![0, 0, 0, 2, 0, 0, 2],
                 vec![1, 2, 3, 4, 2, 3, 4],
-            )
-            .unwrap(),
+            ),
         );
 
         csr_eq(
             &csr.select(s![vec![0, 1, 1], vec![0, 1]].as_ref()),
-            &CooMatrix::try_from_triplets(
-                3,
-                2,
+            &TriMatI::from_triplets(
+                (3, 2),
                 vec![0, 1, 1, 2, 2],
                 vec![0, 0, 0, 0, 0],
                 vec![1, 2, 3, 2, 3],
-            )
-            .unwrap(),
+            ),
         );
     }
 }

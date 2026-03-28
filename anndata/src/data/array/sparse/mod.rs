@@ -1,5 +1,3 @@
-mod csc;
-mod csr;
 mod dynamic;
 mod noncanonical;
 mod sprs;
