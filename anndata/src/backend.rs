@@ -9,7 +9,6 @@ use std::path::{Path, PathBuf};
 use std::cell::RefCell;
 pub use serde_json::Value;
 use serde::Deserialize;
-use std::path::{Path, PathBuf};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Compression {

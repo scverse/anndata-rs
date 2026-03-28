@@ -126,7 +126,9 @@ impl Display for ScalarType {
     }
 }
 
-pub trait BackendData: Serialize + for<'a> Deserialize<'a> + Send + Sync + Clone + 'static {
+pub trait BackendData:
+    Serialize + for<'a> Deserialize<'a> + Send + Sync + Clone + std::fmt::Debug + 'static
+{
     /// Type of the data
     const DTYPE: ScalarType;
 

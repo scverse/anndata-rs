@@ -90,6 +90,16 @@ impl TryFrom<ArrayData> for DynArray {
     }
 }
 
+impl TryFrom<ArrayData> for DynCsrNonCanonical {
+    type Error = anyhow::Error;
+    fn try_from(value: ArrayData) -> Result<Self, Self::Error> {
+        match value {
+            ArrayData::CsrNonCanonical(data) => Ok(data),
+            _ => bail!("Cannot convert {:?} to DynCsrNonCanonical", value.data_type()),
+        }
+    }
+}
+
 impl TryFrom<ArrayData> for DynIndSparseMatrix {
     type Error = anyhow::Error;
     fn try_from(value: ArrayData) -> Result<Self, Self::Error> {
@@ -368,12 +378,14 @@ impl Stackable for ArrayData {
                 DynArray::vstack(iter.map(|x| x.try_into().unwrap())).map(|x| x.into())
             }
             ArrayData::CsrMatrix(_) => {
-                todo!()
+                DynIndSparseMatrix::vstack(iter.map(|x| x.try_into().unwrap())).map(|x| x.into())
             }
-            ArrayData::CsrNonCanonical(_) => {
-                todo!()
+            ArrayData::CsrNonCanonical(_data) => {
+                DynCsrNonCanonical::vstack(iter.map(|x| x.try_into().unwrap())).map(|x| x.into())
             }
-            ArrayData::CscMatrix(_) => todo!(),
+            ArrayData::CscMatrix(_) => {
+                DynIndSparseMatrix::vstack(iter.map(|x| x.try_into().unwrap())).map(|x| x.into())
+            }
             ArrayData::DataFrame(_) => {
                 <DataFrame as Stackable>::vstack(iter.map(|x| x.try_into().unwrap()))
                     .map(|x| x.into())
@@ -386,9 +398,9 @@ impl ArrayArithmetic for ArrayData {
     fn sum(&self) -> f64 {
         match self {
             ArrayData::Array(data) => ArrayArithmetic::sum(data),
-            ArrayData::CsrMatrix(data) => todo!(),
-            ArrayData::CsrNonCanonical(_) => todo!(),
-            ArrayData::CscMatrix(_) => todo!(),
+            ArrayData::CsrMatrix(data) => ArrayArithmetic::sum(data),
+            ArrayData::CsrNonCanonical(data) => ArrayArithmetic::sum(data),
+            ArrayData::CscMatrix(data) => ArrayArithmetic::sum(data),
             ArrayData::DataFrame(_) => panic!("Cannot compute sum for DataFrame"),
         }
     }
@@ -396,9 +408,9 @@ impl ArrayArithmetic for ArrayData {
     fn sum_axis(&self, axis: usize) -> Result<ArrayD<f64>> {
         match self {
             ArrayData::Array(data) => ArrayArithmetic::sum_axis(data, axis),
-            ArrayData::CsrMatrix(data) => todo!(),
-            ArrayData::CsrNonCanonical(_) => todo!(),
-            ArrayData::CscMatrix(_) => todo!(),
+            ArrayData::CsrMatrix(data) => ArrayArithmetic::sum_axis(data, axis),
+            ArrayData::CsrNonCanonical(data) => ArrayArithmetic::sum_axis(data, axis),
+            ArrayData::CscMatrix(data) => ArrayArithmetic::sum_axis(data, axis),
             ArrayData::DataFrame(_) => bail!("Cannot compute sum for DataFrame"),
         }
     }
@@ -406,9 +418,9 @@ impl ArrayArithmetic for ArrayData {
     fn min(&self) -> f64 {
         match self {
             ArrayData::Array(data) => ArrayArithmetic::min(data),
-            ArrayData::CsrMatrix(data) => todo!(),
-            ArrayData::CsrNonCanonical(_) => todo!(),
-            ArrayData::CscMatrix(_) => todo!(),
+            ArrayData::CsrMatrix(data) => ArrayArithmetic::min(data),
+            ArrayData::CsrNonCanonical(data) => ArrayArithmetic::min(data),
+            ArrayData::CscMatrix(data) => ArrayArithmetic::min(data),
             ArrayData::DataFrame(_) => panic!("Cannot compute min for DataFrame"),
         }
     }
@@ -416,9 +428,9 @@ impl ArrayArithmetic for ArrayData {
     fn max(&self) -> f64 {
         match self {
             ArrayData::Array(data) => ArrayArithmetic::max(data),
-            ArrayData::CsrMatrix(data) => todo!(),
-            ArrayData::CsrNonCanonical(_) => todo!(),
-            ArrayData::CscMatrix(_) => todo!(),
+            ArrayData::CsrMatrix(data) => ArrayArithmetic::max(data),
+            ArrayData::CsrNonCanonical(data) => ArrayArithmetic::max(data),
+            ArrayData::CscMatrix(data) => ArrayArithmetic::max(data),
             ArrayData::DataFrame(_) => panic!("Cannot compute max for DataFrame"),
         }
     }

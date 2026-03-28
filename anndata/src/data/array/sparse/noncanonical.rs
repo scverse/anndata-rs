@@ -11,7 +11,7 @@ use crate::data::{
 use anyhow::{Result, bail};
 use nalgebra_sparse::pattern::SparsityPattern;
 use nalgebra_sparse::{coo::CooMatrix, csr::CsrMatrix};
-use ndarray::Ix1;
+use ndarray::{Ix1, ArrayD};
 
 use super::super::slice::SliceBounds;
 use super::DynCsrMatrix;
@@ -231,6 +231,24 @@ impl Stackable for DynCsrNonCanonical {
     }
 }
 
+impl ArrayArithmetic for DynCsrNonCanonical {
+    fn sum(&self) -> f64 {
+        self.clone().canonicalize().map(|x| x.sum()).unwrap_or_else(|_| todo!())
+    }
+
+    fn sum_axis(&self, axis: usize) -> Result<ArrayD<f64>> {
+        self.clone().canonicalize().map(|x| x.sum_axis(axis)).unwrap_or_else(|_| todo!())
+    }
+
+    fn min(&self) -> f64 {
+        self.clone().canonicalize().map(|x| x.min()).unwrap_or_else(|_| todo!())
+    }
+
+    fn max(&self) -> f64 {
+        self.clone().canonicalize().map(|x| x.max()).unwrap_or_else(|_| todo!())
+    }
+}
+
 impl WritableArray for DynCsrNonCanonical {}
 impl ReadableArray for DynCsrNonCanonical {
     fn get_shape<B: Backend>(container: &DataContainer<B>) -> Result<Shape> {
@@ -246,7 +264,7 @@ impl ReadableArray for DynCsrNonCanonical {
         B: Backend,
         S: AsRef<SelectInfoElem>,
     {
-        if let DataType::CsrMatrix(ty, tp) = container.encoding_type()? {
+        if let DataType::CsrMatrix(_ty, tp) = container.encoding_type()? {
             macro_rules! fun {
                 ($variant:ident) => {
                     CsrNonCanonical::<$variant>::read_select(container, info).map(Into::into)

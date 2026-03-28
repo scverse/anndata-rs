@@ -474,9 +474,7 @@ mod csr_matrix_index_tests {
     use crate::s;
     use nalgebra::base::DMatrix;
     use nalgebra_sparse::CooMatrix;
-    use ndarray::Array;
-    use ndarray_rand::RandomExt;
-    use ndarray_rand::rand_distr::Uniform;
+    use rand::{Rng, thread_rng};
 
     fn csr_select<I1, I2>(csr: &CsrMatrix<i64>, row_indices: I1, col_indices: I2) -> CsrMatrix<i64>
     where
@@ -554,17 +552,18 @@ mod csr_matrix_index_tests {
 
     #[test]
     fn test_csr() {
+        let mut rng = thread_rng();
         for _ in 0..50 {
             let n: usize = 200;
             let m: usize = 200;
             let nnz: usize = 1000;
 
-            let ridx = Array::random(220, Uniform::new(0, n).unwrap()).to_vec();
-            let cidx = Array::random(100, Uniform::new(0, m).unwrap()).to_vec();
+            let ridx: Vec<usize> = (0..220).map(|_| rng.gen_range(0..n)).collect();
+            let cidx: Vec<usize> = (0..100).map(|_| rng.gen_range(0..m)).collect();
 
-            let row_indices = Array::random(nnz, Uniform::new(0, n).unwrap()).to_vec();
-            let col_indices = Array::random(nnz, Uniform::new(0, m).unwrap()).to_vec();
-            let values = Array::random(nnz, Uniform::new(1, 10000).unwrap()).to_vec();
+            let row_indices: Vec<usize> = (0..nnz).map(|_| rng.gen_range(0..n)).collect();
+            let col_indices: Vec<usize> = (0..nnz).map(|_| rng.gen_range(0..m)).collect();
+            let values: Vec<i64> = (0..nnz).map(|_| rng.gen_range(1..10000)).collect();
 
             let csr_matrix: CsrMatrix<i64> =
                 (&CooMatrix::try_from_triplets(n, m, row_indices, col_indices, values).unwrap())

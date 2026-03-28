@@ -238,7 +238,7 @@ pub trait AnnDataOp {
                         (key, MatrixBuilder::new_dense(&adata.file, "X", t).unwrap())
                     })
                     .collect(),
-                DataType::CsrMatrix(t, p) => adatas
+                DataType::CsrMatrix(t, _p) => adatas
                     .iter()
                     .map(|(key, (adata, _))| {
                         (key, MatrixBuilder::new_sparse(&adata.file, "X", t).unwrap())

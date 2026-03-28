@@ -5,7 +5,6 @@ use crate::{AnnDataOp, ArrayData, data::array::DataFrameIndex};
 use anyhow::Result;
 use flate2::read::MultiGzDecoder;
 use itertools::Itertools;
-use nalgebra_sparse::{coo::CooMatrix, csr::CsrMatrix};
 use sprs::CsMatI;
 use std::path::Path;
 use std::{error::Error, fmt, io};

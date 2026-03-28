@@ -1,12 +1,10 @@
-use crate::data::utils::{array_major_minor_index_default, cs_major_minor_index2};
-use crate::data::{ArrayData, Data, DataFrameIndex, DynArray, DynIndSparseMatrix};
+use crate::data::utils::array_major_minor_index_default;
+use crate::data::{ArrayData, Data, DataFrameIndex, DynArray};
 use crate::{AnnDataOp, ArrayElemOp, AxisArraysOp, ElemCollectionOp, HasShape};
 use anyhow::{Result, ensure};
 use indexmap::IndexSet;
 use itertools::Itertools;
 use log::warn;
-use nalgebra_sparse::csr::CsrMatrix;
-use nalgebra_sparse::pattern::SparsityPattern;
 use polars::chunked_array::builder::CategoricalChunkedBuilder;
 use polars::frame::DataFrame;
 use polars::prelude::{AnyValue, Categorical32Type, Column, DataType, IntoLazy, NamedFrom};
@@ -288,6 +286,7 @@ fn index_array(
         };
     }
 
+    /*
     macro_rules! fun_csr {
         ($variant:ident, $value:expr) => {{
             let (offsets, indices, data) = $value.csr_data();
@@ -312,6 +311,7 @@ fn index_array(
                 .into()
         }};
     }
+    */
 
     match arr {
         ArrayData::Array(x) => crate::macros::dyn_map!(x, DynArray, fun_array),

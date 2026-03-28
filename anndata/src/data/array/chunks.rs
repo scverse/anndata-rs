@@ -964,7 +964,7 @@ impl<T: BackendData + Scalar> ArrayChunk for CscMatrix<T> {
     }
 }
 
-impl<T: BackendData + SpIndex> ArrayChunk for DynSparseMatrix<T> {
+impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> ArrayChunk for DynSparseMatrix<T> {
     fn write_by_chunk<B, G, I>(
         iter: I,
         location: &G,
@@ -1006,7 +1006,9 @@ impl<T: BackendData + SpIndex> ArrayChunk for DynSparseMatrix<T> {
     }
 }
 
-impl<N: BackendData, T: BackendData + SpIndex> ArrayChunk for CsMatI<N, T, u64> {
+impl<N: BackendData + std::fmt::Debug, T: BackendData + SpIndex + num::Integer + num::FromPrimitive>
+    ArrayChunk for CsMatI<N, T, u64>
+{
     fn write_by_chunk<B, G, I>(
         mut iter: I,
         location: &G,
@@ -1068,7 +1070,7 @@ impl<N: BackendData, T: BackendData + SpIndex> ArrayChunk for CsMatI<N, T, u64> 
                         .for_each(|x| indptr.push((*x as i64) + nnz));
                     nnz += *indptr_.last().unwrap_or(&0) as i64;
                     data.extend(0, ArrayView1::from_shape(data_.len(), data_)?)?;
-                    indices.extend(
+                    let _ = indices.extend(
                         0,
                         ArrayView1::from_shape(indices_.len(), indices_)?
                             .mapv(|x| x.to_i64().unwrap())

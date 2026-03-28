@@ -11,8 +11,9 @@ use anyhow::{Result, bail};
 use nalgebra_sparse::csc::CscMatrix;
 use nalgebra_sparse::csr::CsrMatrix;
 use ndarray::ArrayD;
-use num::FromPrimitive;
+use num::{FromPrimitive, ToPrimitive};
 use sprs::{CsMatI, SpIndex};
+use crate::data::DynScalar;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DynIndSparseMatrix {
@@ -27,7 +28,7 @@ pub enum DynIndSparseMatrix {
 #[derive(Debug, Clone, PartialEq)]
 pub enum DynSparseMatrix<T>
 where
-    T: SpIndex,
+    T: SpIndex + num::Integer + num::FromPrimitive,
 {
     I8(CsMatI<i8, T, u64>),
     I16(CsMatI<i16, T, u64>),
@@ -148,7 +149,7 @@ impl Selectable for DynCsrMatrix {
 impl Stackable for DynCsrMatrix {
     fn vstack<I: Iterator<Item = Self>>(iter: I) -> Result<Self> {
         let mut iter = iter.peekable();
-        match iter.peek().unwrap() {
+        match iter.peek().ok_or(anyhow::anyhow!("Cannot stack empty iterator"))? {
             DynCsrMatrix::U8(_) => Ok(DynCsrMatrix::U8(CsrMatrix::<u8>::vstack(
                 iter.map(|x| x.try_into().unwrap()),
             )?)),
@@ -274,7 +275,7 @@ impl ReadableArray for DynCsrMatrix {
         B: Backend,
         S: AsRef<SelectInfoElem>,
     {
-        if let DataType::CsrMatrix(ty, tp) = container.encoding_type()? {
+        if let DataType::CsrMatrix(_ty, tp) = container.encoding_type()? {
             macro_rules! fun {
                 ($variant:ident) => {
                     CsrMatrix::<$variant>::read_select(container, info)?.into()
@@ -404,7 +405,7 @@ impl ReadableArray for DynCscMatrix {
         B: Backend,
         S: AsRef<SelectInfoElem>,
     {
-        if let DataType::CscMatrix(ty, tp) = container.encoding_type()? {
+        if let DataType::CscMatrix(_ty, tp) = container.encoding_type()? {
             macro_rules! fun {
                 ($variant:ident) => {
                     CscMatrix::<$variant>::read_select(container, info).map(Into::into)
@@ -486,6 +487,113 @@ macro_rules! impl_arrayconvert {
 
 impl_arrayconvert!(CsrMatrix, convert_csr_with, CscMatrix, convert_csc_with);
 
+impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> ArrayConvert<CsMatI<u32, T, u64>>
+    for DynSparseMatrix<T>
+{
+    fn try_convert(self) -> Result<CsMatI<u32, T, u64>> {
+        match self {
+            DynSparseMatrix::U32(data) => Ok(data),
+            DynSparseMatrix::I8(data) => convert_sparse_with(data, |x| Ok(x.try_into()?)),
+            DynSparseMatrix::I16(data) => convert_sparse_with(data, |x| Ok(x.try_into()?)),
+            DynSparseMatrix::I32(data) => convert_sparse_with(data, |x| Ok(x.try_into()?)),
+            DynSparseMatrix::I64(data) => convert_sparse_with(data, |x| Ok(x.try_into()?)),
+            DynSparseMatrix::U8(data) => convert_sparse_with(data, |x| Ok(x.into())),
+            DynSparseMatrix::U16(data) => convert_sparse_with(data, |x| Ok(x.into())),
+            DynSparseMatrix::U64(data) => convert_sparse_with(data, |x| Ok(x.try_into()?)),
+            DynSparseMatrix::Bool(data) => convert_sparse_with(data, |x| Ok(x.into())),
+            v => bail!(
+                "Cannot convert {} to CsMatI<u32, {}, u64>",
+                v.data_type(),
+                std::any::type_name::<T>()
+            ),
+        }
+    }
+}
+
+impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> ArrayConvert<CsMatI<f32, T, u64>>
+    for DynSparseMatrix<T>
+{
+    fn try_convert(self) -> Result<CsMatI<f32, T, u64>> {
+        match self {
+            DynSparseMatrix::F32(data) => Ok(data),
+            DynSparseMatrix::I8(data) => convert_sparse_with(data, |x| Ok(x.into())),
+            DynSparseMatrix::I16(data) => convert_sparse_with(data, |x| Ok(x.into())),
+            DynSparseMatrix::I32(data) => {
+                convert_sparse_with(data, |x| Ok(f32::from_i32(x).unwrap()))
+            }
+            DynSparseMatrix::I64(data) => {
+                convert_sparse_with(data, |x| Ok(f32::from_i64(x).unwrap()))
+            }
+            DynSparseMatrix::U8(data) => convert_sparse_with(data, |x| Ok(x.into())),
+            DynSparseMatrix::U16(data) => convert_sparse_with(data, |x| Ok(x.into())),
+            DynSparseMatrix::U32(data) => {
+                convert_sparse_with(data, |x| Ok(f32::from_u32(x).unwrap()))
+            }
+            DynSparseMatrix::U64(data) => {
+                convert_sparse_with(data, |x| Ok(f32::from_u64(x).unwrap()))
+            }
+            DynSparseMatrix::F64(data) => {
+                convert_sparse_with(data, |x| Ok(f32::from_f64(x).unwrap()))
+            }
+            DynSparseMatrix::Bool(data) => convert_sparse_with(data, |x| Ok(x.into())),
+            v => bail!(
+                "Cannot convert {} to CsMatI<f32, {}, u64>",
+                v.data_type(),
+                std::any::type_name::<T>()
+            ),
+        }
+    }
+}
+
+impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> ArrayConvert<CsMatI<f64, T, u64>>
+    for DynSparseMatrix<T>
+{
+    fn try_convert(self) -> Result<CsMatI<f64, T, u64>> {
+        match self {
+            DynSparseMatrix::F64(data) => Ok(data),
+            DynSparseMatrix::I8(data) => convert_sparse_with(data, |x| Ok(x.into())),
+            DynSparseMatrix::I16(data) => convert_sparse_with(data, |x| Ok(x.into())),
+            DynSparseMatrix::I32(data) => convert_sparse_with(data, |x| Ok(x.into())),
+            DynSparseMatrix::I64(data) => {
+                convert_sparse_with(data, |x| Ok(f64::from_i64(x).unwrap()))
+            }
+            DynSparseMatrix::U8(data) => convert_sparse_with(data, |x| Ok(x.into())),
+            DynSparseMatrix::U16(data) => convert_sparse_with(data, |x| Ok(x.into())),
+            DynSparseMatrix::U32(data) => convert_sparse_with(data, |x| Ok(x.into())),
+            DynSparseMatrix::U64(data) => {
+                convert_sparse_with(data, |x| Ok(f64::from_u64(x).unwrap()))
+            }
+            DynSparseMatrix::F32(data) => convert_sparse_with(data, |x| Ok(x.into())),
+            DynSparseMatrix::Bool(data) => convert_sparse_with(data, |x| Ok(x.into())),
+            v => bail!(
+                "Cannot convert {} to CsMatI<f64, {}, u64>",
+                v.data_type(),
+                std::any::type_name::<T>()
+            ),
+        }
+    }
+}
+
+fn convert_sparse_with<T, U, Ix, F>(mat: CsMatI<T, Ix, u64>, f: F) -> Result<CsMatI<U, Ix, u64>>
+where
+    T: BackendData,
+    U: BackendData,
+    Ix: SpIndex + BackendData,
+    F: Fn(T) -> Result<U>,
+{
+    let shape = mat.shape();
+    let is_csr = mat.is_csr();
+    let indptr = mat.indptr().as_slice().unwrap().to_vec();
+    let indices = mat.indices().to_vec();
+    let data = mat.data().to_vec();
+    let new_data = data.into_iter().map(|x| f(x)).collect::<Result<Vec<U>>>()?;
+    if is_csr {
+        Ok(CsMatI::new(shape, indptr, indices, new_data))
+    } else {
+        Ok(CsMatI::new_csc(shape, indptr, indices, new_data))
+    }
+}
+
 fn convert_csr_with<T, U, F>(csr: CsrMatrix<T>, f: F) -> Result<CsrMatrix<U>>
 where
     F: Fn(T) -> Result<U>,
@@ -516,7 +624,7 @@ where
 ///
 ///
 
-impl<T: SpIndex + BackendData> Element for DynSparseMatrix<T> {
+impl<T: SpIndex + BackendData + num::Integer + num::FromPrimitive> Element for DynSparseMatrix<T> {
     fn data_type(&self) -> DataType {
         crate::macros::dyn_map_fun!(self, DynSparseMatrix, data_type)
     }
@@ -526,7 +634,7 @@ impl<T: SpIndex + BackendData> Element for DynSparseMatrix<T> {
     }
 }
 
-impl<T: BackendData + SpIndex> Writable for DynSparseMatrix<T> {
+impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> Writable for DynSparseMatrix<T> {
     fn write<B: Backend, G: GroupOp<B>>(
         &self,
         location: &G,
@@ -536,7 +644,7 @@ impl<T: BackendData + SpIndex> Writable for DynSparseMatrix<T> {
     }
 }
 
-impl<T: BackendData + SpIndex> Readable for DynSparseMatrix<T> {
+impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> Readable for DynSparseMatrix<T> {
     fn read<B: Backend>(container: &DataContainer<B>) -> Result<Self>
     where
         Self: Sized,
@@ -555,7 +663,7 @@ impl<T: BackendData + SpIndex> Readable for DynSparseMatrix<T> {
     }
 }
 
-impl<T: BackendData + SpIndex> HasShape for DynSparseMatrix<T> {
+impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> HasShape for DynSparseMatrix<T> {
     fn shape(&self) -> Shape {
         match self {
             DynSparseMatrix::I8(data) => HasShape::shape(data),
@@ -574,7 +682,7 @@ impl<T: BackendData + SpIndex> HasShape for DynSparseMatrix<T> {
     }
 }
 
-impl<T: BackendData + SpIndex> Selectable for DynSparseMatrix<T> {
+impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> Selectable for DynSparseMatrix<T> {
     fn select<S>(&self, info: &[S]) -> Self
     where
         S: AsRef<SelectInfoElem>,
@@ -583,17 +691,153 @@ impl<T: BackendData + SpIndex> Selectable for DynSparseMatrix<T> {
     }
 }
 
-impl<T: BackendData + SpIndex> SparseMatrixLayout for DynSparseMatrix<T> {
+impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> SparseMatrixLayout for DynSparseMatrix<T> {
     fn get_sparse_layout(&self) -> SparseMatrixLayoutE {
         crate::macros::dyn_map_fun!(self, DynSparseMatrix, get_sparse_layout)
     }
 }
 
-// no stackable yet implemented. TODO later
+impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> Indexable for DynSparseMatrix<T> {
+    fn get(&self, index: &[usize]) -> Option<DynScalar> {
+        if index.len() != 2 {
+            panic!("index must have length 2");
+        }
+        match self {
+            DynSparseMatrix::I8(data) => data.get(index[0], index[1]).map(|v| v.into_dyn()),
+            DynSparseMatrix::I16(data) => data.get(index[0], index[1]).map(|v| v.into_dyn()),
+            DynSparseMatrix::I32(data) => data.get(index[0], index[1]).map(|v| v.into_dyn()),
+            DynSparseMatrix::I64(data) => data.get(index[0], index[1]).map(|v| v.into_dyn()),
+            DynSparseMatrix::U8(data) => data.get(index[0], index[1]).map(|v| v.into_dyn()),
+            DynSparseMatrix::U16(data) => data.get(index[0], index[1]).map(|v| v.into_dyn()),
+            DynSparseMatrix::U32(data) => data.get(index[0], index[1]).map(|v| v.into_dyn()),
+            DynSparseMatrix::U64(data) => data.get(index[0], index[1]).map(|v| v.into_dyn()),
+            DynSparseMatrix::F32(data) => data.get(index[0], index[1]).map(|v| v.into_dyn()),
+            DynSparseMatrix::F64(data) => data.get(index[0], index[1]).map(|v| v.into_dyn()),
+            DynSparseMatrix::Bool(data) => data.get(index[0], index[1]).map(|v| v.into_dyn()),
+            DynSparseMatrix::String(data) => data.get(index[0], index[1]).map(|v| v.into_dyn()),
+        }
+    }
+}
 
-impl<T: BackendData + SpIndex> WritableArray for DynSparseMatrix<T> {}
+impl<T: BackendData + SpIndex + ToPrimitive + num::Integer + num::FromPrimitive> ArrayArithmetic for DynSparseMatrix<T> {
+    fn sum(&self) -> f64 {
+        match self {
+            DynSparseMatrix::I8(arr) => ArrayArithmetic::sum(arr),
+            DynSparseMatrix::I16(arr) => ArrayArithmetic::sum(arr),
+            DynSparseMatrix::I32(arr) => ArrayArithmetic::sum(arr),
+            DynSparseMatrix::I64(arr) => ArrayArithmetic::sum(arr),
+            DynSparseMatrix::U8(arr) => ArrayArithmetic::sum(arr),
+            DynSparseMatrix::U16(arr) => ArrayArithmetic::sum(arr),
+            DynSparseMatrix::U32(arr) => ArrayArithmetic::sum(arr),
+            DynSparseMatrix::U64(arr) => ArrayArithmetic::sum(arr),
+            DynSparseMatrix::F32(arr) => ArrayArithmetic::sum(arr),
+            DynSparseMatrix::F64(arr) => ArrayArithmetic::sum(arr),
+            DynSparseMatrix::Bool(_) => panic!("Cannot compute sum for Bool sparse matrix"),
+            DynSparseMatrix::String(_) => panic!("Cannot compute sum for String sparse matrix"),
+        }
+    }
 
-impl<T: BackendData + SpIndex> ReadableArray for DynSparseMatrix<T> {
+    fn sum_axis(&self, axis: usize) -> Result<ArrayD<f64>> {
+        match self {
+            DynSparseMatrix::I8(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynSparseMatrix::I16(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynSparseMatrix::I32(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynSparseMatrix::I64(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynSparseMatrix::U8(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynSparseMatrix::U16(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynSparseMatrix::U32(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynSparseMatrix::U64(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynSparseMatrix::F32(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynSparseMatrix::F64(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynSparseMatrix::Bool(_) => panic!("Cannot compute sum for Bool sparse matrix"),
+            DynSparseMatrix::String(_) => bail!("Cannot compute sum for String sparse matrix"),
+        }
+    }
+
+    fn min(&self) -> f64 {
+        match self {
+            DynSparseMatrix::I8(arr) => ArrayArithmetic::min(arr),
+            DynSparseMatrix::I16(arr) => ArrayArithmetic::min(arr),
+            DynSparseMatrix::I32(arr) => ArrayArithmetic::min(arr),
+            DynSparseMatrix::I64(arr) => ArrayArithmetic::min(arr),
+            DynSparseMatrix::U8(arr) => ArrayArithmetic::min(arr),
+            DynSparseMatrix::U16(arr) => ArrayArithmetic::min(arr),
+            DynSparseMatrix::U32(arr) => ArrayArithmetic::min(arr),
+            DynSparseMatrix::U64(arr) => ArrayArithmetic::min(arr),
+            DynSparseMatrix::F32(arr) => ArrayArithmetic::min(arr),
+            DynSparseMatrix::F64(arr) => ArrayArithmetic::min(arr),
+            DynSparseMatrix::Bool(_) => panic!("Cannot compute min for Bool sparse matrix"),
+            DynSparseMatrix::String(_) => panic!("Cannot compute min for String sparse matrix"),
+        }
+    }
+
+    fn max(&self) -> f64 {
+        match self {
+            DynSparseMatrix::I8(arr) => ArrayArithmetic::max(arr),
+            DynSparseMatrix::I16(arr) => ArrayArithmetic::max(arr),
+            DynSparseMatrix::I32(arr) => ArrayArithmetic::max(arr),
+            DynSparseMatrix::I64(arr) => ArrayArithmetic::max(arr),
+            DynSparseMatrix::U8(arr) => ArrayArithmetic::max(arr),
+            DynSparseMatrix::U16(arr) => ArrayArithmetic::max(arr),
+            DynSparseMatrix::U32(arr) => ArrayArithmetic::max(arr),
+            DynSparseMatrix::U64(arr) => ArrayArithmetic::max(arr),
+            DynSparseMatrix::F32(arr) => ArrayArithmetic::max(arr),
+            DynSparseMatrix::F64(arr) => ArrayArithmetic::max(arr),
+            DynSparseMatrix::Bool(_) => panic!("Cannot compute max for Bool sparse matrix"),
+            DynSparseMatrix::String(_) => panic!("Cannot compute max for String sparse matrix"),
+        }
+    }
+}
+
+impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> Stackable for DynSparseMatrix<T> {
+    fn vstack<I: Iterator<Item = Self>>(iter: I) -> Result<Self> {
+        let mut iter = iter.peekable();
+        match iter.peek().ok_or(anyhow::anyhow!("Cannot stack empty iterator"))? {
+            DynSparseMatrix::I8(_) => Ok(DynSparseMatrix::I8(CsMatI::<i8, T, u64>::vstack(
+                iter.map(|x| x.try_into().unwrap()),
+            )?)),
+            DynSparseMatrix::I16(_) => Ok(DynSparseMatrix::I16(CsMatI::<i16, T, u64>::vstack(
+                iter.map(|x| x.try_into().unwrap()),
+            )?)),
+            DynSparseMatrix::I32(_) => Ok(DynSparseMatrix::I32(CsMatI::<i32, T, u64>::vstack(
+                iter.map(|x| x.try_into().unwrap()),
+            )?)),
+            DynSparseMatrix::I64(_) => Ok(DynSparseMatrix::I64(CsMatI::<i64, T, u64>::vstack(
+                iter.map(|x| x.try_into().unwrap()),
+            )?)),
+            DynSparseMatrix::U8(_) => Ok(DynSparseMatrix::U8(CsMatI::<u8, T, u64>::vstack(
+                iter.map(|x| x.try_into().unwrap()),
+            )?)),
+            DynSparseMatrix::U16(_) => Ok(DynSparseMatrix::U16(CsMatI::<u16, T, u64>::vstack(
+                iter.map(|x| x.try_into().unwrap()),
+            )?)),
+            DynSparseMatrix::U32(_) => Ok(DynSparseMatrix::U32(CsMatI::<u32, T, u64>::vstack(
+                iter.map(|x| x.try_into().unwrap()),
+            )?)),
+            DynSparseMatrix::U64(_) => Ok(DynSparseMatrix::U64(CsMatI::<u64, T, u64>::vstack(
+                iter.map(|x| x.try_into().unwrap()),
+            )?)),
+            DynSparseMatrix::F32(_) => Ok(DynSparseMatrix::F32(CsMatI::<f32, T, u64>::vstack(
+                iter.map(|x| x.try_into().unwrap()),
+            )?)),
+            DynSparseMatrix::F64(_) => Ok(DynSparseMatrix::F64(CsMatI::<f64, T, u64>::vstack(
+                iter.map(|x| x.try_into().unwrap()),
+            )?)),
+            DynSparseMatrix::Bool(_) => Ok(DynSparseMatrix::Bool(CsMatI::<bool, T, u64>::vstack(
+                iter.map(|x| x.try_into().unwrap()),
+            )?)),
+            DynSparseMatrix::String(_) => {
+                Ok(DynSparseMatrix::String(CsMatI::<String, T, u64>::vstack(
+                    iter.map(|x| x.try_into().unwrap()),
+                )?))
+            }
+        }
+    }
+}
+
+impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> WritableArray for DynSparseMatrix<T> {}
+
+impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> ReadableArray for DynSparseMatrix<T> {
     fn get_shape<B: Backend>(container: &DataContainer<B>) -> Result<Shape> {
         Ok(container
             .as_group()?
@@ -622,8 +866,6 @@ impl<T: BackendData + SpIndex> ReadableArray for DynSparseMatrix<T> {
         }
     }
 }
-
-// trait impls for dynsparsematrix
 
 impl Element for DynIndSparseMatrix {
     fn data_type(&self) -> DataType {
@@ -661,7 +903,7 @@ impl Readable for DynIndSparseMatrix {
 
                 crate::macros::dyn_index_match!(indices_dtype, ScalarType, fun)
             }
-            _ => bail!("Can't read sparse amtrix from non-group container"),
+            _ => bail!("Can't read sparse matrix from non-group container"),
         }
     }
 }
@@ -678,6 +920,36 @@ impl Selectable for DynIndSparseMatrix {
         S: AsRef<SelectInfoElem>,
     {
         crate::macros::dyn_index_sparse_map!(self, DynIndSparseMatrix, select, info)
+    }
+}
+
+impl Indexable for DynIndSparseMatrix {
+    fn get(&self, index: &[usize]) -> Option<DynScalar> {
+        crate::macros::dyn_index_map_fun!(self, DynIndSparseMatrix, get, index)
+    }
+}
+
+impl ArrayArithmetic for DynIndSparseMatrix {
+    fn sum(&self) -> f64 {
+        crate::macros::dyn_index_map_fun!(self, DynIndSparseMatrix, sum)
+    }
+
+    fn sum_axis(&self, axis: usize) -> Result<ArrayD<f64>> {
+        crate::macros::dyn_index_map_fun!(self, DynIndSparseMatrix, sum_axis, axis)
+    }
+
+    fn min(&self) -> f64 {
+        crate::macros::dyn_index_map_fun!(self, DynIndSparseMatrix, min)
+    }
+
+    fn max(&self) -> f64 {
+        crate::macros::dyn_index_map_fun!(self, DynIndSparseMatrix, max)
+    }
+}
+
+impl SparseMatrixLayout for DynIndSparseMatrix {
+    fn get_sparse_layout(&self) -> SparseMatrixLayoutE {
+        crate::macros::dyn_index_map_fun!(self, DynIndSparseMatrix, get_sparse_layout)
     }
 }
 
@@ -714,9 +986,29 @@ impl ReadableArray for DynIndSparseMatrix {
     }
 }
 
-impl SparseMatrixLayout for DynIndSparseMatrix {
-    fn get_sparse_layout(&self) -> SparseMatrixLayoutE {
-        crate::macros::dyn_index_map_fun!(self, DynIndSparseMatrix, get_sparse_layout)
+impl Stackable for DynIndSparseMatrix {
+    fn vstack<I: Iterator<Item = Self>>(iter: I) -> Result<Self> {
+        let mut iter = iter.peekable();
+        match iter.peek().ok_or(anyhow::anyhow!("Cannot stack empty iterator"))? {
+            DynIndSparseMatrix::I16(_) => Ok(DynIndSparseMatrix::I16(DynSparseMatrix::<i16>::vstack(
+                iter.map(|x| x.try_into().unwrap()),
+            )?)),
+            DynIndSparseMatrix::I32(_) => Ok(DynIndSparseMatrix::I32(DynSparseMatrix::<i32>::vstack(
+                iter.map(|x| x.try_into().unwrap()),
+            )?)),
+            DynIndSparseMatrix::I64(_) => Ok(DynIndSparseMatrix::I64(DynSparseMatrix::<i64>::vstack(
+                iter.map(|x| x.try_into().unwrap()),
+            )?)),
+            DynIndSparseMatrix::U16(_) => Ok(DynIndSparseMatrix::U16(DynSparseMatrix::<u16>::vstack(
+                iter.map(|x| x.try_into().unwrap()),
+            )?)),
+            DynIndSparseMatrix::U32(_) => Ok(DynIndSparseMatrix::U32(DynSparseMatrix::<u32>::vstack(
+                iter.map(|x| x.try_into().unwrap()),
+            )?)),
+            DynIndSparseMatrix::U64(_) => Ok(DynIndSparseMatrix::U64(DynSparseMatrix::<u64>::vstack(
+                iter.map(|x| x.try_into().unwrap()),
+            )?)),
+        }
     }
 }
 
@@ -855,7 +1147,7 @@ impl_from_dynsparse_to_dynind!(i16, I16, i32, I32, i64, I64, u16, U16, u32, U32,
 macro_rules! impl_from_csmati_to_dynsparse {
     ($($value_type:ty, $value_variant:ident),*) => {
         $(
-            impl<T: SpIndex + BackendData> From<CsMatI<$value_type, T, u64>> for DynSparseMatrix<T> {
+            impl<T: SpIndex + BackendData + num::Integer + num::FromPrimitive> From<CsMatI<$value_type, T, u64>> for DynSparseMatrix<T> {
                 fn from(value: CsMatI<$value_type, T, u64>) -> Self {
                     DynSparseMatrix::$value_variant(value)
                 }
@@ -872,7 +1164,7 @@ impl_from_csmati_to_dynsparse!(
 macro_rules! impl_tryfrom_dynsparse_to_csmati {
     ($($value_type:ty, $value_variant:ident),*) => {
         $(
-            impl<T: SpIndex + BackendData> TryFrom<DynSparseMatrix<T>> for CsMatI<$value_type, T, u64> {
+            impl<T: SpIndex + BackendData + num::Integer + num::FromPrimitive> TryFrom<DynSparseMatrix<T>> for CsMatI<$value_type, T, u64> {
                 type Error = anyhow::Error;
 
                 fn try_from(value: DynSparseMatrix<T>) -> Result<Self> {
