@@ -731,14 +731,19 @@ impl<N: BackendData + std::fmt::Debug, T: BackendData + SpIndex + num::Integer +
         group.new_attr("encoding-version", "0.1.0")?;
         group.new_attr("h5sparse_format", format)?;
 
-        let mut indptr: Vec<i64> = Vec::new();
+        let mut indptr: ExtendableDataset<B, i64> =
+            ExtendableDataset::with_capacity(&group, "indptr", 1000.into())?;
         let mut data: ExtendableDataset<B, N> =
             ExtendableDataset::with_capacity(&group, "data", 1000.into())?;
         let mut indices: ExtendableDataset<B, i64> =
             ExtendableDataset::with_capacity(&group, "indices", 1000.into())?;
+            
         let mut num_rows = 0;
         let mut num_cols: Option<usize> = None;
         let mut nnz = 0;
+
+        let mut indptr_workspace: Vec<i64> = Vec::new();
+        let mut indices_workspace: Vec<i64> = Vec::new();
 
         iter.try_for_each(|mat| {
             if format != if mat.is_csr() { "csr" } else { "csc" } {
@@ -746,7 +751,33 @@ impl<N: BackendData + std::fmt::Debug, T: BackendData + SpIndex + num::Integer +
             }
 
             if format == "csc" {
-                todo!("CSC writing has not been implemented!")
+                let r = mat.rows();
+                if num_rows == 0 {
+                    num_rows = r;
+                } else if num_rows != r {
+                    bail!("All matrices must have the same number of rows");
+                }
+                
+                let c = mat.cols();
+                let prev_cols = num_cols.unwrap_or(0);
+                num_cols = Some(prev_cols + c);
+                
+                let in_ptr_raw = mat.indptr();
+                let (indptr_, indices_, data_) =
+                    (in_ptr_raw.raw_storage(), mat.indices(), mat.data());
+                    
+                indptr_workspace.clear();
+                indptr_workspace.extend(indptr_[..indptr_.len() - 1].iter().map(|&x| (x as i64) + nnz));
+                indptr.extend(0, ArrayView1::from_shape(indptr_workspace.len(), &indptr_workspace)?)?;
+                
+                nnz += *indptr_.last().unwrap_or(&0) as i64;
+                
+                data.extend(0, ArrayView1::from_shape(data_.len(), data_)?)?;
+                
+                indices_workspace.clear();
+                indices_workspace.extend(indices_.iter().map(|&x| x.to_i64().unwrap()));
+                indices.extend(0, ArrayView1::from_shape(indices_workspace.len(), &indices_workspace)?)?;
+
             } else if format == "csr" {
                 let c = mat.cols();
                 if num_cols.is_none() {
@@ -757,26 +788,34 @@ impl<N: BackendData + std::fmt::Debug, T: BackendData + SpIndex + num::Integer +
                     let in_ptr_raw = mat.indptr();
                     let (indptr_, indices_, data_) =
                         (in_ptr_raw.raw_storage(), mat.indices(), mat.data());
-                    indptr_[..indptr_.len() - 1]
-                        .iter()
-                        .for_each(|x| indptr.push((*x as i64) + nnz));
+                        
+                    indptr_workspace.clear();
+                    indptr_workspace.extend(indptr_[..indptr_.len() - 1].iter().map(|&x| (x as i64) + nnz));
+                    indptr.extend(0, ArrayView1::from_shape(indptr_workspace.len(), &indptr_workspace)?)?;
+
                     nnz += *indptr_.last().unwrap_or(&0) as i64;
+                    
                     data.extend(0, ArrayView1::from_shape(data_.len(), data_)?)?;
-                    let _ = indices.extend(
-                        0,
-                        ArrayView1::from_shape(indices_.len(), indices_)?
-                            .mapv(|x| x.to_i64().unwrap())
-                            .view(),
-                    );
+                    
+                    indices_workspace.clear();
+                    indices_workspace.extend(indices_.iter().map(|&x| x.to_i64().unwrap()));
+                    indices.extend(0, ArrayView1::from_shape(indices_workspace.len(), &indices_workspace)?)?;
+                } else {
+                    bail!("All matrices must have the same number of columns");
                 }
             }
             Ok(())
         })?;
 
+        // Write the final nnz value for indptr
+        indptr_workspace.clear();
+        indptr_workspace.push(nnz);
+        indptr.extend(0, ArrayView1::from_shape(indptr_workspace.len(), &indptr_workspace)?)?;
+
+        indptr.finish()?;
         indices.finish()?;
         data.finish()?;
-        indptr.push(nnz);
-        group.new_array_dataset("indptr", indptr.into(), Default::default())?;
+        
         group.new_attr(
             "shape",
             [num_rows as u64, num_cols.unwrap_or(0) as u64].as_slice(),
