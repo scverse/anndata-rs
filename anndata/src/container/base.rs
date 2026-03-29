@@ -455,7 +455,15 @@ impl<B: Backend> InnerArrayElem<B> {
     where
         S: AsRef<SelectInfoElem>,
     {
-        if selection.as_ref().iter().all(|x| x.as_ref().is_full()) {
+        let ndim = self.shape().ndim();
+        let full = SelectInfoElem::full();
+        if selection
+            .iter()
+            .map(|x| x.as_ref())
+            .chain(std::iter::repeat(&full))
+            .take(ndim)
+            .all(|x| x.is_full())
+        {
             self.data()
         } else {
             match self.element.as_ref() {

@@ -971,7 +971,7 @@ pub trait AxisArraysOp {
         <D as TryFrom<ArrayData>>::Error: Into<anyhow::Error>,
     {
         self.keys().into_iter().flat_map(move |key| {
-            let data = self.get_item_slice::<D, _>(&key, &slice).unwrap()?;
+            let data = self.get_item_slice::<D, _>(&key, slice.as_ref()).unwrap()?;
             Some((key, data))
         })
     }

@@ -47,10 +47,10 @@ impl<B: Backend> MatrixBuilder<B> {
 pub struct CsrMatrixBuilder<B: Backend> {
     indices: ExtendableDataset<B, i64>,
     data: ArrayBuilder<B>,
-    indptr: Vec<i64>,
+    indptr: Vec<u64>,
     num_rows: usize,
     num_cols: Option<usize>,
-    nnz: i64,
+    nnz: u64,
     group: B::Group,
 }
 
@@ -96,11 +96,15 @@ impl<B: Backend> CsrMatrixBuilder<B> {
                 let indices = mat.indices();
                 let data = mat.data();
 
+                if builder.indptr.is_empty() {
+                    builder.indptr.push(0);
+                }
+
                 indptr[..indptr.len() - 1].iter().for_each(|x| {
-                    builder.indptr.push(*x as i64 + builder.nnz);
+                    builder.indptr.push(*x as u64 + builder.nnz);
                 });
 
-                builder.nnz += *indptr.last().unwrap_or(&0) as i64;
+                builder.nnz += *indptr.last().unwrap_or(&0) as u64;
 
                 builder.data.add(Array::from_vec(data.to_vec()).into())?;
 
@@ -731,18 +735,18 @@ impl<N: BackendData + std::fmt::Debug, T: BackendData + SpIndex + num::Integer +
         group.new_attr("encoding-version", "0.1.0")?;
         group.new_attr("h5sparse_format", format)?;
 
-        let mut indptr: ExtendableDataset<B, i64> =
+        let mut indptr: ExtendableDataset<B, u64> =
             ExtendableDataset::with_capacity(&group, "indptr", 1000.into())?;
         let mut data: ExtendableDataset<B, N> =
             ExtendableDataset::with_capacity(&group, "data", 1000.into())?;
         let mut indices: ExtendableDataset<B, i64> =
             ExtendableDataset::with_capacity(&group, "indices", 1000.into())?;
-            
+
         let mut num_rows = 0;
         let mut num_cols: Option<usize> = None;
         let mut nnz = 0;
 
-        let mut indptr_workspace: Vec<i64> = Vec::new();
+        let mut indptr_workspace: Vec<u64> = Vec::new();
         let mut indices_workspace: Vec<i64> = Vec::new();
 
         iter.try_for_each(|mat| {
@@ -757,23 +761,23 @@ impl<N: BackendData + std::fmt::Debug, T: BackendData + SpIndex + num::Integer +
                 } else if num_rows != r {
                     bail!("All matrices must have the same number of rows");
                 }
-                
+
                 let c = mat.cols();
                 let prev_cols = num_cols.unwrap_or(0);
                 num_cols = Some(prev_cols + c);
-                
+
                 let in_ptr_raw = mat.indptr();
                 let (indptr_, indices_, data_) =
                     (in_ptr_raw.raw_storage(), mat.indices(), mat.data());
-                    
+
                 indptr_workspace.clear();
-                indptr_workspace.extend(indptr_[..indptr_.len() - 1].iter().map(|&x| (x as i64) + nnz));
+                indptr_workspace.extend(indptr_[..indptr_.len() - 1].iter().map(|&x| (x as u64) + nnz));
                 indptr.extend(0, ArrayView1::from_shape(indptr_workspace.len(), &indptr_workspace)?)?;
-                
-                nnz += *indptr_.last().unwrap_or(&0) as i64;
-                
+
+                nnz += *indptr_.last().unwrap_or(&0) as u64;
+
                 data.extend(0, ArrayView1::from_shape(data_.len(), data_)?)?;
-                
+
                 indices_workspace.clear();
                 indices_workspace.extend(indices_.iter().map(|&x| x.to_i64().unwrap()));
                 indices.extend(0, ArrayView1::from_shape(indices_workspace.len(), &indices_workspace)?)?;
@@ -788,15 +792,15 @@ impl<N: BackendData + std::fmt::Debug, T: BackendData + SpIndex + num::Integer +
                     let in_ptr_raw = mat.indptr();
                     let (indptr_, indices_, data_) =
                         (in_ptr_raw.raw_storage(), mat.indices(), mat.data());
-                        
+
                     indptr_workspace.clear();
-                    indptr_workspace.extend(indptr_[..indptr_.len() - 1].iter().map(|&x| (x as i64) + nnz));
+                    indptr_workspace.extend(indptr_[..indptr_.len() - 1].iter().map(|&x| (x as u64) + nnz));
                     indptr.extend(0, ArrayView1::from_shape(indptr_workspace.len(), &indptr_workspace)?)?;
 
-                    nnz += *indptr_.last().unwrap_or(&0) as i64;
-                    
+                    nnz += *indptr_.last().unwrap_or(&0) as u64;
+
                     data.extend(0, ArrayView1::from_shape(data_.len(), data_)?)?;
-                    
+
                     indices_workspace.clear();
                     indices_workspace.extend(indices_.iter().map(|&x| x.to_i64().unwrap()));
                     indices.extend(0, ArrayView1::from_shape(indices_workspace.len(), &indices_workspace)?)?;
@@ -811,7 +815,6 @@ impl<N: BackendData + std::fmt::Debug, T: BackendData + SpIndex + num::Integer +
         indptr_workspace.clear();
         indptr_workspace.push(nnz);
         indptr.extend(0, ArrayView1::from_shape(indptr_workspace.len(), &indptr_workspace)?)?;
-
         indptr.finish()?;
         indices.finish()?;
         data.finish()?;

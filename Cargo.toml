@@ -13,3 +13,4 @@ resolver = "2"
 anndata = { path = "anndata" }
 anndata-hdf5 = { path = "anndata-hdf5" }
 pyanndata = { path = "pyanndata" }
+anndata-zarr = { path = "anndata-zarr" }
