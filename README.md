@@ -1,38 +1,53 @@
-anndata-rs: A Rust/Python package for reading data in the h5ad format
-=====================================================================
+# AnnData-RS
 
-Motivation
-----------
+A high-performance, out-of-core implementation of the AnnData format for Rust and Python.
 
-The goal of this library is to complement the [anndata](https://anndata.readthedocs.io/en/latest/) package by providing an out-of-core AnnData implementation.
+`anndata-rs` complements the original Python `anndata` package by providing an implementation designed for datasets that are too large to fit in memory. Unlike "backed mode" in other libraries, `anndata-rs` is built from the ground up for efficient partial I/O and cloud-native storage.
 
-Unlike the backed mode in the [anndata](https://anndata.readthedocs.io/en/latest/) package,
-`anndata-rs`'s AnnData object is fully backed and always stays in sync with the data stored in the hard drive.
+## Key Features
 
-Here are the key features of this implementation:
+- **Multi-Backend Support**: Native support for **HDF5** (`.h5ad`) and **Zarr V3**.
+- **Cloud Native**: Directly read and write Zarr data from **S3, HTTP, and Azure Blob Storage** via `object_store`.
+- **Zero-Memory Loading**: Fields are loaded lazily. Opening a 100GB file consumes nearly zero bytes of RAM.
+- **Lean Extraction**: Special `take()` and `drain()` semantics allow you to move data directly from disk into your ownership (e.g., into `anndata-memory`) without memory duplication.
+- **High-Performance Sparse Matrices**: Optimized `sprs`-based backend with `u64` index pointers, supporting datasets with billions of non-zero elements.
+- **Parallel I/O**: Multi-threaded reading and writing via `AnnDataSet`, utilizing Rayon for maximum throughput.
 
-- AnnData is fully backed by the underlying hdf5 file. Any operations on the AnnData object
-  will be reflected on the hdf5 file.
-- All elements are lazily loaded. No matter how large is the file, opening it
-  consume almost zero memory. Matrix data can be accessed and processed by chunks,
-  which keeps the memory usage to the minimum.
-- In-memory cache can be turned on to speed up the repetitive access of elements.
-- An AnnDataSet object to lazily concatenate multiple AnnData objects.
+## Quick Start (Rust)
 
-Limitations:
+```rust
+use anndata::AnnData;
+use anndata_hdf5::H5;
 
-- Only a subset of the h5ad specifications are implemented. For example, the
-  `.raw` is not supported. To request a missing feature, please open a new issue.
-- No views. Subsetting the AnnData will modify the data inplace or make a copy.
+// Open a file lazily
+let adata = AnnData::<H5>::open(H5::open("data.h5ad")?)?;
 
-Installation
-------------
+// Load a subset of the X matrix into memory
+let x = adata.x().slice::<ArrayData, _>(&[s![0..100], s![..]])?;
+```
 
-We do not provide installation instructions here.
-Right now this package is bundled with the [SnapATAC2](https://github.com/kaizhang/SnapATAC2) package.
-Please install [SnapATAC2](https://github.com/kaizhang/SnapATAC2) to get these features.
+For detailed examples on cloud storage, subsetting, and memory-efficient loading, see the **[Usage Guide](USAGE.md)**.
 
-Tutorials
----------
+## Installation
 
-Click [here](https://kzhang.org/epigenomics-analysis/anndata.html) to read tutorials.
+### Rust
+Add to your `Cargo.toml`:
+```toml
+[dependencies]
+anndata = "0.7"
+anndata-hdf5 = "0.5" # For HDF5 support
+anndata-zarr = "0.2" # For Zarr V3 support
+```
+
+### Python
+```bash
+pip install pyanndata
+```
+
+## Documentation
+- **Usage Guide**: [USAGE.md](USAGE.md)
+- **Tutorials**: [kzhang.org/epigenomics-analysis/anndata.html](https://kzhang.org/epigenomics-analysis/anndata.html)
+- **API Reference**: [docs.rs/anndata](https://docs.rs/anndata)
+
+## License
+Licensed under the Apache License, Version 2.0.
