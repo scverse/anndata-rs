@@ -15,5 +15,16 @@ anndata = { workspace = true }
 serde_json = "1.0"
 anyhow = "1.0"
 ndarray = { version = "0.17", features = ["serde"] }
-zarrs = "0.23"
+zarrs = { version = "0.23.8", features = ["ndarray", "sharding", "zstd"] }
+zarrs_storage = "0.4.3"
+zarrs_metadata = "0.7.4"
+zarrs_object_store = "0.6.2"
+object_store = { version = "0.13.2", features = ["aws", "gcp", "azure"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
+url = "2.5"
 smallvec = "1.15"
+once_cell = "1.20"
+
+[dev-dependencies]
+ndarray-rand = "0.16"
+tempfile = "3.2"

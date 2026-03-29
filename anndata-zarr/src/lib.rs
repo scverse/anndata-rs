@@ -3,7 +3,7 @@ use anndata::{
     data::{DynArray, DynCowArray, SelectInfoBounds, SelectInfoElem, SelectInfoElemBounds, Shape},
 };
 
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Result};
 use ndarray::{Array, ArrayD, ArrayView, CowArray, Dimension, IxDyn, SliceInfoElem};
 use std::{
     borrow::Cow,
@@ -11,15 +11,30 @@ use std::{
     path::{Path, PathBuf},
 };
 use std::{sync::Arc, vec};
-use zarrs::array::codec::bytes_to_bytes::zstd::ZstdCodec;
 use zarrs::filesystem::FilesystemStore;
 use zarrs::group::Group;
-use zarrs::{array::ElementOwned, storage::ReadableWritableListableStorageTraits};
-use zarrs::{
-    array::{codec::ShardingCodecBuilder, data_type::DataType, ArrayShardedReadableExt, Element},
-    array_subset::ArraySubset,
-    storage::StorePrefix,
-};
+use zarrs::storage::{ReadableWritableListableStorageTraits, StorePrefix};
+use zarrs_storage::storage_adapter::async_to_sync::{AsyncToSyncStorageAdapter, AsyncToSyncBlockOn};
+use zarrs::array::{ArraySubset, CodecOptions, Element, ElementOwned, ArrayShardedReadableExt, data_type, ChunkShape, FillValue};
+use zarrs_object_store::AsyncObjectStore;
+use object_store::ObjectStore;
+use url::Url;
+use once_cell::sync::Lazy;
+use std::num::NonZeroU64;
+
+static RUNTIME: Lazy<tokio::runtime::Runtime> = Lazy::new(|| {
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("Failed to create tokio runtime")
+});
+
+struct TokioBlockOn;
+impl AsyncToSyncBlockOn for TokioBlockOn {
+    fn block_on<F: std::future::Future>(&self, future: F) -> F::Output {
+        RUNTIME.block_on(future)
+    }
+}
 
 /// The Zarr backend.
 pub struct Zarr;
@@ -49,6 +64,24 @@ pub struct ZarrDataset {
     store: ZarrStore,
 }
 
+fn get_storage<P: AsRef<Path>>(path: P) -> Result<(Arc<dyn ReadableWritableListableStorageTraits>, PathBuf)> {
+    let path_str = path.as_ref().to_str().ok_or_else(|| anyhow::anyhow!("Invalid path"))?;
+    if path_str.starts_with("s3://") || path_str.starts_with("http://") || path_str.starts_with("https://") {
+        let url = Url::parse(path_str)?;
+        let (store, prefix) = object_store::parse_url(&url)?;
+        let rooted_store: Arc<dyn ObjectStore> = Arc::new(object_store::prefix::PrefixStore::new(store, prefix));
+        let async_zarr_store = Arc::new(AsyncObjectStore::new(rooted_store));
+        let sync_zarr_store = Arc::new(AsyncToSyncStorageAdapter::new(
+            async_zarr_store,
+            TokioBlockOn,
+        ));
+        Ok((sync_zarr_store, path.as_ref().to_path_buf()))
+    } else {
+        let inner = Arc::new(FilesystemStore::new(path.as_ref())?);
+        Ok((inner, path.as_ref().to_path_buf()))
+    }
+}
+
 impl Backend for Zarr {
     const NAME: &'static str = "zarr";
 
@@ -60,7 +93,8 @@ impl Backend for Zarr {
     type Dataset = ZarrDataset;
 
     fn new<P: AsRef<Path>>(path: P) -> Result<Self::Store> {
-        if path.as_ref().try_exists()? {
+        let path_str = path.as_ref().to_str().ok_or_else(|| anyhow::anyhow!("Invalid path"))?;
+        if !path_str.starts_with("s3://") && !path_str.starts_with("http://") && !path_str.starts_with("https://") && path.as_ref().try_exists()? {
             let metadata = std::fs::metadata(&path)?;
             if metadata.is_file() {
                 std::fs::remove_file(&path)?;
@@ -69,29 +103,31 @@ impl Backend for Zarr {
             }
         }
 
-        let inner = Arc::new(FilesystemStore::new(path.as_ref())?);
+        let (inner, path) = get_storage(path)?;
         zarrs::group::GroupBuilder::new()
             .build(inner.clone(), "/")?
             .store_metadata()?;
         Ok(ZarrStore {
-            path: path.as_ref().to_path_buf(),
+            path,
             inner,
         })
     }
 
     /// Opens a file as read-only, file must exist.
     fn open<P: AsRef<Path>>(path: P) -> Result<Self::Store> {
+        let (inner, path) = get_storage(path)?;
         Ok(ZarrStore {
-            path: path.as_ref().to_path_buf(),
-            inner: Arc::new(FilesystemStore::new(path)?),
+            path,
+            inner,
         })
     }
 
     /// Opens a file as read/write, file must exist.
     fn open_rw<P: AsRef<Path>>(path: P) -> Result<Self::Store> {
+        let (inner, path) = get_storage(path)?;
         Ok(ZarrStore {
-            path: path.as_ref().to_path_buf(),
-            inner: Arc::new(FilesystemStore::new(path)?),
+            path,
+            inner,
         })
     }
 }
@@ -116,7 +152,7 @@ impl GroupOp<Zarr> for ZarrStore {
         Ok(result
             .prefixes()
             .into_iter()
-            .map(|x| x.as_str().trim_end_matches("/").to_string())
+            .map(|x| x.as_str().trim_start_matches("/").trim_end_matches("/").to_string())
             .collect())
     }
 
@@ -302,100 +338,62 @@ impl AttributeOp<Zarr> for ZarrGroup {
         Ok(())
     }
 
+    /// Get an attribute at a given location.
     fn get_json_attr(&self, name: &str) -> Result<Value> {
-        Ok(self
-            .group
-            .attributes()
-            .get(name)
-            .with_context(|| format!("Attribute {} not found", name))?
-            .clone())
-    }
-}
-
-impl AttributeOp<Zarr> for ZarrDataset {
-    /// Returns the Root.
-    fn store(&self) -> Result<<Zarr as Backend>::Store> {
-        Ok(self.store.clone())
-    }
-
-    /// Returns the path of the location relative to the file root.
-    fn path(&self) -> PathBuf {
-        self.dataset.path().as_path().to_path_buf()
-    }
-
-    /// Write an attribute at a given location.
-    fn new_json_attr(&mut self, name: &str, value: &Value) -> Result<()> {
-        self.dataset
-            .attributes_mut()
-            .insert(name.to_string(), value.clone());
-        self.dataset.store_metadata()?;
-        Ok(())
-    }
-
-    fn get_json_attr(&self, name: &str) -> Result<Value> {
-        Ok(self
-            .dataset
-            .attributes()
-            .get(name)
-            .with_context(|| format!("Attribute {} not found", name))?
-            .clone())
+        self.group.attributes().get(name).cloned().ok_or_else(|| anyhow::anyhow!("Attribute {} not found", name))
     }
 }
 
 impl DatasetOp<Zarr> for ZarrDataset {
     fn dtype(&self) -> Result<ScalarType> {
-        match self.dataset.data_type() {
-            DataType::UInt8 => Ok(ScalarType::U8),
-            DataType::UInt16 => Ok(ScalarType::U16),
-            DataType::UInt32 => Ok(ScalarType::U32),
-            DataType::UInt64 => Ok(ScalarType::U64),
-            DataType::Int8 => Ok(ScalarType::I8),
-            DataType::Int16 => Ok(ScalarType::I16),
-            DataType::Int32 => Ok(ScalarType::I32),
-            DataType::Int64 => Ok(ScalarType::I64),
-            DataType::Float32 => Ok(ScalarType::F32),
-            DataType::Float64 => Ok(ScalarType::F64),
-            DataType::Bool => Ok(ScalarType::Bool),
-            DataType::String => Ok(ScalarType::String),
-            ty => bail!("Unsupported type: {:?}", ty),
-        }
+        let name = format!("{:?}", self.dataset.data_type());
+        let name = name.to_lowercase();
+        if name.contains("uint8") { Ok(ScalarType::U8) }
+        else if name.contains("uint16") { Ok(ScalarType::U16) }
+        else if name.contains("uint32") { Ok(ScalarType::U32) }
+        else if name.contains("uint64") { Ok(ScalarType::U64) }
+        else if name.contains("int8") { Ok(ScalarType::I8) }
+        else if name.contains("int16") { Ok(ScalarType::I16) }
+        else if name.contains("int32") { Ok(ScalarType::I32) }
+        else if name.contains("int64") { Ok(ScalarType::I64) }
+        else if name.contains("float32") { Ok(ScalarType::F32) }
+        else if name.contains("float64") { Ok(ScalarType::F64) }
+        else if name.contains("bool") { Ok(ScalarType::Bool) }
+        else if name.contains("string") { Ok(ScalarType::String) }
+        else { bail!("Unsupported data type: {}", name) }
     }
 
     fn shape(&self) -> Shape {
-        self.dataset
-            .shape()
-            .into_iter()
-            .map(|x| *x as usize)
-            .collect()
+        self.dataset.shape().iter().map(|x| *x as usize).collect()
     }
 
     fn reshape(&mut self, shape: &Shape) -> Result<()> {
         self.dataset
-            .set_shape(shape.as_ref().iter().map(|x| *x as u64).collect());
+            .set_shape(shape.as_ref().iter().map(|x| *x as u64).collect())?;
         self.dataset.store_metadata()?;
         Ok(())
     }
 
-    /// TODO: current implementation reads the entire array and then selects the slice.
-    fn read_array_slice<T: BackendData, S, D>(&self, selection: &[S]) -> Result<Array<T, D>>
+    fn read_array_slice<T, S, D>(&self, selection: &[S]) -> Result<Array<T, D>>
     where
+        T: BackendData,
         S: AsRef<SelectInfoElem>,
         D: Dimension,
     {
         fn read_arr<T, S, D>(dataset: &ZarrDataset, selection: &[S]) -> Result<Array<T, D>>
         where
-            T: ElementOwned + BackendData,
+            T: ElementOwned + 'static,
             S: AsRef<SelectInfoElem>,
             D: Dimension,
         {
-            let sel = SelectInfoBounds::new(&selection, &dataset.shape());
-            if let Some(subset) = to_array_subset(sel) {
+            let selection_bounds = SelectInfoBounds::new(&selection, &dataset.shape());
+            if let Some(subset) = to_array_subset(selection_bounds.clone()) {
                 let arr = dataset
                     .dataset
-                    .retrieve_array_subset_ndarray_sharded_opt(
+                    .retrieve_array_subset_sharded_opt::<ndarray::ArrayD<T>>(
                         &dataset.cache,
                         &subset,
-                        &zarrs::array::codec::CodecOptions::default(),
+                        &CodecOptions::default(),
                     )?
                     .into_dimensionality::<D>()?;
                 Ok(arr)
@@ -403,10 +401,10 @@ impl DatasetOp<Zarr> for ZarrDataset {
                 // Read the entire array and then select the slice.
                 let arr = dataset
                     .dataset
-                    .retrieve_array_subset_ndarray_sharded_opt(
+                    .retrieve_array_subset_sharded_opt::<ndarray::ArrayD<T>>(
                         &dataset.cache,
                         &dataset.dataset.subset_all(),
-                        &zarrs::array::codec::CodecOptions::default(),
+                        &CodecOptions::default(),
                     )?
                     .into_dimensionality::<D>()?;
                 Ok(select(arr.view(), selection))
@@ -445,8 +443,8 @@ impl DatasetOp<Zarr> for ZarrDataset {
             T: Element + 'static,
             S: AsRef<SelectInfoElem>,
         {
-            let selection = SelectInfoBounds::new(&selection, &container.shape());
-            let starts: Vec<_> = selection
+            let selection_bounds = SelectInfoBounds::new(&selection, &container.shape());
+            let starts: Vec<_> = selection_bounds
                 .iter()
                 .flat_map(|x| {
                     if let SelectInfoElemBounds::Slice(slice) = x {
@@ -460,10 +458,10 @@ impl DatasetOp<Zarr> for ZarrDataset {
                     }
                 })
                 .collect();
-            if starts.len() == selection.ndim() {
+            if starts.len() == selection_bounds.ndim() {
                 container
                     .dataset
-                    .store_array_subset_ndarray(starts.as_slice(), arr.into_owned())?;
+                    .store_array_subset_ndarray(starts.as_slice(), &arr.into_owned())?;
             } else {
                 panic!("Not implemented");
             }
@@ -484,6 +482,32 @@ impl DatasetOp<Zarr> for ZarrDataset {
             DynCowArray::Bool(x) => write_array_impl(self, x, selection),
             DynCowArray::String(x) => write_array_impl(self, x, selection),
         }
+    }
+}
+
+impl AttributeOp<Zarr> for ZarrDataset {
+    /// Returns the Root.
+    fn store(&self) -> Result<<Zarr as Backend>::Store> {
+        Ok(self.store.clone())
+    }
+
+    /// Returns the path of the location relative to the file root.
+    fn path(&self) -> PathBuf {
+        self.dataset.path().as_path().to_path_buf()
+    }
+
+    /// Write an attribute at a given location.
+    fn new_json_attr(&mut self, name: &str, value: &Value) -> Result<()> {
+        self.dataset
+            .attributes_mut()
+            .insert(name.to_string(), value.clone());
+        self.dataset.store_metadata()?;
+        Ok(())
+    }
+
+    /// Get an attribute at a given location.
+    fn get_json_attr(&self, name: &str) -> Result<Value> {
+        self.dataset.attributes().get(name).cloned().ok_or_else(|| anyhow::anyhow!("Attribute {} not found", name))
     }
 }
 
@@ -560,67 +584,51 @@ fn to_array_subset(info: SelectInfoBounds) -> Option<ArraySubset> {
     Some(ArraySubset::new_with_ranges(&ranges))
 }
 
-fn new_empty_dataset_helper<T: BackendData, S: ?Sized>(
+fn new_empty_dataset_helper<T: BackendData, S: ?Sized + ReadableWritableListableStorageTraits>(
     store: Arc<S>,
     path: &str,
     shape: &Shape,
     config: WriteConfig,
 ) -> Result<zarrs::array::Array<S>> {
-    let (datatype, fill) = match T::DTYPE {
-        ScalarType::U8 => (DataType::UInt8, 0u8.into()),
-        ScalarType::U16 => (DataType::UInt16, 0u16.into()),
-        ScalarType::U32 => (DataType::UInt32, 0u32.into()),
-        ScalarType::U64 => (DataType::UInt64, 0u64.into()),
-        ScalarType::I8 => (DataType::Int8, 0i8.into()),
-        ScalarType::I16 => (DataType::Int16, 0i16.into()),
-        ScalarType::I32 => (DataType::Int32, 0i32.into()),
-        ScalarType::I64 => (DataType::Int64, 0i64.into()),
-        ScalarType::F32 => (DataType::Float32, zarrs::array::ZARR_NAN_F32.into()),
-        ScalarType::F64 => (DataType::Float64, zarrs::array::ZARR_NAN_F64.into()),
-        ScalarType::Bool => (DataType::Bool, false.into()),
-        ScalarType::String => (DataType::String, "".into()),
+    let (datatype, fill): (zarrs::array::DataType, FillValue) = match T::DTYPE {
+        ScalarType::U8 => (data_type::uint8(), 0u8.into()),
+        ScalarType::U16 => (data_type::uint16(), 0u16.into()),
+        ScalarType::U32 => (data_type::uint32(), 0u32.into()),
+        ScalarType::U64 => (data_type::uint64(), 0u64.into()),
+        ScalarType::I8 => (data_type::int8(), 0i8.into()),
+        ScalarType::I16 => (data_type::int16(), 0i16.into()),
+        ScalarType::I32 => (data_type::int32(), 0i32.into()),
+        ScalarType::I64 => (data_type::int64(), 0i64.into()),
+        ScalarType::F32 => (data_type::float32(), zarrs::array::ZARR_NAN_F32.into()),
+        ScalarType::F64 => (data_type::float64(), zarrs::array::ZARR_NAN_F64.into()),
+        ScalarType::Bool => (data_type::bool(), false.into()),
+        ScalarType::String => (data_type::string(), "".into()),
     };
 
-    let shape = shape.as_ref();
+    let shape_ref = shape.as_ref();
     let chunk_size: Vec<u64> = match config.block_size {
-        Some(s) => s.as_ref().into_iter().map(|x| (*x).max(1) as u64).collect(),
+        Some(ref s) => s.as_ref().into_iter().map(|x| (*x).max(1) as u64).collect(),
         _ => {
-            if shape.len() == 1 {
-                vec![shape[0].min(16384).max(1) as u64]
+            if shape_ref.len() == 1 {
+                vec![shape_ref[0].min(16384).max(1) as u64]
             } else {
-                shape.iter().map(|&x| x.min(128).max(1) as u64).collect()
+                shape_ref.iter().map(|&x| x.min(128).max(1) as u64).collect()
             }
         }
     };
 
-    let mut use_sharding = true;
-    if matches!(datatype, DataType::String) {//|| shape.iter().sum::<usize>() == 0 {
-        // Strings are not sharded, they are stored as a single chunk.
-        use_sharding = false;
-    }
+    let chunk_shape: ChunkShape = chunk_size.iter().map(|&x| NonZeroU64::new(x).unwrap()).collect::<Vec<_>>().into();
 
-    let array = if use_sharding {
-        let shard_shape = chunk_size.iter().map(|&x| x * 8).collect::<Vec<_>>();
-        let mut sharding_codec_builder =
-            ShardingCodecBuilder::new(chunk_size.try_into()?);
-        sharding_codec_builder.bytes_to_bytes_codecs(vec![Arc::new(ZstdCodec::new(7, false))]);
-        zarrs::array::ArrayBuilder::new(
-            shape.iter().map(|x| *x as u64).collect(),
-            datatype,
-            shard_shape.try_into()?,
-            fill,
-        )
-        .array_to_bytes_codec(sharding_codec_builder.build_arc())
-        .build(store, path)?
-    } else {
-        zarrs::array::ArrayBuilder::new(
-            shape.iter().map(|x| *x as u64).collect(),
-            datatype,
-            chunk_size.try_into()?,
-            fill,
-        )
-        .bytes_to_bytes_codecs(vec![Arc::new(ZstdCodec::new(7, false))])
-        .build(store, path)?
+    let builder = zarrs::array::ArrayBuilder::new(
+        shape_ref.iter().map(|x| *x as u64).collect::<Vec<_>>(),
+        chunk_shape.clone(),
+        datatype.clone(),
+        fill,
+    );
+
+    let array = {
+        builder
+            .build(store, path)?
     };
 
     Ok(array)
@@ -710,7 +718,7 @@ mod tests {
         let mut dataset =
             group.new_empty_dataset::<i32>("test", &[20, 50].as_slice().into(), config)?;
 
-        let arr = Array::random((10, 10), Uniform::new(0, 100));
+        let arr = Array::random((10, 10), Uniform::new(0, 100).unwrap());
         dataset.write_array_slice(arr.view().into(), s![5..15, 10..20].as_ref())?;
         assert_eq!(
             arr,
@@ -718,7 +726,7 @@ mod tests {
         );
 
         // Repeatitive writes
-        let arr = Array::random((20, 50), Uniform::new(0, 100));
+        let arr = Array::random((20, 50), Uniform::new(0, 100).unwrap());
         dataset.write_array_slice(arr.view().into(), s![.., ..].as_ref())?;
         dataset.write_array_slice(arr.view().into(), s![.., ..].as_ref())?;
 
