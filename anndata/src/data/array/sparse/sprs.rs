@@ -62,7 +62,6 @@ impl<N: BackendData, T: BackendData + SpIndex + ToPrimitive + num::Integer + num
 
         if is_csr {
             // CSR Selection
-            // 1. Row selection (major axis)
             let indptr_obj = self.indptr();
             let indptr_slice = indptr_obj.as_slice().unwrap();
             let mut new_indptr = Vec::with_capacity(row_bounds.len() + 1);
@@ -70,11 +69,15 @@ impl<N: BackendData, T: BackendData + SpIndex + ToPrimitive + num::Integer + num
             let mut temp_data = Vec::new();
             new_indptr.push(0);
 
-            // Column lookup for minor axis selection (handle duplicates)
-            let mut col_lookup: HashMap<usize, Vec<usize>> = HashMap::new();
+            // Check if minor axis selection is monotonically increasing
+            let is_monotonic = col_bounds.iter().zip(col_bounds.iter().skip(1)).all(|(a, b)| a < b);
+
+            // Use SmallVec to avoid heap allocations for unique indices
+            let mut col_lookup: HashMap<usize, smallvec::SmallVec<[usize; 1]>> = HashMap::new();
             for (i, x) in col_bounds.iter().enumerate() {
                 col_lookup.entry(x).or_default().push(i);
             }
+            
             let mut row_workspace: Vec<(usize, N)> = Vec::new();
 
             for i in 0..row_bounds.len() {
@@ -82,27 +85,39 @@ impl<N: BackendData, T: BackendData + SpIndex + ToPrimitive + num::Integer + num
                 let start = indptr_slice[row_idx] as usize;
                 let end = indptr_slice[row_idx + 1] as usize;
                 
-                row_workspace.clear();
-                for j in start..end {
-                    let col_idx = self.indices()[j].to_usize().unwrap();
-                    if let Some(new_col_indices) = col_lookup.get(&col_idx) {
-                        for &new_col_idx in new_col_indices {
-                            row_workspace.push((new_col_idx, self.data()[j].clone()));
+                if is_monotonic {
+                    // Fast path: skip sorting
+                    for j in start..end {
+                        let col_idx = self.indices()[j].to_usize().unwrap();
+                        if let Some(new_col_indices) = col_lookup.get(&col_idx) {
+                            for &new_col_idx in new_col_indices {
+                                temp_indices.push(SpIndex::from_usize(new_col_idx));
+                                temp_data.push(self.data()[j].clone());
+                            }
                         }
                     }
-                }
-                // Important: sort by column index to maintain canonical form
-                row_workspace.sort_by_key(|x| x.0);
-                for (new_col_idx, val) in &row_workspace {
-                    temp_indices.push(SpIndex::from_usize(*new_col_idx));
-                    temp_data.push(val.clone());
+                } else {
+                    // Slow path: out-of-order or duplicate selection requires sorting
+                    row_workspace.clear();
+                    for j in start..end {
+                        let col_idx = self.indices()[j].to_usize().unwrap();
+                        if let Some(new_col_indices) = col_lookup.get(&col_idx) {
+                            for &new_col_idx in new_col_indices {
+                                row_workspace.push((new_col_idx, self.data()[j].clone()));
+                            }
+                        }
+                    }
+                    row_workspace.sort_by_key(|x| x.0);
+                    for (new_col_idx, val) in &row_workspace {
+                        temp_indices.push(SpIndex::from_usize(*new_col_idx));
+                        temp_data.push(val.clone());
+                    }
                 }
                 new_indptr.push(temp_indices.len() as u64);
             }
             CsMatI::try_new((row_bounds.len(), col_bounds.len()), new_indptr, temp_indices, temp_data).unwrap()
         } else {
             // CSC Selection
-            // 1. Column selection (major axis)
             let indptr_obj = self.indptr();
             let indptr_slice = indptr_obj.as_slice().unwrap();
             let mut new_indptr = Vec::with_capacity(col_bounds.len() + 1);
@@ -110,11 +125,15 @@ impl<N: BackendData, T: BackendData + SpIndex + ToPrimitive + num::Integer + num
             let mut temp_data = Vec::new();
             new_indptr.push(0);
 
-            // Row lookup for minor axis selection (handle duplicates)
-            let mut row_lookup: HashMap<usize, Vec<usize>> = HashMap::new();
+            // Check if minor axis selection is monotonically increasing
+            let is_monotonic = row_bounds.iter().zip(row_bounds.iter().skip(1)).all(|(a, b)| a < b);
+
+            // Use SmallVec to avoid heap allocations for unique indices
+            let mut row_lookup: HashMap<usize, smallvec::SmallVec<[usize; 1]>> = HashMap::new();
             for (i, x) in row_bounds.iter().enumerate() {
                 row_lookup.entry(x).or_default().push(i);
             }
+            
             let mut col_workspace: Vec<(usize, N)> = Vec::new();
 
             for i in 0..col_bounds.len() {
@@ -122,20 +141,33 @@ impl<N: BackendData, T: BackendData + SpIndex + ToPrimitive + num::Integer + num
                 let start = indptr_slice[col_idx] as usize;
                 let end = indptr_slice[col_idx + 1] as usize;
                 
-                col_workspace.clear();
-                for j in start..end {
-                    let row_idx = self.indices()[j].to_usize().unwrap();
-                    if let Some(new_row_indices) = row_lookup.get(&row_idx) {
-                        for &new_row_idx in new_row_indices {
-                            col_workspace.push((new_row_idx, self.data()[j].clone()));
+                if is_monotonic {
+                    // Fast path: skip sorting
+                    for j in start..end {
+                        let row_idx = self.indices()[j].to_usize().unwrap();
+                        if let Some(new_row_indices) = row_lookup.get(&row_idx) {
+                            for &new_row_idx in new_row_indices {
+                                temp_indices.push(SpIndex::from_usize(new_row_idx));
+                                temp_data.push(self.data()[j].clone());
+                            }
                         }
                     }
-                }
-                // Important: sort by row index to maintain canonical form
-                col_workspace.sort_by_key(|x| x.0);
-                for (new_row_idx, val) in &col_workspace {
-                    temp_indices.push(SpIndex::from_usize(*new_row_idx));
-                    temp_data.push(val.clone());
+                } else {
+                    // Slow path: out-of-order or duplicate selection requires sorting
+                    col_workspace.clear();
+                    for j in start..end {
+                        let row_idx = self.indices()[j].to_usize().unwrap();
+                        if let Some(new_row_indices) = row_lookup.get(&row_idx) {
+                            for &new_row_idx in new_row_indices {
+                                col_workspace.push((new_row_idx, self.data()[j].clone()));
+                            }
+                        }
+                    }
+                    col_workspace.sort_by_key(|x| x.0);
+                    for (new_row_idx, val) in &col_workspace {
+                        temp_indices.push(SpIndex::from_usize(*new_row_idx));
+                        temp_data.push(val.clone());
+                    }
                 }
                 new_indptr.push(temp_indices.len() as u64);
             }
