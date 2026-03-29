@@ -126,3 +126,15 @@ fn test_iterator() {
         utils::test_iterator(|| adata_gen());
     })
 }
+
+#[test]
+fn test_take_x() {
+    utils::test_take_x::<H5>();
+    utils::test_take_x::<Zarr>();
+}
+
+#[test]
+fn test_obsm_drain() {
+    utils::test_obsm_drain::<H5>();
+    utils::test_obsm_drain::<Zarr>();
+}

@@ -416,6 +416,10 @@ impl<B: Backend> InnerArrayElem<B> {
         &self.shape
     }
 
+    pub fn is_cached(&self) -> bool {
+        self.element.is_some()
+    }
+
     pub fn enable_cache(&mut self) {
         self.cache_enabled = true;
     }
@@ -437,6 +441,13 @@ impl<B: Backend> InnerArrayElem<B> {
                 }
                 Ok(data)
             }
+        }
+    }
+
+    pub fn take(&mut self) -> Result<ArrayData> {
+        match self.element.take() {
+            Some(data) => Ok(data.try_into()?),
+            None => ArrayData::read(&self.container),
         }
     }
 

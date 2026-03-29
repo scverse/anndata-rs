@@ -4,9 +4,12 @@ pub use common::*;
 use anndata::concat::{concat, JoinType};
 use anndata::data::SelectInfoElem;
 use anndata::{data::CsrNonCanonical, *};
+use std::collections::HashMap;
 use data::ArrayConvert;
 use sprs::{CsMatI, TriMatI};
-use ndarray::Array2;
+use ndarray::{Array, Array2};
+use ndarray_rand::RandomExt;
+use ndarray_rand::rand_distr::Uniform;
 use proptest::prelude::*;
 
 pub fn test_basic<B: Backend>() {
@@ -342,5 +345,50 @@ pub fn test_concat<B: Backend>() {
             let out = AnnData::<B>::new(&output).unwrap();
             concat::<_, _, String>(&adatas, JoinType::Outer, None, None, &out).unwrap();
         })
+    });
+}
+
+pub fn test_take_x<B: Backend>() {
+    with_tmp_dir(|dir| {
+        let file = dir.join("test.h5");
+        let adata = AnnData::<B>::new(&file).unwrap();
+        let x: ArrayData = Array::random((10, 50), Uniform::new(0, 100).unwrap()).into();
+        adata.set_x(&x).unwrap();
+        
+        // Ensure data is cached first
+        adata.x().enable_cache();
+        let _ = adata.x().get::<ArrayData>().unwrap();
+        assert!(adata.x().is_cached());
+        
+        let taken_x: ArrayData = adata.take_x().unwrap().unwrap();
+        assert_eq!(taken_x, x);
+        
+        // Internal cache should now be empty
+        assert!(!adata.x().is_cached());
+        
+        // Data should still be accessible on disk (reading it again works)
+        let read_again = adata.x().get::<ArrayData>().unwrap().unwrap();
+        assert_eq!(read_again, x);
+    });
+}
+
+pub fn test_obsm_drain<B: Backend>() {
+    with_tmp_dir(|dir| {
+        let file = dir.join("test.h5");
+        let adata = AnnData::<B>::new(&file).unwrap();
+        let x: ArrayData = Array::random((10, 50), Uniform::new(0, 100).unwrap()).into();
+        let y: ArrayData = Array::random((10, 20), Uniform::new(0, 100).unwrap()).into();
+        
+        adata.obsm().add("x", &x).unwrap();
+        adata.obsm().add("y", &y).unwrap();
+        
+        let drained: HashMap<String, ArrayData> = adata.obsm().drain().collect();
+        
+        assert_eq!(drained.len(), 2);
+        assert_eq!(drained.get("x").unwrap(), &x);
+        assert_eq!(drained.get("y").unwrap(), &y);
+        
+        // obsm should now be empty in the original object
+        assert!(adata.obsm().keys().is_empty());
     });
 }
