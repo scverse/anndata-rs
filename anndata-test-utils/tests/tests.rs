@@ -19,6 +19,31 @@ fn test_complex_dataframe() {
 }
 
 #[test]
+fn test_mixed_layers() {
+    utils::test_mixed_layers::<H5>();
+}
+
+#[test]
+fn test_pairwise() {
+    utils::test_pairwise::<H5>();
+}
+
+#[test]
+fn test_sparse_edge_cases() {
+    utils::test_sparse_edge_cases::<H5>();
+}
+
+#[test]
+fn test_anndataset_mixed_layouts() {
+    utils::test_anndataset_mixed_layouts::<H5>();
+}
+
+#[test]
+fn test_parallel_reading_stress() {
+    utils::test_parallel_reading_stress::<H5>();
+}
+
+#[test]
 fn test_save() {
     utils::test_save::<H5>();
     //utils::test_save::<Zarr>();

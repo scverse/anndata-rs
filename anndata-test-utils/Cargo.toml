@@ -13,7 +13,7 @@ proptest = "1"
 rand = "0.9"
 ndarray-rand = "0.16"
 nalgebra = { version = "0.34", features = ["rand"] }
-nalgebra-sparse = "0.11"
+sprs = "0.11.4"
 itertools = "0.14"
 
 [dev-dependencies]

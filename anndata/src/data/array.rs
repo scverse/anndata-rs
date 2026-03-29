@@ -88,6 +88,16 @@ impl TryFrom<ArrayData> for DynCsrNonCanonical {
     }
 }
 
+impl<T> TryFrom<ArrayData> for CsrNonCanonical<T>
+where
+    CsrNonCanonical<T>: TryFrom<DynCsrNonCanonical, Error = anyhow::Error>,
+{
+    type Error = anyhow::Error;
+    fn try_from(value: ArrayData) -> Result<Self, Self::Error> {
+        DynCsrNonCanonical::try_from(value)?.try_into()
+    }
+}
+
 impl TryFrom<ArrayData> for DynIndSparseMatrix {
     type Error = anyhow::Error;
     fn try_from(value: ArrayData) -> Result<Self, Self::Error> {
@@ -270,7 +280,10 @@ impl Readable for ArrayData {
                 DynArray::read(container).map(ArrayData::Array)
             }
             DataType::CsrMatrix(_, _) => {
-                DynIndSparseMatrix::read(container).map(ArrayData::CsrMatrix)
+                match DynIndSparseMatrix::read(container) {
+                    Ok(data) => Ok(ArrayData::CsrMatrix(data)),
+                    Err(_) => DynCsrNonCanonical::read(container).map(ArrayData::CsrNonCanonical),
+                }
             }
             DataType::CscMatrix(_, _) => {
                 DynIndSparseMatrix::read(container).map(ArrayData::CscMatrix)

@@ -1,13 +1,12 @@
 use anndata::*;
 
 use anndata::data::index::Interval;
-use anndata::data::{DataFrameIndex, SelectInfoElem, SelectInfoElemBounds};
+use anndata::data::{DataFrameIndex, SelectInfoElem};
 use anyhow::Result;
 use itertools::Itertools;
-use nalgebra::base::DMatrix;
 use nalgebra::{ClosedAddAssign, Scalar};
-use nalgebra_sparse::{coo::CooMatrix, csc::CscMatrix, csr::CsrMatrix};
-use ndarray::{Array, Axis, Dimension, RemoveAxis};
+use sprs::{CsMatI, TriMatI};
+use ndarray::Array;
 use ndarray_rand::rand_distr::uniform::SampleUniform;
 use ndarray_rand::rand_distr::Uniform;
 use ndarray_rand::RandomExt;
@@ -15,7 +14,6 @@ use num::Zero;
 use proptest::prelude::*;
 use proptest::strategy::BoxedStrategy;
 use rand::seq::IteratorRandom;
-use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use tempfile::tempdir;
 
@@ -273,33 +271,51 @@ fn dense_array_strat(shape: &Vec<usize>) -> impl Strategy<Value = ArrayData> {
 }
 
 /// Generate a random compressed sparse row matrix
-pub fn rand_csr<T>(nrow: usize, ncol: usize, nnz: usize, low: T, high: T) -> CsrMatrix<T>
+pub fn rand_csr<T>(nrow: usize, ncol: usize, nnz: usize, low: T, high: T) -> CsMatI<T, i64, u64>
 where
-    T: Scalar + Zero + ClosedAddAssign + SampleUniform,
+    T: Scalar + Zero + ClosedAddAssign + SampleUniform + PartialOrd,
 {
     let mut rng = rand::rng();
     let values: Vec<T> = Array::random((nnz,), Uniform::new(low, high).unwrap()).to_vec();
-    let (row_indices, col_indices) = (0..nrow)
+    let (row_indices, col_indices): (Vec<usize>, Vec<usize>) = (0..nrow)
         .cartesian_product(0..ncol)
         .choose_multiple(&mut rng, nnz)
         .into_iter()
         .unzip();
-    (&CooMatrix::try_from_triplets(nrow, ncol, row_indices, col_indices, values).unwrap()).into()
+    let row_indices = row_indices.into_iter().map(|x| x as i64).collect();
+    let col_indices = col_indices.into_iter().map(|x| x as i64).collect();
+    let coo = TriMatI::from_triplets((nrow, ncol), row_indices, col_indices, values);
+    let csr = coo.to_csr();
+    CsMatI::new(
+        csr.shape(),
+        csr.indptr().as_slice().unwrap().iter().map(|&x: &usize| x as u64).collect(),
+        csr.indices().to_vec(),
+        csr.data().to_vec(),
+    )
 }
 
 /// Generate a random compressed sparse column matrix
-pub fn rand_csc<T>(nrow: usize, ncol: usize, nnz: usize, low: T, high: T) -> CscMatrix<T>
+pub fn rand_csc<T>(nrow: usize, ncol: usize, nnz: usize, low: T, high: T) -> CsMatI<T, i64, u64>
 where
-    T: Scalar + Zero + ClosedAddAssign + SampleUniform,
+    T: Scalar + Zero + ClosedAddAssign + SampleUniform + PartialOrd,
 {
     let mut rng = rand::rng();
     let values: Vec<T> = Array::random((nnz,), Uniform::new(low, high).unwrap()).to_vec();
-    let (row_indices, col_indices) = (0..nrow)
+    let (row_indices, col_indices): (Vec<usize>, Vec<usize>) = (0..nrow)
         .cartesian_product(0..ncol)
         .choose_multiple(&mut rng, nnz)
         .into_iter()
         .unzip();
-    (&CooMatrix::try_from_triplets(nrow, ncol, row_indices, col_indices, values).unwrap()).into()
+    let row_indices = row_indices.into_iter().map(|x| x as i64).collect();
+    let col_indices = col_indices.into_iter().map(|x| x as i64).collect();
+    let coo = TriMatI::from_triplets((nrow, ncol), row_indices, col_indices, values);
+    let csc = coo.to_csc();
+    CsMatI::new_csc(
+        csc.shape(),
+        csc.indptr().as_slice().unwrap().iter().map(|&x: &usize| x as u64).collect(),
+        csc.indices().to_vec(),
+        csc.data().to_vec(),
+    )
 }
 
 pub fn select_strat(n: usize) -> BoxedStrategy<SelectInfoElem> {
@@ -363,176 +379,16 @@ pub fn anndata_eq<B1: Backend, B2: Backend>(
 ////////////////////////////////////////////////////////////////////////////////
 
 pub fn array_select(arr: &ArrayData, select: &[SelectInfoElem]) -> ArrayData {
-    match arr {
-        ArrayData::Array(data::DynArray::Bool(arr)) => dense_array_select(arr, select).into(),
-        ArrayData::Array(data::DynArray::U8(arr)) => dense_array_select(arr, select).into(),
-        ArrayData::Array(data::DynArray::U16(arr)) => dense_array_select(arr, select).into(),
-        ArrayData::Array(data::DynArray::U32(arr)) => dense_array_select(arr, select).into(),
-        ArrayData::Array(data::DynArray::U64(arr)) => dense_array_select(arr, select).into(),
-        ArrayData::Array(data::DynArray::I8(arr)) => dense_array_select(arr, select).into(),
-        ArrayData::Array(data::DynArray::I16(arr)) => dense_array_select(arr, select).into(),
-        ArrayData::Array(data::DynArray::I32(arr)) => dense_array_select(arr, select).into(),
-        ArrayData::Array(data::DynArray::I64(arr)) => dense_array_select(arr, select).into(),
-        ArrayData::Array(data::DynArray::F32(arr)) => dense_array_select(arr, select).into(),
-        ArrayData::Array(data::DynArray::F64(arr)) => dense_array_select(arr, select).into(),
-        ArrayData::Array(data::DynArray::String(arr)) => dense_array_select(arr, select).into(),
-        ArrayData::CsrMatrix(data::DynCsrMatrix::U8(arr)) => csr_select(arr, select).into(),
-        ArrayData::CsrMatrix(data::DynCsrMatrix::U16(arr)) => csr_select(arr, select).into(),
-        ArrayData::CsrMatrix(data::DynCsrMatrix::U32(arr)) => csr_select(arr, select).into(),
-        ArrayData::CsrMatrix(data::DynCsrMatrix::U64(arr)) => csr_select(arr, select).into(),
-        ArrayData::CsrMatrix(data::DynCsrMatrix::I8(arr)) => csr_select(arr, select).into(),
-        ArrayData::CsrMatrix(data::DynCsrMatrix::I16(arr)) => csr_select(arr, select).into(),
-        ArrayData::CsrMatrix(data::DynCsrMatrix::I32(arr)) => csr_select(arr, select).into(),
-        ArrayData::CsrMatrix(data::DynCsrMatrix::I64(arr)) => csr_select(arr, select).into(),
-        ArrayData::CsrMatrix(data::DynCsrMatrix::F32(arr)) => csr_select(arr, select).into(),
-        ArrayData::CsrMatrix(data::DynCsrMatrix::F64(arr)) => csr_select(arr, select).into(),
-        ArrayData::CscMatrix(data::DynCscMatrix::U8(arr)) => csc_select(arr, select).into(),
-        ArrayData::CscMatrix(data::DynCscMatrix::U16(arr)) => csc_select(arr, select).into(),
-        ArrayData::CscMatrix(data::DynCscMatrix::U32(arr)) => csc_select(arr, select).into(),
-        ArrayData::CscMatrix(data::DynCscMatrix::U64(arr)) => csc_select(arr, select).into(),
-        ArrayData::CscMatrix(data::DynCscMatrix::I8(arr)) => csc_select(arr, select).into(),
-        ArrayData::CscMatrix(data::DynCscMatrix::I16(arr)) => csc_select(arr, select).into(),
-        ArrayData::CscMatrix(data::DynCscMatrix::I32(arr)) => csc_select(arr, select).into(),
-        ArrayData::CscMatrix(data::DynCscMatrix::I64(arr)) => csc_select(arr, select).into(),
-        ArrayData::CscMatrix(data::DynCscMatrix::F32(arr)) => csc_select(arr, select).into(),
-        ArrayData::CscMatrix(data::DynCscMatrix::F64(arr)) => csc_select(arr, select).into(),
-        _ => todo!(),
-    }
+    arr.select(select)
 }
 
 pub fn array_chunks(
     arr: &ArrayData,
     chunk_size: usize,
 ) -> Box<dyn Iterator<Item = ArrayData> + '_> {
-    match arr {
-        ArrayData::Array(data::DynArray::Bool(arr)) => {
-            Box::new(dense_array_chunks(arr, chunk_size).map(|x| x.into()))
-        }
-        ArrayData::Array(data::DynArray::U8(arr)) => {
-            Box::new(dense_array_chunks(arr, chunk_size).map(|x| x.into()))
-        }
-        ArrayData::Array(data::DynArray::U16(arr)) => {
-            Box::new(dense_array_chunks(arr, chunk_size).map(|x| x.into()))
-        }
-        ArrayData::Array(data::DynArray::U32(arr)) => {
-            Box::new(dense_array_chunks(arr, chunk_size).map(|x| x.into()))
-        }
-        ArrayData::Array(data::DynArray::U64(arr)) => {
-            Box::new(dense_array_chunks(arr, chunk_size).map(|x| x.into()))
-        }
-        ArrayData::Array(data::DynArray::I8(arr)) => {
-            Box::new(dense_array_chunks(arr, chunk_size).map(|x| x.into()))
-        }
-        ArrayData::Array(data::DynArray::I16(arr)) => {
-            Box::new(dense_array_chunks(arr, chunk_size).map(|x| x.into()))
-        }
-        ArrayData::Array(data::DynArray::I32(arr)) => {
-            Box::new(dense_array_chunks(arr, chunk_size).map(|x| x.into()))
-        }
-        ArrayData::Array(data::DynArray::I64(arr)) => {
-            Box::new(dense_array_chunks(arr, chunk_size).map(|x| x.into()))
-        }
-        ArrayData::Array(data::DynArray::F32(arr)) => {
-            Box::new(dense_array_chunks(arr, chunk_size).map(|x| x.into()))
-        }
-        ArrayData::Array(data::DynArray::F64(arr)) => {
-            Box::new(dense_array_chunks(arr, chunk_size).map(|x| x.into()))
-        }
-        ArrayData::Array(data::DynArray::String(arr)) => {
-            Box::new(dense_array_chunks(arr, chunk_size).map(|x| x.into()))
-        }
-        ArrayData::CsrMatrix(data::DynCsrMatrix::U8(arr)) => {
-            Box::new(csr_chunks(arr, chunk_size).map(|x| x.into()))
-        }
-        ArrayData::CsrMatrix(data::DynCsrMatrix::U16(arr)) => {
-            Box::new(csr_chunks(arr, chunk_size).map(|x| x.into()))
-        }
-        ArrayData::CsrMatrix(data::DynCsrMatrix::U32(arr)) => {
-            Box::new(csr_chunks(arr, chunk_size).map(|x| x.into()))
-        }
-        ArrayData::CsrMatrix(data::DynCsrMatrix::U64(arr)) => {
-            Box::new(csr_chunks(arr, chunk_size).map(|x| x.into()))
-        }
-        ArrayData::CsrMatrix(data::DynCsrMatrix::I8(arr)) => {
-            Box::new(csr_chunks(arr, chunk_size).map(|x| x.into()))
-        }
-        ArrayData::CsrMatrix(data::DynCsrMatrix::I16(arr)) => {
-            Box::new(csr_chunks(arr, chunk_size).map(|x| x.into()))
-        }
-        ArrayData::CsrMatrix(data::DynCsrMatrix::I32(arr)) => {
-            Box::new(csr_chunks(arr, chunk_size).map(|x| x.into()))
-        }
-        ArrayData::CsrMatrix(data::DynCsrMatrix::I64(arr)) => {
-            Box::new(csr_chunks(arr, chunk_size).map(|x| x.into()))
-        }
-        ArrayData::CsrMatrix(data::DynCsrMatrix::F32(arr)) => {
-            Box::new(csr_chunks(arr, chunk_size).map(|x| x.into()))
-        }
-        ArrayData::CsrMatrix(data::DynCsrMatrix::F64(arr)) => {
-            Box::new(csr_chunks(arr, chunk_size).map(|x| x.into()))
-        }
-        _ => todo!(),
-    }
-}
-
-fn csr_select<T: Scalar + Zero + Copy>(
-    csr: &CsrMatrix<T>,
-    select: &[SelectInfoElem],
-) -> CsrMatrix<T> {
-    let i = SelectInfoElemBounds::new(&select[0], csr.nrows()).to_vec();
-    let j = SelectInfoElemBounds::new(&select[1], csr.ncols()).to_vec();
-    let mut dm = DMatrix::<T>::zeros(csr.nrows(), csr.ncols());
-    csr.triplet_iter().for_each(|(r, c, v)| dm[(r, c)] = *v);
-    CsrMatrix::from(&dm.select_rows(&i).select_columns(&j))
-}
-
-fn csr_chunks<T>(csr: &CsrMatrix<T>, chunk_size: usize) -> impl Iterator<Item = CsrMatrix<T>> + '_
-where
-    T: Zero + Clone + Scalar + ClosedAddAssign,
-{
-    let nrow = csr.nrows();
-    let mat: DMatrix<T> = DMatrix::from(csr);
-    (0..nrow).into_iter().step_by(chunk_size).map(move |i| {
+    let nrow = arr.shape()[0];
+    Box::new((0..nrow).step_by(chunk_size).map(move |i| {
         let j = (i + chunk_size).min(nrow);
-        let m = mat.index((i..j, ..));
-        CsrMatrix::from(&m)
-    })
-}
-
-fn csc_select<T: Scalar + Zero + Copy>(
-    csc: &CscMatrix<T>,
-    select: &[SelectInfoElem],
-) -> CscMatrix<T> {
-    let i = SelectInfoElemBounds::new(&select[0], csc.nrows()).to_vec();
-    let j = SelectInfoElemBounds::new(&select[1], csc.ncols()).to_vec();
-    let mut dm = DMatrix::<T>::zeros(csc.nrows(), csc.ncols());
-    csc.triplet_iter().for_each(|(r, c, v)| dm[(r, c)] = *v);
-    CscMatrix::from(&dm.select_rows(&i).select_columns(&j))
-}
-
-fn dense_array_select<T: Clone, D: Dimension + RemoveAxis>(
-    array: &Array<T, D>,
-    select: &[SelectInfoElem],
-) -> Array<T, D> {
-    let mut result = array.clone();
-    array.shape().into_iter().enumerate().for_each(|(i, &dim)| {
-        let idx = SelectInfoElemBounds::new(&select[i], dim).to_vec();
-        result = result.deref().select(Axis(i), idx.as_slice());
-    });
-    result
-}
-
-fn dense_array_chunks<T, D>(
-    array: &Array<T, D>,
-    chunk_size: usize,
-) -> impl Iterator<Item = Array<T, D>> + '_
-where
-    T: Clone,
-    D: Dimension + RemoveAxis,
-{
-    let nrow = array.shape()[0];
-    (0..nrow).into_iter().step_by(chunk_size).map(move |i| {
-        let j = (i + chunk_size).min(nrow);
-        array.deref().select(Axis(0), (i..j).collect::<Vec<_>>().as_slice())
-    })
+        arr.select(&[SelectInfoElem::from(i..j), SelectInfoElem::full()])
+    }))
 }

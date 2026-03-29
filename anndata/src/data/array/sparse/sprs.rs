@@ -348,26 +348,29 @@ impl<N: BackendData, T: BackendData + SpIndex + ToPrimitive + num::Integer + num
         let lo = indptr[0];
         indptr.iter_mut().for_each(|x| *x -= lo);
 
-        match data_type {
+        let res = match data_type {
             DataType::CsrMatrix(_, _) => CsMatI::try_new(
                 (indptr.len() - 1, Self::get_shape(container)?[1]),
                 indptr,
                 indices,
                 data,
             )
-            .map_err(|(_, _, _, e)| anyhow::anyhow!("Cannot read csr matrix {}", e)),
+            .map_err(|(_, _, _, e)| anyhow::anyhow!("Cannot read csr matrix {}", e))?
+            .select_axis(1, info[1].as_ref()),
             DataType::CscMatrix(_, _) => CsMatI::try_new_csc(
                 (Self::get_shape(container)?[0], indptr.len() - 1),
                 indptr,
                 indices,
                 data,
             )
-            .map_err(|(_, _, _, e)| anyhow::anyhow!("Cannot read csc matrix {}", e)),
+            .map_err(|(_, _, _, e)| anyhow::anyhow!("Cannot read csc matrix {}", e))?
+            .select_axis(0, info[0].as_ref()),
             _ => bail!(
                 "cannot read sparse matrix from container with data type {:?}",
                 data_type
             ),
-        }
+        };
+        Ok(res)
     }
 }
 
