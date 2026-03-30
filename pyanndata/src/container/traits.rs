@@ -63,6 +63,7 @@ pub trait ArrayElemTrait: Send + Sync {
     fn disable_cache(&self);
     fn show(&self) -> String;
     fn get(&self, subscript: &Bound<'_, PyAny>) -> Result<PyArrayData>;
+    fn take(&self) -> Result<PyArrayData>;
     fn shape(&self) -> Vec<usize>;
     fn chunk(
         &self,
@@ -87,6 +88,10 @@ impl<B: Backend + 'static> ArrayElemTrait for ArrayElem<B> {
         self.inner()
             .select::<_>(slice.as_ref())
             .map(|x| x.into())
+    }
+
+    fn take(&self) -> Result<PyArrayData> {
+        self.inner().take().map(|x| x.into())
     }
 
     fn show(&self) -> String {
@@ -133,6 +138,13 @@ impl<B: Backend + 'static> ArrayElemTrait for StackedArrayElem<B> {
         let slice = to_select_info(subscript, self.deref().shape().as_ref().unwrap())?;
         self.select::<ArrayData, _>(slice.as_ref())
             .map(|x| x.unwrap().into())
+    }
+
+    fn take(&self) -> Result<PyArrayData> {
+        self.deref()
+            .data::<ArrayData>()?
+            .context("StackedArrayElem is empty")
+            .map(|x| x.into())
     }
 
     fn show(&self) -> String {

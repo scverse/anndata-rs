@@ -15,3 +15,7 @@ _autosummary
 
 *.egg-info
 __pycache__
+
+tests/data
+data
+test_zarr/*

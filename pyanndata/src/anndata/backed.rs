@@ -294,6 +294,12 @@ impl AnnData {
     pub fn get_x(&self) -> Option<PyArrayElem> {
         self.0.get_x()
     }
+
+    #[pyo3(text_signature = "($self)")]
+    pub fn take_x(&self) -> Result<Option<PyArrayData>> {
+        self.0.take_x()
+    }
+
     #[setter(X)]
     pub fn set_x(&self, data: Option<PyArrayData>) -> Result<()> {
         self.0.set_x(data)
@@ -663,6 +669,7 @@ trait AnnDataTrait: Send + Sync + Downcast {
     fn var_ix(&self, index: Bound<'_, PyAny>) -> Result<Vec<usize>>;
 
     fn get_x(&self) -> Option<PyArrayElem>;
+    fn take_x(&self) -> Result<Option<PyArrayData>>;
     fn get_obs(&self) -> Option<PyDataFrameElem>;
     fn get_var(&self) -> Option<PyDataFrameElem>;
     fn get_uns(&self) -> Option<PyElemCollection>;
@@ -798,6 +805,10 @@ impl<B: Backend> AnnDataTrait for InnerAnnData<B> {
         } else {
             Some(x.clone().into())
         }
+    }
+
+    fn take_x(&self) -> Result<Option<PyArrayData>> {
+        self.adata.inner().take_x::<ArrayData>().map(|x| x.map(Into::into))
     }
     fn get_obs(&self) -> Option<PyDataFrameElem> {
         let inner = self.adata.inner();
