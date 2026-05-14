@@ -13,12 +13,9 @@ use std::{
 };
 use std::{sync::Arc, vec};
 use zarrs::array::{
-    codec::bytes_to_bytes::zstd::ZstdCodec,
-    data_type::{
-        BoolDataType, Float32DataType, Float64DataType, Int16DataType, Int32DataType,
-        Int64DataType, Int8DataType, StringDataType, UInt16DataType, UInt32DataType,
-        UInt64DataType, UInt8DataType,
-    },
+    ZARR_NAN_F32, ZARR_NAN_F64, codec::bytes_to_bytes::zstd::ZstdCodec, data_type::{
+        BoolDataType, Float32DataType, Float64DataType, Int8DataType, Int16DataType, Int32DataType, Int64DataType, StringDataType, UInt8DataType, UInt16DataType, UInt32DataType, UInt64DataType
+    }
 };
 use zarrs::filesystem::FilesystemStore;
 use zarrs::group::Group;
@@ -597,8 +594,8 @@ fn new_empty_dataset_helper<T: BackendData, S: ?Sized>(
         ScalarType::I16 => (data_type::int16(), FillValue::from(0i16)),
         ScalarType::I32 => (data_type::int32(), FillValue::from(0i32)),
         ScalarType::I64 => (data_type::int64(), FillValue::from(0i64)),
-        ScalarType::F32 => (data_type::float32(), FillValue::from(0f32)),
-        ScalarType::F64 => (data_type::float64(), FillValue::from(0f64)),
+        ScalarType::F32 => (data_type::float32(), FillValue::from(ZARR_NAN_F32)),
+        ScalarType::F64 => (data_type::float64(), FillValue::from(ZARR_NAN_F64)),
         ScalarType::Bool => (data_type::bool(), FillValue::from(false)),
         ScalarType::String => (data_type::string(), FillValue::from("")),
     };
