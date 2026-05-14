@@ -414,7 +414,7 @@ impl DatasetOp<Zarr> for ZarrDataset {
             if let Some(subset) = to_array_subset(sel) {
                 let arr = dataset
                     .dataset
-                    .retrieve_array_subset_ndarray_sharded_opt(
+                    .retrieve_array_subset_sharded_opt::<ndarray::ArrayD<T>>(
                         &dataset.cache,
                         &subset,
                         &zarrs::array::CodecOptions::default(),
@@ -425,7 +425,7 @@ impl DatasetOp<Zarr> for ZarrDataset {
                 // Read the entire array and then select the slice.
                 let arr = dataset
                     .dataset
-                    .retrieve_array_subset_ndarray_sharded_opt(
+                    .retrieve_array_subset_sharded_opt::<ndarray::ArrayD<T>>(
                         &dataset.cache,
                         &dataset.dataset.subset_all(),
                         &zarrs::array::CodecOptions::default(),
@@ -485,7 +485,7 @@ impl DatasetOp<Zarr> for ZarrDataset {
             if starts.len() == selection.ndim() {
                 container
                     .dataset
-                    .store_array_subset_ndarray(starts.as_slice(), &arr)?;
+                    .store_array_subset(&ArraySubset::new_with_start_shape(starts, arr.shape().iter().map(|x| *x as u64).collect())?, arr.to_owned())?;
             } else {
                 panic!("Not implemented");
             }
