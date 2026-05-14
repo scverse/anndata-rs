@@ -392,6 +392,7 @@ impl DatasetOp<Zarr> for ZarrDataset {
         self.dataset
             .set_shape(shape.as_ref().iter().map(|x| *x as u64).collect())?;
         self.dataset.store_metadata()?;
+        self.cache.clear();
         Ok(())
     }
 
