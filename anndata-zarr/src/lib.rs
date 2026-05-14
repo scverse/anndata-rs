@@ -481,6 +481,7 @@ impl DatasetOp<Zarr> for ZarrDataset {
                 })
                 .collect();
             if starts.len() == selection.ndim() {
+                container.cache.clear();
                 container
                     .dataset
                     .store_array_subset(&ArraySubset::new_with_start_shape(starts, arr.shape().iter().map(|x| *x as u64).collect())?, arr.to_owned())?;
@@ -740,7 +741,14 @@ mod tests {
         let mut dataset =
             group.new_empty_dataset::<i32>("test", &[20, 50].as_slice().into(), config)?;
 
-        let arr = Array::random((10, 10), Uniform::new(0, 100).unwrap());
+        // Repeated writes force cache clearance
+        let arr: ndarray::prelude::ArrayBase<ndarray::OwnedRepr<i32>, ndarray::prelude::Dim<[usize; 2]>, i32> = Array::random((10, 10), Uniform::new(0, 100).unwrap());
+        dataset.write_array_slice(arr.view().into(), s![5..15, 10..20].as_ref())?;
+        assert_eq!(
+            arr,
+            dataset.read_array_slice::<i32, _, _>(s![5..15, 10..20].as_ref())?
+        );
+        let arr: ndarray::prelude::ArrayBase<ndarray::OwnedRepr<i32>, ndarray::prelude::Dim<[usize; 2]>, i32> = Array::random((10, 10), Uniform::new(0, 100).unwrap());
         dataset.write_array_slice(arr.view().into(), s![5..15, 10..20].as_ref())?;
         assert_eq!(
             arr,
