@@ -743,13 +743,13 @@ mod tests {
             group.new_empty_dataset::<i32>("test", &[20, 50].as_slice().into(), config)?;
 
         // Repeated writes force cache clearance
-        let arr: ndarray::prelude::ArrayBase<ndarray::OwnedRepr<i32>, ndarray::prelude::Dim<[usize; 2]>, i32> = Array::random((10, 10), Uniform::new(0, 100).unwrap());
+        let arr: ndarray::Array2<i32> = Array::random((10, 10), Uniform::new(0, 100).unwrap());
         dataset.write_array_slice(arr.view().into(), s![5..15, 10..20].as_ref())?;
         assert_eq!(
             arr,
             dataset.read_array_slice::<i32, _, _>(s![5..15, 10..20].as_ref())?
         );
-        let arr: ndarray::prelude::ArrayBase<ndarray::OwnedRepr<i32>, ndarray::prelude::Dim<[usize; 2]>, i32> = Array::random((10, 10), Uniform::new(0, 100).unwrap());
+        let arr: ndarray::Array2<i32> = Array::random((10, 10), Uniform::new(0, 100).unwrap());
         dataset.write_array_slice(arr.view().into(), s![5..15, 10..20].as_ref())?;
         assert_eq!(
             arr,
