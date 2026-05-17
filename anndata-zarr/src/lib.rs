@@ -392,8 +392,9 @@ impl DatasetOp<Zarr> for ZarrDataset {
         self.dataset
             .set_shape(shape.as_ref().iter().map(|x| *x as u64).collect())?;
         self.dataset.store_metadata()?;
-        // TODO: is this necessary? I think as long as no data is written, it should be fine to not clear.
-        // self.cache.clear();
+        // The intenion of the caching API is no mutation after creation:
+        // https://ossci.zulipchat.com/#narrow/channel/423692-Zarr/topic/zarrs.20.60ArrayShardedReadableExtCache.60.20.2B.20.60set_shape.60/with/595519775
+        self.cache.clear();
         Ok(())
     }
 
