@@ -583,6 +583,24 @@ fn to_array_subset(info: SelectInfoBounds) -> Option<ArraySubset> {
     Some(ArraySubset::new_with_ranges(&ranges))
 }
 
+/// Compute the shard size, at most 1GB uncompressed.
+/// If that is too big, pick the largest shard shape that will fit the array, divisible by chunk shape.
+fn compute_shard_shape(
+    chunk_size: &[u64],
+    element_size: u64,
+    shape: &[u64],
+) -> Vec<u64> {
+    const TARGET_SHARD_SIZE: u64 = 1_000_000_000;
+    let chunk_elements: u64 = chunk_size.iter().product();
+    let multiplier = (TARGET_SHARD_SIZE / (chunk_elements * element_size)).max(1);
+    
+    chunk_size
+        .iter()
+        .zip(shape.iter())
+        .map(|(&chunk, &array_dim)| ((array_dim.max(1) / chunk) * chunk).min(chunk * multiplier))
+        .collect()
+}
+
 fn new_empty_dataset_helper<T: BackendData, S: ?Sized>(
     store: Arc<S>,
     path: &str,
@@ -628,7 +646,17 @@ fn new_empty_dataset_helper<T: BackendData, S: ?Sized>(
     }
 
     let array = if use_sharding {
-        let shard_shape = chunk_size.iter().map(|&x| x * 8).collect::<Vec<_>>();
+        let element_size = u64::try_from(datatype.fixed_size().unwrap()).unwrap();
+        let shard_shape = compute_shard_shape(
+            &chunk_size,
+            element_size,
+            shape
+                .iter()
+                .map(|e| u64::try_from(*e).unwrap())
+                .collect::<Vec<_>>()
+                .as_slice(),
+        );
+
         let mut sharding_codec_builder = ShardingCodecBuilder::new(
             chunk_size
                 .iter()
@@ -669,6 +697,7 @@ mod tests {
     use ndarray_rand::RandomExt;
     use std::path::PathBuf;
     use tempfile::tempdir;
+    use zarrs::array::ArrayShardedExt;
 
     pub fn with_tmp_dir<T, F: FnMut(PathBuf) -> T>(mut func: F) -> T {
         let dir = tempdir().unwrap();
@@ -733,70 +762,123 @@ mod tests {
 
     #[test]
     fn test_write_slice() -> Result<()> {
-        let store = Zarr::new("test_zarr")?;
-        let config = WriteConfig {
-            block_size: Some(vec![2, 2].as_slice().into()),
-            ..Default::default()
-        };
+        with_tmp_path(|path| {
+            let store = Zarr::new(path)?;
+            let config = WriteConfig {
+                block_size: Some(vec![2, 2].as_slice().into()),
+                ..Default::default()
+            };
 
-        let group = store.new_group("group")?;
-        let mut dataset =
-            group.new_empty_dataset::<i32>("test", &[20, 50].as_slice().into(), config)?;
+            let group = store.new_group("group")?;
+            let mut dataset =
+                group.new_empty_dataset::<i32>("test", &[20, 50].as_slice().into(), config)?;
 
-        // Repeated writes force cache clearance
-        let arr: ndarray::Array2<i32> = Array::random((10, 10), Uniform::new(0, 100).unwrap());
-        dataset.write_array_slice(arr.view().into(), s![5..15, 10..20].as_ref())?;
-        assert_eq!(
-            arr,
-            dataset.read_array_slice::<i32, _, _>(s![5..15, 10..20].as_ref())?
-        );
-        let arr: ndarray::Array2<i32> = Array::random((10, 10), Uniform::new(0, 100).unwrap());
-        dataset.write_array_slice(arr.view().into(), s![5..15, 10..20].as_ref())?;
-        assert_eq!(
-            arr,
-            dataset.read_array_slice::<i32, _, _>(s![5..15, 10..20].as_ref())?
-        );
+            // Repeated writes force cache clearance
+            let arr: ndarray::Array2<i32> = Array::random((10, 10), Uniform::new(0, 100).unwrap());
+            dataset.write_array_slice(arr.view().into(), s![5..15, 10..20].as_ref())?;
+            assert_eq!(
+                arr,
+                dataset.read_array_slice::<i32, _, _>(s![5..15, 10..20].as_ref())?
+            );
+            let arr: ndarray::Array2<i32> = Array::random((10, 10), Uniform::new(0, 100).unwrap());
+            dataset.write_array_slice(arr.view().into(), s![5..15, 10..20].as_ref())?;
+            assert_eq!(
+                arr,
+                dataset.read_array_slice::<i32, _, _>(s![5..15, 10..20].as_ref())?
+            );
 
-        // Repeatitive writes
-        let arr = Array::random((20, 50), Uniform::new(0, 100).unwrap());
-        dataset.write_array_slice(arr.view().into(), s![.., ..].as_ref())?;
-        dataset.write_array_slice(arr.view().into(), s![.., ..].as_ref())?;
+            // Repeatitive writes
+            let arr = Array::random((20, 50), Uniform::new(0, 100).unwrap());
+            dataset.write_array_slice(arr.view().into(), s![.., ..].as_ref())?;
+            dataset.write_array_slice(arr.view().into(), s![.., ..].as_ref())?;
 
-        // Out-of-bounds writes should fail
-        //assert!(dataset.write_array_slice(&arr, s![20..40, ..].as_ref()).is_err());
+            // Out-of-bounds writes should fail
+            //assert!(dataset.write_array_slice(&arr, s![20..40, ..].as_ref()).is_err());
 
-        // Reshape and write
-        dataset.reshape(&[40, 50].as_slice().into())?;
-        dataset.write_array_slice(arr.view().into(), s![20..40, ..].as_ref())?;
+            // Reshape and write
+            dataset.reshape(&[40, 50].as_slice().into())?;
+            dataset.write_array_slice(arr.view().into(), s![20..40, ..].as_ref())?;
 
-        // Read back is OK
-        let merged = concatenate(Axis(0), &[arr.view(), arr.view()])?;
-        assert_eq!(merged, dataset.read_array::<i32, _>()?);
+            // Read back is OK
+            let merged = concatenate(Axis(0), &[arr.view(), arr.view()])?;
+            assert_eq!(merged, dataset.read_array::<i32, _>()?);
 
-        // Shrinking is OK
-        dataset.reshape(&[20, 50].as_slice().into())?;
-        assert_eq!(arr, dataset.read_array::<i32, _>()?);
+            // Shrinking is OK
+            dataset.reshape(&[20, 50].as_slice().into())?;
+            assert_eq!(arr, dataset.read_array::<i32, _>()?);
 
-        dataset.reshape(&[50, 50].as_slice().into())?;
-        assert_eq!(
-            [50, 50],
-            store
-                .open_group("group")?
-                .open_dataset("test")?
-                .shape()
-                .as_ref(),
-        );
+            dataset.reshape(&[50, 50].as_slice().into())?;
+            assert_eq!(
+                [50, 50],
+                store
+                    .open_group("group")?
+                    .open_dataset("test")?
+                    .shape()
+                    .as_ref(),
+            );
 
-        assert_eq!(vec!["group"], store.list()?);
-        assert_eq!(vec!["test"], group.list()?);
+            assert_eq!(vec!["group"], store.list()?);
+            assert_eq!(vec!["test"], group.list()?);
 
-        assert!(store.exists("group")?);
-        assert!(group.exists("test")?);
+            assert!(store.exists("group")?);
+            assert!(group.exists("test")?);
 
-        store.delete("group")?;
-        assert!(!store.exists("group")?);
-        assert!(!group.exists("test")?);
+            store.delete("group")?;
+            assert!(!store.exists("group")?);
+            assert!(!group.exists("test")?);
 
-        Ok(())
+            Ok(())
+        })
+    }
+
+    #[test]
+    fn test_sharding_even() -> Result<()> {
+        with_tmp_path(|path| {
+            let store = Zarr::new(path)?;
+            let config = WriteConfig {
+                block_size: Some(vec![2, 2].as_slice().into()),
+                ..Default::default()
+            };
+
+            let group = store.new_group("group")?;
+            let dataset =
+                group.new_empty_dataset::<i32>("test", &[50, 50].as_slice().into(), config)?;
+            assert!(dataset.dataset.is_sharded());
+
+            // At (50, 50), the shard shape is the same as the shard size because the chunking is (2, 2) so this fits perfectly into the shard.
+            // And each shard at (50, 50) is under a GB.
+            // So the chunk grid shape will be (1, 1) i.e., number of chunks per axis.
+            let arr: ndarray::Array2<i32> = Array::from_shape_vec(vec![50, 50], vec![0; 50 * 50])
+                .unwrap()
+                .into_dimensionality::<ndarray::Ix2>()
+                .unwrap();
+            dataset.write_array_slice(arr.view().into(), s![.., ..].as_ref())?;
+            assert_eq!(dataset.dataset.chunk_grid_shape().to_vec(), vec![1, 1]);
+            Ok(())
+        })
+    }
+
+    #[test]
+    fn test_sharding_uneven() -> Result<()> {
+        with_tmp_path(|path| {
+            let store = Zarr::new(path)?;
+            let config = WriteConfig {
+                block_size: Some(vec![128, 128].as_slice().into()),
+                ..Default::default()
+            };
+
+            let group = store.new_group("group")?;
+            let dataset =
+                group.new_empty_dataset::<i32>("test", &[55, 55].as_slice().into(), config)?;
+            assert!(dataset.dataset.is_sharded());
+            // At (55, 55) shape with (2, 2) chunks, the chunk grid shape is (2, 2) i.e., shard shape of (54, 54) with a remainder (1, 1).
+            let arr: ndarray::Array2<i32> = Array::from_shape_vec(vec![55, 55], vec![0; 55 * 55])
+                .unwrap()
+                .into_dimensionality::<ndarray::Ix2>()
+                .unwrap();
+            dataset.write_array_slice(arr.view().into(), s![.., ..].as_ref())?;
+            assert_eq!(dataset.dataset.chunk_grid_shape().to_vec(), vec![2, 2]);
+            Ok(())
+        })
     }
 }
