@@ -777,13 +777,13 @@ mod tests {
                 group.new_empty_dataset::<i32>("test", &[20, 50].as_slice().into(), config)?;
 
             // Repeated writes force cache clearance
-            let arr: ndarray::Array2<i32> = Array::random((10, 10), Uniform::new(0, 100).unwrap());
+            let arr = Array::random((10, 10), Uniform::new(0, 100).unwrap());
             dataset.write_array_slice(arr.view().into(), s![5..15, 10..20].as_ref())?;
             assert_eq!(
                 arr,
                 dataset.read_array_slice::<i32, _, _>(s![5..15, 10..20].as_ref())?
             );
-            let arr: ndarray::Array2<i32> = Array::random((10, 10), Uniform::new(0, 100).unwrap());
+            let arr = Array::random((10, 10), Uniform::new(0, 100).unwrap());
             dataset.write_array_slice(arr.view().into(), s![5..15, 10..20].as_ref())?;
             assert_eq!(
                 arr,
@@ -851,7 +851,7 @@ mod tests {
             // At (50, 50), the shard shape is the same as the shard size because the chunking is (2, 2) so this fits perfectly into the shard.
             // And each shard at (50, 50) is under a GB.
             // So the chunk grid shape will be (1, 1) i.e., number of chunks per axis.
-            let arr: ndarray::Array2<i32> = Array::from_shape_vec(vec![50, 50], vec![0; 50 * 50])
+            let arr = Array::from_shape_vec(vec![50, 50], vec![0; 50 * 50])
                 .unwrap()
                 .into_dimensionality::<ndarray::Ix2>()
                 .unwrap();
@@ -875,7 +875,7 @@ mod tests {
                 group.new_empty_dataset::<i32>("test", &[55, 55].as_slice().into(), config)?;
             assert!(dataset.dataset.is_sharded());
             // At (55, 55) shape with (2, 2) chunks, the chunk grid shape is (2, 2) i.e., shard shape of (54, 54) with a remainder (1, 1).
-            let arr: ndarray::Array2<i32> = Array::from_shape_vec(vec![55, 55], vec![0; 55 * 55])
+            let arr = Array::from_shape_vec(vec![55, 55], vec![0; 55 * 55])
                 .unwrap()
                 .into_dimensionality::<ndarray::Ix2>()
                 .unwrap();
