@@ -288,9 +288,7 @@ impl<T: BackendData> Writable for CsrMatrix<T> {
                 get_default_write_config(),
             )?;
         } else {
-            panic!(
-                "The number of columns ({num_cols}) is too large to be stored as i64"
-            );
+            panic!("The number of columns ({num_cols}) is too large to be stored as i64");
         }
 
         Ok(DataContainer::Group(group))
@@ -327,9 +325,7 @@ impl<T: BackendData> Readable for CsrMatrix<T> {
             )
             .map_err(|e| anyhow!("cannot read csr matrix: {e}"))
         } else {
-            bail!(
-                "cannot read csr matrix from container with data type {data_type:?}"
-            )
+            bail!("cannot read csr matrix from container with data type {data_type:?}")
         }
     }
 }
@@ -395,9 +391,7 @@ impl<T: BackendData> ReadableArray for CsrMatrix<T> {
             };
             Ok(data)
         } else {
-            bail!(
-                "cannot read csr matrix from container with data type {data_type:?}"
-            )
+            bail!("cannot read csr matrix from container with data type {data_type:?}")
         }
     }
 }

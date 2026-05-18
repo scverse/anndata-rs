@@ -277,9 +277,7 @@ impl<T: BackendData> Writable for CscMatrix<T> {
                 get_default_write_config(),
             )?;
         } else {
-            panic!(
-                "The number of rows ({num_rows}) is too large to be stored as i64"
-            );
+            panic!("The number of rows ({num_rows}) is too large to be stored as i64");
         }
 
         Ok(DataContainer::Group(group))
@@ -316,9 +314,7 @@ impl<T: BackendData> Readable for CscMatrix<T> {
             )
             .map_err(|e| anyhow::anyhow!("{e}"))
         } else {
-            bail!(
-                "cannot read csc matrix from container with data type {data_type:?}"
-            )
+            bail!("cannot read csc matrix from container with data type {data_type:?}")
         }
     }
 }
@@ -384,9 +380,7 @@ impl<T: BackendData> ReadableArray for CscMatrix<T> {
             };
             Ok(data)
         } else {
-            bail!(
-                "cannot read csc matrix from container with data type {data_type:?}"
-            )
+            bail!("cannot read csc matrix from container with data type {data_type:?}")
         }
     }
 }

@@ -710,9 +710,7 @@ impl<T: BackendData> Writable for CsrNonCanonical<T> {
                 get_default_write_config(),
             )?;
         } else {
-            panic!(
-                "The number of columns ({num_cols}) is too large to be stored as i64"
-            );
+            panic!("The number of columns ({num_cols}) is too large to be stored as i64");
         }
 
         Ok(DataContainer::Group(group))
