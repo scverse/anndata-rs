@@ -583,22 +583,25 @@ fn to_array_subset(info: SelectInfoBounds) -> Option<ArraySubset> {
     Some(ArraySubset::new_with_ranges(&ranges))
 }
 
-/// Compute the shard size, at most 1GB uncompressed.
-/// If that is too big, pick the largest shard shape that will fit the array, divisible by chunk shape.
+/// a direct port of https://github.com/zarr-developers/zarr-python/blob/cdb5846c33fdc217c4ac743a5cdb3e5c54b1868c/src/zarr/core/chunk_grids.py#L831-L865
+/// for a fixed shard shape
 fn compute_shard_shape(
     chunk_size: &[u64],
     element_size: u64,
     shape: &[u64],
 ) -> Vec<u64> {
     const TARGET_SHARD_SIZE: u64 = 1_000_000_000;
-    let chunk_elements: u64 = chunk_size.iter().product();
-    let multiplier = (TARGET_SHARD_SIZE / (chunk_elements * element_size)).max(1);
-    
-    chunk_size
-        .iter()
-        .zip(shape.iter())
-        .map(|(&chunk, &array_dim)| ((array_dim.max(1) / chunk) * chunk).min(chunk * multiplier))
-        .collect()
+    let bytes_per_chunk = chunk_size.iter().product::<u64>() * element_size;
+    if bytes_per_chunk > TARGET_SHARD_SIZE {
+        return chunk_size.to_vec();
+    }
+    let num_axes = chunk_size.len() as u32;
+    let mut chunks_per_shard = 1u64;
+    while (bytes_per_chunk * (chunks_per_shard + 1).pow(num_axes)) <= TARGET_SHARD_SIZE && chunk_size.iter().zip(shape.iter()).all(|(c, s)| (c * (chunks_per_shard + 1)) <= *s) {
+        chunks_per_shard += 1;
+    }
+    chunk_size.iter().map(|c| c * chunks_per_shard).collect()
+
 }
 
 fn new_empty_dataset_helper<T: BackendData, S: ?Sized>(
@@ -863,7 +866,7 @@ mod tests {
         with_tmp_path(|path| {
             let store = Zarr::new(path)?;
             let config = WriteConfig {
-                block_size: Some(vec![128, 128].as_slice().into()),
+                block_size: Some(vec![2, 2].as_slice().into()),
                 ..Default::default()
             };
 
