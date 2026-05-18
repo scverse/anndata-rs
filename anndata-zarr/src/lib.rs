@@ -849,7 +849,7 @@ mod tests {
             assert!(dataset.dataset.is_sharded());
 
             // At (50, 50), the shard shape is the same as the shard size because the chunking is (2, 2) so this fits perfectly into the shard.
-            // And each shard at (50, 50) is under a GB so the shard shape will match the array shape..
+            // And each shard at (50, 50) is under a GB so the shard shape will match the array shape.
             // Thus the chunk grid shape will be (1, 1) i.e., the ceiling of the array shape divided by shard shape.
             // zarrs considers the chunk grid to be the grid of outer chunks i.e., shards.
             let arr = Array::from_shape_vec(vec![50, 50], vec![0; 50 * 50])
