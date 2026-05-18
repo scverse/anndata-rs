@@ -6,12 +6,12 @@ use anndata::{
     },
 };
 
-use anyhow::{bail, Ok, Result};
+use anyhow::{Ok, Result, bail};
 use hdf5::{
+    File, Group, H5Type, Location, Selection,
     dataset::Dataset,
     types::IntSize::*,
     types::{FloatSize, TypeDescriptor, VarLenUnicode},
-    File, Group, H5Type, Location, Selection,
 };
 use itertools::{EitherOrBoth, Itertools};
 use ndarray::{Array, ArrayD, ArrayView, CowArray, Dimension, IxDyn, SliceInfo, SliceInfoElem};
@@ -814,9 +814,9 @@ fn ndarray_to_json<T: Into<Value> + Clone>(array: &ArrayD<T>) -> Value {
 mod tests {
     use super::*;
     use anndata::s;
-    use ndarray::{concatenate, Array1, Axis, Ix1};
-    use ndarray_rand::rand_distr::Uniform;
+    use ndarray::{Array1, Axis, Ix1, concatenate};
     use ndarray_rand::RandomExt;
+    use ndarray_rand::rand_distr::Uniform;
     use std::path::PathBuf;
     use tempfile::tempdir;
 
@@ -875,9 +875,11 @@ mod tests {
             dataset.write_array_slice(arr.view().into(), s![.., ..].as_ref())?;
 
             // Out-of-bounds writes should fail
-            assert!(dataset
-                .write_array_slice(arr.view().into(), s![20..40, ..].as_ref())
-                .is_err());
+            assert!(
+                dataset
+                    .write_array_slice(arr.view().into(), s![20..40, ..].as_ref())
+                    .is_err()
+            );
 
             // Reshape and write
             dataset.reshape(&[40, 50].as_slice().into())?;
