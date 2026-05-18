@@ -642,9 +642,10 @@ fn new_empty_dataset_helper<T: BackendData, S: ?Sized>(
     };
 
     let mut use_sharding = true;
-    if datatype == data_type::string() {
+    if datatype == data_type::string() || shape.len() == 0 {
         //|| shape.iter().sum::<usize>() == 0 {
         // Strings are not sharded, they are stored as a single chunk.
+        // Scalars are also not sharded
         use_sharding = false;
     }
 
@@ -713,7 +714,7 @@ mod tests {
     }
 
     #[test]
-    fn test_basic() -> Result<()> {
+    fn test_basic_ops() -> Result<()> {
         with_tmp_path(|path| {
             let store = Zarr::new(&path)?;
             store.open_group("/")?;
