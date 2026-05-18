@@ -649,7 +649,7 @@ fn new_empty_dataset_helper<T: BackendData, S: ?Sized>(
     }
 
     let array = if use_sharding {
-        let element_size = u64::try_from(datatype.fixed_size().unwrap()).unwrap();
+        let element_size = u64::try_from(datatype.fixed_size().unwrap()).expect("Could not convert fixed size dtype to u64");
         let shard_shape = compute_shard_shape(
             &chunk_size,
             element_size,
