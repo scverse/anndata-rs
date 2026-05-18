@@ -1,8 +1,8 @@
 [package]
 name = "anndata-zarr"
 version = "0.2.0"
-edition = "2021"
-rust-version = "1.75"
+edition = "2024"
+rust-version = "1.85"
 authors = ["Kai Zhang <kai@kzhang.org>"]
 description = "Zarr backend for the anndata package"
 license = "MIT"
