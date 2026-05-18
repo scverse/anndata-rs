@@ -1,6 +1,6 @@
 use pyanndata::*;
 
-use pyo3::{prelude::*, pymodule, types::PyModule, PyResult};
+use pyo3::{PyResult, prelude::*, pymodule, types::PyModule};
 
 #[pymodule]
 fn anndata_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
