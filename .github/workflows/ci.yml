@@ -20,11 +20,11 @@ jobs:
     - name: Test Rust package
       run: cargo test --no-fail-fast
 
-    - name: Format Rust code
-      run: cargo fmt --check
-
     - name: Check Rust code
       run: cargo clippy --all-targets --all-features -- -D warnings
+
+    - name: Format Rust code
+      run: cargo fmt --check
 
     #- name: benchmark
     #  run: |
@@ -112,3 +112,15 @@ jobs:
         publish_dir: ./documentation
         publish_branch: gh-pages
         force_orphan: true
+
+  check:
+    if: always()
+    needs:
+    - test_rust_code
+    - upload_gh-page  # depends on the rest
+    runs-on: ubuntu-latest
+    steps:
+    - name: Decide whether the needed jobs succeeded or failed
+      uses: re-actors/alls-green@release/v1
+      with:
+        jobs: ${{ toJSON(needs) }}
