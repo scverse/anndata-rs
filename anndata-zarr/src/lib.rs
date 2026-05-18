@@ -649,7 +649,7 @@ fn new_empty_dataset_helper<T: BackendData, S: ?Sized>(
     }
 
     let array = if let Some(fixed_size) = datatype.fixed_size() && use_sharding {
-        let element_size = u64::try_from(fixed_size).expect("Could not convert fixed size dtype to u64");
+        let element_size = u64::try_from(fixed_size).expect("element size does not fit into u64");
         let shard_shape = compute_shard_shape(
             &chunk_size,
             element_size,
@@ -777,13 +777,13 @@ mod tests {
                 group.new_empty_dataset::<i32>("test", &[20, 50].as_slice().into(), config)?;
 
             // Repeated writes force cache clearance
-            let arr: ndarray::Array2<i32> = Array::random((10, 10), Uniform::new(0, 100).unwrap());
+            let arr = Array::random((10, 10), Uniform::new(0, 100).unwrap());
             dataset.write_array_slice(arr.view().into(), s![5..15, 10..20].as_ref())?;
             assert_eq!(
                 arr,
                 dataset.read_array_slice::<i32, _, _>(s![5..15, 10..20].as_ref())?
             );
-            let arr: ndarray::Array2<i32> = Array::random((10, 10), Uniform::new(0, 100).unwrap());
+            let arr = Array::random((10, 10), Uniform::new(0, 100).unwrap());
             dataset.write_array_slice(arr.view().into(), s![5..15, 10..20].as_ref())?;
             assert_eq!(
                 arr,
@@ -852,7 +852,7 @@ mod tests {
             // And each shard at (50, 50) is under a GB so the shard shape will match the array shape..
             // Thus the chunk grid shape will be (1, 1) i.e., the ceiling of the array shape divided by shard shape.
             // zarrs considers the chunk grid to be the grid of outer chunks i.e., shards.
-            let arr: ndarray::Array2<i32> = Array::from_shape_vec(vec![50, 50], vec![0; 50 * 50])
+            let arr = Array::from_shape_vec(vec![50, 50], vec![0; 50 * 50])
                 .unwrap()
                 .into_dimensionality::<ndarray::Ix2>()
                 .unwrap();
@@ -879,7 +879,7 @@ mod tests {
             // And each shard at (54, 54) will not match the array shape because it does not divide evenly.
             // Thus use have on extra shard along each axis and the chunk grid shape is thus (2, 2) i.e., the ceiling of the array shape divided by shard shape.
             // zarrs considers the chunk grid to be the grid of outer chunks i.e., shards.
-            let arr: ndarray::Array2<i32> = Array::from_shape_vec(vec![55, 55], vec![0; 55 * 55])
+            let arr = Array::from_shape_vec(vec![55, 55], vec![0; 55 * 55])
                 .unwrap()
                 .into_dimensionality::<ndarray::Ix2>()
                 .unwrap();
