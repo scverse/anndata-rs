@@ -1,7 +1,7 @@
 mod common;
 pub use common::*;
 
-use anndata::concat::{concat, JoinType};
+use anndata::concat::{JoinType, concat};
 use anndata::{data::CsrNonCanonical, *};
 use data::ArrayConvert;
 use nalgebra_sparse::{CooMatrix, CsrMatrix};
