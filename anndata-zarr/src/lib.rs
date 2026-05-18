@@ -675,8 +675,7 @@ fn new_empty_dataset_helper<T: BackendData, S: ?Sized>(
         // TODO: morton ordering for 2D, possibly: https://github.com/zarrs/zarrs/pull/364
         let mut sharding_codec = sharding_codec_builder.build();
         if shape.len() == 1 {
-            sharding_codec =
-                sharding_codec.with_subchunk_write_order(SubchunkWriteOrder::C)
+            sharding_codec = sharding_codec.with_subchunk_write_order(SubchunkWriteOrder::C)
         }
         zarrs::array::ArrayBuilder::new(
             shape.iter().map(|x| *x as u64).collect::<Vec<_>>(),
