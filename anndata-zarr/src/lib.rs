@@ -3,7 +3,7 @@ use anndata::{
     data::{DynArray, DynCowArray, SelectInfoBounds, SelectInfoElem, SelectInfoElemBounds, Shape},
 };
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use ndarray::{Array, ArrayD, ArrayView, CowArray, Dimension, IxDyn, SliceInfoElem};
 use std::{
     borrow::Cow,
@@ -13,21 +13,21 @@ use std::{
 };
 use std::{sync::Arc, vec};
 use zarrs::array::{
+    ZARR_NAN_F32, ZARR_NAN_F64,
     codec::bytes_to_bytes::zstd::ZstdCodec,
     data_type::{
-        BoolDataType, Float32DataType, Float64DataType, Int16DataType, Int32DataType,
-        Int64DataType, Int8DataType, StringDataType, UInt16DataType, UInt32DataType,
-        UInt64DataType, UInt8DataType,
+        BoolDataType, Float32DataType, Float64DataType, Int8DataType, Int16DataType, Int32DataType,
+        Int64DataType, StringDataType, UInt8DataType, UInt16DataType, UInt32DataType,
+        UInt64DataType,
     },
-    ZARR_NAN_F32, ZARR_NAN_F64,
 };
 use zarrs::filesystem::FilesystemStore;
 use zarrs::group::Group;
 use zarrs::{array::ElementOwned, storage::ReadableWritableListableStorageTraits};
 use zarrs::{
     array::{
-        codec::ShardingCodecBuilder, data_type, ArrayShardedReadableExt, ArraySubset, Element,
-        FillValue,
+        ArrayShardedReadableExt, ArraySubset, Element, FillValue, codec::ShardingCodecBuilder,
+        data_type,
     },
     storage::StorePrefix,
 };
@@ -586,11 +586,7 @@ fn to_array_subset(info: SelectInfoBounds) -> Option<ArraySubset> {
 
 /// a direct port of https://github.com/zarr-developers/zarr-python/blob/cdb5846c33fdc217c4ac743a5cdb3e5c54b1868c/src/zarr/core/chunk_grids.py#L831-L865
 /// for a fixed shard shape
-fn compute_shard_shape(
-    chunk_size: &[u64],
-    element_size: u64,
-    shape: &[u64],
-) -> Vec<u64> {
+fn compute_shard_shape(chunk_size: &[u64], element_size: u64, shape: &[u64]) -> Vec<u64> {
     const TARGET_SHARD_SIZE: u64 = 1_000_000_000;
     let bytes_per_chunk = chunk_size.iter().product::<u64>() * element_size;
     if bytes_per_chunk > TARGET_SHARD_SIZE {
@@ -598,11 +594,15 @@ fn compute_shard_shape(
     }
     let num_axes = chunk_size.len() as u32;
     let mut chunks_per_shard = 1u64;
-    while (bytes_per_chunk * (chunks_per_shard + 1).pow(num_axes)) <= TARGET_SHARD_SIZE && chunk_size.iter().zip(shape.iter()).all(|(c, s)| (c * (chunks_per_shard + 1)) <= *s) {
+    while (bytes_per_chunk * (chunks_per_shard + 1).pow(num_axes)) <= TARGET_SHARD_SIZE
+        && chunk_size
+            .iter()
+            .zip(shape.iter())
+            .all(|(c, s)| (c * (chunks_per_shard + 1)) <= *s)
+    {
         chunks_per_shard += 1;
     }
     chunk_size.iter().map(|c| c * chunks_per_shard).collect()
-
 }
 
 fn new_empty_dataset_helper<T: BackendData, S: ?Sized>(
@@ -649,7 +649,9 @@ fn new_empty_dataset_helper<T: BackendData, S: ?Sized>(
         use_sharding = false;
     }
 
-    let array = if let Some(fixed_size) = datatype.fixed_size() && use_sharding {
+    let array = if let Some(fixed_size) = datatype.fixed_size()
+        && use_sharding
+    {
         let element_size = u64::try_from(fixed_size).expect("element size does not fit into u64");
         let shard_shape = compute_shard_shape(
             &chunk_size,
@@ -696,9 +698,9 @@ fn new_empty_dataset_helper<T: BackendData, S: ?Sized>(
 mod tests {
     use super::*;
     use anndata::s;
-    use ndarray::{array, concatenate, Array2, Axis, Ix2};
-    use ndarray_rand::rand_distr::Uniform;
+    use ndarray::{Array2, Axis, Ix2, array, concatenate};
     use ndarray_rand::RandomExt;
+    use ndarray_rand::rand_distr::Uniform;
     use std::path::PathBuf;
     use tempfile::tempdir;
     use zarrs::array::ArrayShardedExt;
