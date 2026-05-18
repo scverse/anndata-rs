@@ -848,8 +848,8 @@ mod tests {
                 group.new_empty_dataset::<i32>("test", &[50, 50].as_slice().into(), config)?;
             assert!(dataset.dataset.is_sharded());
 
-            // At (50, 50), the shard shape is the same as the shard size because the chunking is (2, 2) so this fits perfectly into the shard.
-            // And each shard at (50, 50) is under a GB so the shard shape will match the array shape.
+            // At (50, 50), the shard shape is the same as the shard size because the chunking is (2, 2), which fits perfectly into the shard,
+            // and each shard at (50, 50) is under a GB, so the shard shape will match the array shape.
             // Thus the chunk grid shape will be (1, 1) i.e., the ceiling of the array shape divided by shard shape.
             // zarrs considers the chunk grid to be the grid of outer chunks i.e., shards.
             let arr = Array::from_shape_vec(vec![50, 50], vec![0; 50 * 50])
@@ -875,9 +875,9 @@ mod tests {
             let dataset =
                 group.new_empty_dataset::<i32>("test", &[55, 55].as_slice().into(), config)?;
             assert!(dataset.dataset.is_sharded());
-            // At (55, 55) shape with (2, 2) chunks, the chunk grid shape is (2, 2) i.e., shard shape of (54, 54) with a remainder (1, 1).
-            // And each shard at (54, 54) will not match the array shape because it does not divide evenly.
-            // Thus use have on extra shard along each axis and the chunk grid shape is thus (2, 2) i.e., the ceiling of the array shape divided by shard shape.
+            // At (55, 55) shape with (2, 2) chunks, the the shard shape is (54, 54).
+            // And each shard at (54, 54) will not match the array shape because it does not divide evenly i.e., there is a remainder on the edge.
+            // Thus we have on extra shard along each axis and the chunk grid shape is thus (2, 2) i.e., the ceiling of the array shape divided by shard shape.
             // zarrs considers the chunk grid to be the grid of outer chunks i.e., shards.
             let arr = Array::from_shape_vec(vec![55, 55], vec![0; 55 * 55])
                 .unwrap()
