@@ -283,7 +283,7 @@ impl<B: Backend> TryFrom<DataContainer<B>> for DataFrameElem<B> {
                 };
                 Ok(Slot::new(df))
             }
-            ty => bail!("Expecting a dataframe but found: '{}'", ty),
+            ty => bail!("Expecting a dataframe but found: '{ty}'"),
         }
     }
 }

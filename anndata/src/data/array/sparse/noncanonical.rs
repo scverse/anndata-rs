@@ -711,8 +711,7 @@ impl<T: BackendData> Writable for CsrNonCanonical<T> {
             )?;
         } else {
             panic!(
-                "The number of columns ({}) is too large to be stored as i64",
-                num_cols
+                "The number of columns ({num_cols}) is too large to be stored as i64"
             );
         }
 

@@ -33,12 +33,12 @@ impl DataType {
 impl Display for DataType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            DataType::Array(t) => write!(f, "Array({})", t),
+            DataType::Array(t) => write!(f, "Array({t})"),
             DataType::Categorical => write!(f, "Categorical"),
-            DataType::CsrMatrix(t) => write!(f, "CsrMatrix({})", t),
-            DataType::CscMatrix(t) => write!(f, "CscMatrix({})", t),
+            DataType::CsrMatrix(t) => write!(f, "CsrMatrix({t})"),
+            DataType::CscMatrix(t) => write!(f, "CscMatrix({t})"),
             DataType::DataFrame => write!(f, "DataFrame"),
-            DataType::Scalar(t) => write!(f, "Scalar({})", t),
+            DataType::Scalar(t) => write!(f, "Scalar({t})"),
             DataType::Mapping => write!(f, "Mapping"),
             DataType::NullableArray => write!(f, "Nullable array"),
         }

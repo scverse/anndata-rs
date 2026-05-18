@@ -289,8 +289,7 @@ impl<T: BackendData> Writable for CsrMatrix<T> {
             )?;
         } else {
             panic!(
-                "The number of columns ({}) is too large to be stored as i64",
-                num_cols
+                "The number of columns ({num_cols}) is too large to be stored as i64"
             );
         }
 
@@ -326,11 +325,10 @@ impl<T: BackendData> Readable for CsrMatrix<T> {
                 indices,
                 data,
             )
-            .map_err(|e| anyhow!("cannot read csr matrix: {}", e))
+            .map_err(|e| anyhow!("cannot read csr matrix: {e}"))
         } else {
             bail!(
-                "cannot read csr matrix from container with data type {:?}",
-                data_type
+                "cannot read csr matrix from container with data type {data_type:?}"
             )
         }
     }
@@ -398,8 +396,7 @@ impl<T: BackendData> ReadableArray for CsrMatrix<T> {
             Ok(data)
         } else {
             bail!(
-                "cannot read csr matrix from container with data type {:?}",
-                data_type
+                "cannot read csr matrix from container with data type {data_type:?}"
             )
         }
     }
@@ -418,7 +415,7 @@ impl<T: BackendData + Clone + ToPrimitive> ArrayArithmetic for CsrMatrix<T> {
 
     fn sum_axis(&self, axis: usize) -> Result<ArrayD<f64>> {
         if axis >= 2 {
-            anyhow::bail!("axis {} out of bounds", axis);
+            anyhow::bail!("axis {axis} out of bounds");
         }
 
         match axis {
@@ -445,7 +442,7 @@ impl<T: BackendData + Clone + ToPrimitive> ArrayArithmetic for CsrMatrix<T> {
                 })
                 .collect::<Array1<f64>>()
                 .into_dyn()),
-            _ => anyhow::bail!("axis {} is out of bounds for 2D array", axis),
+            _ => anyhow::bail!("axis {axis} is out of bounds for 2D array"),
         }
     }
 

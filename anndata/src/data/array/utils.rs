@@ -460,7 +460,7 @@ where
                 let csr = CsrNonCanonical::from_csr_data(nrows, ncols, indptr, indices, data);
                 Ok(csr.into())
             }
-            _ => Err(anyhow!("cannot read csr matrix: {}", e)),
+            _ => Err(anyhow!("cannot read csr matrix: {e}")),
         },
     }
 }

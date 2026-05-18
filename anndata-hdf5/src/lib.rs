@@ -247,7 +247,7 @@ impl DatasetOp<H5> for H5Dataset {
             TypeDescriptor::Boolean => ScalarType::Bool,
             TypeDescriptor::VarLenAscii => ScalarType::String,
             TypeDescriptor::VarLenUnicode => ScalarType::String,
-            ty => bail!("Unsupported type: {:?}", ty),
+            ty => bail!("Unsupported type: {ty:?}"),
         };
         Ok(ty)
     }
@@ -641,7 +641,7 @@ fn read_scalar_attr(loc: &Location, name: &str) -> Result<Value> {
         TypeDescriptor::Unsigned(_) => attr.read_scalar::<u64>()?.into(),
         TypeDescriptor::Integer(_) => attr.read_scalar::<i64>()?.into(),
         TypeDescriptor::Float(_) => attr.read_scalar::<f64>()?.into(),
-        v => bail!("Unsupported type {}", v),
+        v => bail!("Unsupported type {v}"),
     };
     Ok(result)
 }
@@ -659,7 +659,7 @@ fn read_array_attr(loc: &Location, name: &str) -> Result<Value> {
         TypeDescriptor::Unsigned(_) => ndarray_to_json(&attr.read::<u64, IxDyn>()?),
         TypeDescriptor::Integer(_) => ndarray_to_json(&attr.read::<i64, IxDyn>()?),
         TypeDescriptor::Float(_) => ndarray_to_json(&attr.read::<f64, IxDyn>()?),
-        v => bail!("Unsupported type {}", v),
+        v => bail!("Unsupported type {v}"),
     };
     Ok(result)
 }

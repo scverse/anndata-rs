@@ -682,7 +682,7 @@ impl<D: Dimension> ArrayConvert<Array<f32, D>> for DynArray {
             DynArray::U8(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::U16(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::Bool(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
-            _ => bail!("Cannot convert {:?} to f32 Array", self),
+            _ => bail!("Cannot convert {self:?} to f32 Array"),
         }
     }
 }
@@ -705,7 +705,7 @@ impl<D: Dimension> ArrayConvert<Array<f64, D>> for DynArray {
                 .into_dimensionality()?),
             DynArray::F32(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::Bool(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
-            _ => bail!("Cannot convert {:?} to f64 Array", self),
+            _ => bail!("Cannot convert {self:?} to f64 Array"),
         }
     }
 }
@@ -714,7 +714,7 @@ impl<D: Dimension> ArrayConvert<Array<bool, D>> for DynArray {
     fn try_convert(self) -> Result<Array<bool, D>> {
         match self {
             DynArray::Bool(data) => Ok(data.into_dimensionality()?),
-            _ => bail!("Cannot convert {:?} to bool Array", self),
+            _ => bail!("Cannot convert {self:?} to bool Array"),
         }
     }
 }

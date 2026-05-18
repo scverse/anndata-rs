@@ -201,7 +201,7 @@ pub trait AnnDataOp {
         let adatas = indices
             .into_iter()
             .map(|(key, idx)| {
-                let path = out_dir.as_ref().join(format!("{}.h5ad", key));
+                let path = out_dir.as_ref().join(format!("{key}.h5ad"));
                 let adata = AnnData::<B>::new(&path)?;
                 adata.set_n_obs(idx.len())?;
                 adata.set_n_vars(n_vars)?;
@@ -603,7 +603,7 @@ impl<B: Backend> AnnDataOp for AnnData<B> {
                 inner
                     .index
                     .get_index(i)
-                    .context(format!("'{}' does not exist in obs_names", i))
+                    .context(format!("'{i}' does not exist in obs_names"))
             })
             .collect()
     }
@@ -616,7 +616,7 @@ impl<B: Backend> AnnDataOp for AnnData<B> {
                 inner
                     .index
                     .get_index(i)
-                    .context(format!("'{}' does not exist in obs_names", i))
+                    .context(format!("'{i}' does not exist in obs_names"))
             })
             .collect()
     }
@@ -949,7 +949,7 @@ pub trait AxisArraysOp {
         self.get(key)
             .and_then(|x| x.get().transpose())
             .transpose()
-            .map_err(|e| e.context(format!("key: {}", key)))
+            .map_err(|e| e.context(format!("key: {key}")))
     }
 
     fn iter_item<D>(&self) -> impl Iterator<Item = (String, D)>

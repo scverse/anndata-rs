@@ -43,8 +43,8 @@ impl PyCompression {
 
     fn __repr__(&self) -> String {
         match self.inner {
-            Compression::Gzip(level) => format!("Compression.gzip({})", level),
-            Compression::Zst(level) => format!("Compression.zstd({})", level),
+            Compression::Gzip(level) => format!("Compression.gzip({level})"),
+            Compression::Zst(level) => format!("Compression.zstd({level})"),
         }
     }
 }

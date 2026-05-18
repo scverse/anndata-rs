@@ -604,7 +604,7 @@ impl ArrayElemOp for ArrayElem<'_> {
 
     fn dtype(&self) -> Option<anndata::backend::DataType> {
         let dtype: Option<String> = self.0.getattr("dtype").unwrap().extract().unwrap();
-        panic!("{:?}", dtype);
+        panic!("{dtype:?}");
     }
 
     fn shape(&self) -> Option<Shape> {

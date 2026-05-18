@@ -306,13 +306,12 @@ impl<B: Backend> DataContainer<B> {
                     .map(DataContainer::Group)
                     .map_err(|e2| {
                         e2.context(e1).context(format!(
-                            "Error opening group or dataset named '{}' in group",
-                            name
+                            "Error opening group or dataset named '{name}' in group"
                         ))
                     }),
             }
         } else {
-            bail!("No group or dataset named '{}' in group", name);
+            bail!("No group or dataset named '{name}' in group");
         }
     }
 

@@ -278,8 +278,7 @@ impl<T: BackendData> Writable for CscMatrix<T> {
             )?;
         } else {
             panic!(
-                "The number of rows ({}) is too large to be stored as i64",
-                num_rows
+                "The number of rows ({num_rows}) is too large to be stored as i64"
             );
         }
 
@@ -315,11 +314,10 @@ impl<T: BackendData> Readable for CscMatrix<T> {
                 indices,
                 data,
             )
-            .map_err(|e| anyhow::anyhow!("{}", e))
+            .map_err(|e| anyhow::anyhow!("{e}"))
         } else {
             bail!(
-                "cannot read csc matrix from container with data type {:?}",
-                data_type
+                "cannot read csc matrix from container with data type {data_type:?}"
             )
         }
     }
@@ -387,8 +385,7 @@ impl<T: BackendData> ReadableArray for CscMatrix<T> {
             Ok(data)
         } else {
             bail!(
-                "cannot read csc matrix from container with data type {:?}",
-                data_type
+                "cannot read csc matrix from container with data type {data_type:?}"
             )
         }
     }

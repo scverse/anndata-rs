@@ -174,7 +174,7 @@ impl IntoIterator for Index {
         match self {
             Index::Intervals(map) => {
                 Box::new(map.intervals.into_iter().flat_map(|(k, interval)| {
-                    interval.map(move |(start, end)| format!("{}:{}-{}", k, start, end))
+                    interval.map(move |(start, end)| format!("{k}:{start}-{end}"))
                 }))
             }
             Index::List(list) => Box::new(list.items.into_iter()),
@@ -477,7 +477,7 @@ mod tests {
         if n == 0 {
             Just(Index::empty()).boxed()
         } else {
-            let list = (0..n).map(|i| format!("i_{}", i)).collect();
+            let list = (0..n).map(|i| format!("i_{i}")).collect();
             let range = n.into();
             let interval = (0..n).prop_flat_map(move |i| {
                 (Just(i), (0..n - i)).prop_flat_map(move |(a, b)| {

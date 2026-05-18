@@ -96,11 +96,11 @@ impl AnnData {
                 let file = match mode {
                     "r" => H5::open(filename)?,
                     "r+" => H5::open_rw(filename)?,
-                    _ => bail!("Unknown mode: {}", mode),
+                    _ => bail!("Unknown mode: {mode}"),
                 };
                 anndata::AnnData::<H5>::open(file).map(|adata| adata.into())
             }
-            x => bail!("Unknown backend: {}", x),
+            x => bail!("Unknown backend: {x}"),
         }
     }
 
@@ -118,7 +118,7 @@ impl AnnData {
                     .map(|name| {
                         index
                             .get_index(&name)
-                            .unwrap_or_else(|| panic!("Unknown obs name: {}", name))
+                            .unwrap_or_else(|| panic!("Unknown obs name: {name}"))
                     })
                     .collect::<Vec<_>>()
             });
@@ -145,7 +145,7 @@ impl AnnData {
                     .map(|name| {
                         index
                             .get_index(&name)
-                            .unwrap_or_else(|| panic!("Unknown var name: {}", name))
+                            .unwrap_or_else(|| panic!("Unknown var name: {name}"))
                     })
                     .collect::<Vec<_>>()
             });
@@ -194,7 +194,7 @@ impl AnnData {
         let backend = get_backend(&filename, backend);
         let adata: AnnData = match backend {
             H5::NAME => anndata::AnnData::<H5>::new(filename)?.into(),
-            backend => bail!("Unknown backend: {}", backend),
+            backend => bail!("Unknown backend: {backend}"),
         };
 
         if X.is_some() {
@@ -995,7 +995,7 @@ impl<B: Backend> AnnDataTrait for InnerAnnData<B> {
                             .into_any(),
                     ))
                 }
-                x => bail!("Unsupported backend: {}", x),
+                x => bail!("Unsupported backend: {x}"),
             }
         } else {
             let adata = PyAnnData::new(py)?;
@@ -1141,7 +1141,7 @@ impl<B: Backend> AnnDataTrait for InnerAnnData<B> {
                 .adata
                 .inner()
                 .write::<H5, _>(filename, partial, chunk_size),
-            x => bail!("Unsupported backend: {}", x),
+            x => bail!("Unsupported backend: {x}"),
         }
     }
 
@@ -1189,7 +1189,7 @@ impl<B: Backend> AnnDataTrait for InnerAnnData<B> {
             let file = match mode {
                 "r" => B::open(self.filename())?,
                 "r+" => B::open_rw(self.filename())?,
-                _ => bail!("Unknown mode: {}", mode),
+                _ => bail!("Unknown mode: {mode}"),
             };
             self.adata.insert(anndata::AnnData::<B>::open(file)?);
         }

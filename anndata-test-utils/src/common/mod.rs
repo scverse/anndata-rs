@@ -72,19 +72,19 @@ pub fn anndata_strat<B: Backend, P: AsRef<Path> + Clone>(
             adata.set_obs_names(obs_names).unwrap();
             adata.set_var_names(var_names).unwrap();
             obsm.into_iter().enumerate().for_each(|(i, arr)| {
-                adata.obsm().add(&format!("varm_{}", i), arr).unwrap();
+                adata.obsm().add(&format!("varm_{i}"), arr).unwrap();
             });
             obsp.into_iter().enumerate().for_each(|(i, arr)| {
-                adata.obsp().add(&format!("obsp_{}", i), arr).unwrap();
+                adata.obsp().add(&format!("obsp_{i}"), arr).unwrap();
             });
             varm.into_iter().enumerate().for_each(|(i, arr)| {
-                adata.varm().add(&format!("varm_{}", i), arr).unwrap();
+                adata.varm().add(&format!("varm_{i}"), arr).unwrap();
             });
             varp.into_iter().enumerate().for_each(|(i, arr)| {
-                adata.varp().add(&format!("varp_{}", i), arr).unwrap();
+                adata.varp().add(&format!("varp_{i}"), arr).unwrap();
             });
             layers.into_iter().enumerate().for_each(|(i, arr)| {
-                adata.layers().add(&format!("layer_{}", i), arr).unwrap();
+                adata.layers().add(&format!("layer_{i}"), arr).unwrap();
             });
             adata
         },
@@ -95,7 +95,7 @@ pub fn index_strat(n: usize) -> BoxedStrategy<DataFrameIndex> {
     if n == 0 {
         Just(DataFrameIndex::empty()).boxed()
     } else {
-        let list = (0..n).map(|i| format!("i_{}", i)).collect();
+        let list = (0..n).map(|i| format!("i_{i}")).collect();
         let range = n.into();
         let interval = (0..n).prop_flat_map(move |i| {
             (Just(i), (0..n - i)).prop_flat_map(move |(a, b)| {

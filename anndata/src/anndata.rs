@@ -75,32 +75,32 @@ impl<B: Backend> std::fmt::Display for AnnData<B> {
         if let Some(keys) = self.uns.lock().as_ref().map(|x| x.keys().join("', '"))
             && !keys.is_empty()
         {
-            write!(f, "\n    uns: '{}'", keys)?;
+            write!(f, "\n    uns: '{keys}'")?;
         }
         if let Some(keys) = self.obsm.lock().as_ref().map(|x| x.keys().join("', '"))
             && !keys.is_empty()
         {
-            write!(f, "\n    obsm: '{}'", keys)?;
+            write!(f, "\n    obsm: '{keys}'")?;
         }
         if let Some(keys) = self.obsp.lock().as_ref().map(|x| x.keys().join("', '"))
             && !keys.is_empty()
         {
-            write!(f, "\n    obsp: '{}'", keys)?;
+            write!(f, "\n    obsp: '{keys}'")?;
         }
         if let Some(keys) = self.varm.lock().as_ref().map(|x| x.keys().join("', '"))
             && !keys.is_empty()
         {
-            write!(f, "\n    varm: '{}'", keys)?;
+            write!(f, "\n    varm: '{keys}'")?;
         }
         if let Some(keys) = self.varp.lock().as_ref().map(|x| x.keys().join("', '"))
             && !keys.is_empty()
         {
-            write!(f, "\n    varp: '{}'", keys)?;
+            write!(f, "\n    varp: '{keys}'")?;
         }
         if let Some(keys) = self.layers.lock().as_ref().map(|x| x.keys().join("', '"))
             && !keys.is_empty()
         {
-            write!(f, "\n    layers: '{}'", keys)?;
+            write!(f, "\n    layers: '{keys}'")?;
         }
         Ok(())
     }
