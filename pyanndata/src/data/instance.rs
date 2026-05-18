@@ -1,4 +1,4 @@
-use pyo3::{prelude::*, types::PyType, PyResult};
+use pyo3::{PyResult, prelude::*, types::PyType};
 
 pub fn isinstance_of_csr<'py>(obj: &Bound<'py, PyAny>) -> PyResult<bool> {
     obj.is_instance(
@@ -63,7 +63,7 @@ pub fn isinstance_of_polars<'py>(obj: &Bound<'py, PyAny>) -> PyResult<bool> {
 pub fn is_none_slice<'py>(obj: &Bound<'py, PyAny>) -> PyResult<bool> {
     let py = obj.py();
     Ok(obj.is_none()
-        || obj.is(&py.Ellipsis())
+        || obj.is(py.Ellipsis())
         || (is_slice(obj)
             && obj.eq(py.eval(
                 &std::ffi::CString::new("slice(None, None, None)")?,

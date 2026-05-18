@@ -1,17 +1,19 @@
 mod anndata;
-pub mod concat;
-pub mod traits;
 pub mod backend;
-pub mod data;
+pub mod concat;
 pub mod container;
-pub mod reader;
+pub mod data;
 mod macros;
+pub mod reader;
+pub mod traits;
 
-pub use traits::{AnnDataOp, AxisArraysOp, ElemCollectionOp, ArrayElemOp};
 pub use crate::anndata::{AnnData, AnnDataSet, StackedAnnData};
 pub use backend::Backend;
-pub use data::{HasShape, Data, Readable, Writable, ArrayData, WritableArray, ReadableArray, Selectable};
 pub use container::{
-    AxisArrays, DataFrameElem, Elem, ElemCollection, ArrayElem, 
-    StackedAxisArrays, StackedDataFrame, StackedArrayElem,
+    ArrayElem, AxisArrays, DataFrameElem, Elem, ElemCollection, StackedArrayElem,
+    StackedAxisArrays, StackedDataFrame,
 };
+pub use data::{
+    ArrayData, Data, HasShape, Readable, ReadableArray, Selectable, Writable, WritableArray,
+};
+pub use traits::{AnnDataOp, ArrayElemOp, AxisArraysOp, ElemCollectionOp};

@@ -1,6 +1,9 @@
 name: Continuous integration
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
 
 jobs:
   test_rust_code:
@@ -20,6 +23,12 @@ jobs:
     - name: Test Rust package
       run: cargo test --no-fail-fast
 
+    - name: Check Rust code
+      run: cargo clippy --all-targets --all-features -- -D warnings
+
+    - name: Format Rust code
+      run: cargo fmt --check
+
     #- name: benchmark
     #  run: |
     #    cd ${GITHUB_WORKSPACE}/anndata-test-utils && cargo bench
@@ -36,7 +45,7 @@ jobs:
       matrix:
         anndata_version: ['0.9.*', '0.10.*', '0.11.*', '0.12.*']
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
 
     - uses: actions-rs/toolchain@v1
       with:
@@ -58,7 +67,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test_python_code]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
 
     - uses: actions-rs/toolchain@v1
       with:
@@ -85,7 +94,7 @@ jobs:
         sphinx-build ${GITHUB_WORKSPACE}/python/docs _build/html
 
     - name: Upload doc
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: documentation
         path: ./_build/html
@@ -96,7 +105,7 @@ jobs:
     needs: [build_doc]
     steps:
     - name: Download
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
 
     - name: Upload doc
       uses: peaceiris/actions-gh-pages@v4
@@ -106,3 +115,15 @@ jobs:
         publish_dir: ./documentation
         publish_branch: gh-pages
         force_orphan: true
+
+  check:
+    if: always()
+    needs:
+    - test_rust_code
+    - upload_gh-page  # depends on the rest
+    runs-on: ubuntu-latest
+    steps:
+    - name: Decide whether the needed jobs succeeded or failed
+      uses: re-actors/alls-green@release/v1
+      with:
+        jobs: ${{ toJSON(needs) }}

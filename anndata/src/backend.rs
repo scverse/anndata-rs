@@ -2,13 +2,13 @@ mod datatype;
 use crate::data::{ArrayConvert, DynArray, SelectInfo, SelectInfoElem, Shape};
 pub use datatype::{BackendData, DataType, ScalarType};
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use core::fmt::{Debug, Formatter};
-use ndarray::{arr0, Array, CowArray, Dimension, Ix0, IxDyn};
-use std::path::{Path, PathBuf};
-use std::cell::RefCell;
-pub use serde_json::Value;
+use ndarray::{Array, CowArray, Dimension, Ix0, IxDyn, arr0};
 use serde::Deserialize;
+pub use serde_json::Value;
+use std::cell::RefCell;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Compression {
@@ -125,7 +125,7 @@ pub trait GroupOp<B: Backend + ?Sized> {
             None
         };
         let new_config = WriteConfig {
-            compression: compression,
+            compression,
             block_size: Some(block_size),
         };
         let dataset = self.new_empty_dataset::<D>(name, &shape.into(), new_config)?;
@@ -164,7 +164,7 @@ pub trait AttributeOp<B: Backend + ?Sized> {
 }
 
 pub trait DatasetOp<B: Backend + ?Sized> {
-    /// Required methods
+    // Required methods
 
     fn dtype(&self) -> Result<ScalarType>;
     fn shape(&self) -> Shape;
@@ -181,11 +181,11 @@ pub trait DatasetOp<B: Backend + ?Sized> {
         S: AsRef<SelectInfoElem>,
         D: Dimension;
 
-    /// Optional methods
+    // Optional methods
 
     fn read_dyn_array_slice<S>(&self, selection: &[S]) -> Result<DynArray>
     where
-        S: AsRef<SelectInfoElem>
+        S: AsRef<SelectInfoElem>,
     {
         let arr = match self.dtype()? {
             ScalarType::I8 => self.read_array_slice::<i8, _, IxDyn>(selection)?.into(),
@@ -208,7 +208,7 @@ pub trait DatasetOp<B: Backend + ?Sized> {
     where
         DynArray: ArrayConvert<Array<T, D>>,
         D: Dimension,
-        S: AsRef<SelectInfoElem>
+        S: AsRef<SelectInfoElem>,
     {
         self.read_dyn_array_slice(selection)?.try_convert()
     }
@@ -246,16 +246,12 @@ pub trait DatasetOp<B: Backend + ?Sized> {
     }
 }
 
+#[derive(Default)]
 pub enum DataContainer<B: Backend> {
     Group(B::Group),
     Dataset(B::Dataset),
+    #[default]
     Null,
-}
-
-impl<B: Backend> Default for DataContainer<B> {
-    fn default() -> Self {
-        DataContainer::Null
-    }
 }
 
 impl<B: Backend> Debug for DataContainer<B> {
@@ -284,8 +280,7 @@ impl<B: Backend> AttributeOp<B> for DataContainer<B> {
         }
     }
 
-    fn new_json_attr(&mut self, name: &str, value: &Value) -> Result<()>
-    {
+    fn new_json_attr(&mut self, name: &str, value: &Value) -> Result<()> {
         match self {
             DataContainer::Group(g) => g.new_json_attr(name, value),
             DataContainer::Dataset(d) => d.new_json_attr(name, value),
@@ -306,17 +301,17 @@ impl<B: Backend> DataContainer<B> {
         if group.exists(name)? {
             match group.open_dataset(name) {
                 Ok(gr) => Ok(DataContainer::Dataset(gr)),
-                Err(e1) => {
-                    group.open_group(name).map(DataContainer::Group).map_err(|e2|
+                Err(e1) => group
+                    .open_group(name)
+                    .map(DataContainer::Group)
+                    .map_err(|e2| {
                         e2.context(e1).context(format!(
-                            "Error opening group or dataset named '{}' in group",
-                            name
+                            "Error opening group or dataset named '{name}' in group"
                         ))
-                    )
-                }
+                    }),
             }
         } else {
-            bail!("No group or dataset named '{}' in group", name);
+            bail!("No group or dataset named '{name}' in group");
         }
     }
 
@@ -353,21 +348,21 @@ impl<B: Backend> DataContainer<B> {
             "dataframe" => DataType::DataFrame,
             "mapping" | "dict" => DataType::Mapping,
             "nullable-integer" | "nullable-boolean" => DataType::NullableArray,
-            ty => bail!("the anndata file contains an unsupported encoding type: '{}'", ty),
+            ty => bail!("the anndata file contains an unsupported encoding type: '{ty}'"),
         };
         Ok(ty)
     }
 
     pub fn as_group(&self) -> Result<&B::Group> {
         match self {
-            Self::Group(x) => Ok(&x),
+            Self::Group(x) => Ok(x),
             _ => bail!("Expecting Group"),
         }
     }
 
     pub fn as_dataset(&self) -> Result<&B::Dataset> {
         match self {
-            Self::Dataset(x) => Ok(&x),
+            Self::Dataset(x) => Ok(x),
             _ => bail!("Expecting Dataset"),
         }
     }

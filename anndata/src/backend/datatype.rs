@@ -1,9 +1,9 @@
 use crate::data::{DynArray, DynCowArray, DynScalar};
 
-use anyhow::{bail, Result};
-use core::fmt::{Display, Formatter, Debug};
+use anyhow::{Result, bail};
+use core::fmt::{Debug, Display, Formatter};
 use ndarray::{ArrayD, CowArray, IxDyn};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// All data types that can be stored in an AnnData object.
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -33,12 +33,12 @@ impl DataType {
 impl Display for DataType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            DataType::Array(t) => write!(f, "Array({})", t),
+            DataType::Array(t) => write!(f, "Array({t})"),
             DataType::Categorical => write!(f, "Categorical"),
-            DataType::CsrMatrix(t) => write!(f, "CsrMatrix({})", t),
-            DataType::CscMatrix(t) => write!(f, "CscMatrix({})", t),
+            DataType::CsrMatrix(t) => write!(f, "CsrMatrix({t})"),
+            DataType::CscMatrix(t) => write!(f, "CscMatrix({t})"),
             DataType::DataFrame => write!(f, "DataFrame"),
-            DataType::Scalar(t) => write!(f, "Scalar({})", t),
+            DataType::Scalar(t) => write!(f, "Scalar({t})"),
             DataType::Mapping => write!(f, "Mapping"),
             DataType::NullableArray => write!(f, "Nullable array"),
         }
@@ -64,11 +64,33 @@ pub enum ScalarType {
 
 impl ScalarType {
     pub fn is_numeric(&self) -> bool {
-        matches!(self, ScalarType::I8 | ScalarType::I16 | ScalarType::I32 | ScalarType::I64 | ScalarType::U8 | ScalarType::U16 | ScalarType::U32 | ScalarType::U64 | ScalarType::F32 | ScalarType::F64)
+        matches!(
+            self,
+            ScalarType::I8
+                | ScalarType::I16
+                | ScalarType::I32
+                | ScalarType::I64
+                | ScalarType::U8
+                | ScalarType::U16
+                | ScalarType::U32
+                | ScalarType::U64
+                | ScalarType::F32
+                | ScalarType::F64
+        )
     }
 
     pub fn is_integer(&self) -> bool {
-        matches!(self, ScalarType::I8 | ScalarType::I16 | ScalarType::I32 | ScalarType::I64 | ScalarType::U8 | ScalarType::U16 | ScalarType::U32 | ScalarType::U64)
+        matches!(
+            self,
+            ScalarType::I8
+                | ScalarType::I16
+                | ScalarType::I32
+                | ScalarType::I64
+                | ScalarType::U8
+                | ScalarType::U16
+                | ScalarType::U32
+                | ScalarType::U64
+        )
     }
 
     pub fn is_floating(&self) -> bool {
@@ -108,7 +130,13 @@ pub trait BackendData: Serialize + for<'a> Deserialize<'a> + Send + Sync + Clone
     const DTYPE: ScalarType;
 
     /// Convert to opaque representation.
-    fn into_dyn(&self) -> DynScalar;
+    fn as_dyn(&self) -> DynScalar;
+
+    #[deprecated]
+    #[allow(clippy::wrong_self_convention)]
+    fn into_dyn(&self) -> DynScalar {
+        self.as_dyn()
+    }
 
     /// Convert to opaque array representation.
     fn into_dyn_arr<'a>(arr: CowArray<'a, Self, IxDyn>) -> DynCowArray<'a>;
@@ -123,7 +151,7 @@ pub trait BackendData: Serialize + for<'a> Deserialize<'a> + Send + Sync + Clone
 impl BackendData for i8 {
     const DTYPE: ScalarType = ScalarType::I8;
 
-    fn into_dyn(&self) -> DynScalar {
+    fn as_dyn(&self) -> DynScalar {
         DynScalar::I8(*self)
     }
 
@@ -151,7 +179,7 @@ impl BackendData for i8 {
 impl BackendData for i16 {
     const DTYPE: ScalarType = ScalarType::I16;
 
-    fn into_dyn(&self) -> DynScalar {
+    fn as_dyn(&self) -> DynScalar {
         DynScalar::I16(*self)
     }
 
@@ -179,7 +207,7 @@ impl BackendData for i16 {
 impl BackendData for i32 {
     const DTYPE: ScalarType = ScalarType::I32;
 
-    fn into_dyn(&self) -> DynScalar {
+    fn as_dyn(&self) -> DynScalar {
         DynScalar::I32(*self)
     }
 
@@ -207,7 +235,7 @@ impl BackendData for i32 {
 impl BackendData for i64 {
     const DTYPE: ScalarType = ScalarType::I64;
 
-    fn into_dyn(&self) -> DynScalar {
+    fn as_dyn(&self) -> DynScalar {
         DynScalar::I64(*self)
     }
 
@@ -235,7 +263,7 @@ impl BackendData for i64 {
 impl BackendData for u8 {
     const DTYPE: ScalarType = ScalarType::U8;
 
-    fn into_dyn(&self) -> DynScalar {
+    fn as_dyn(&self) -> DynScalar {
         DynScalar::U8(*self)
     }
 
@@ -263,7 +291,7 @@ impl BackendData for u8 {
 impl BackendData for u16 {
     const DTYPE: ScalarType = ScalarType::U16;
 
-    fn into_dyn(&self) -> DynScalar {
+    fn as_dyn(&self) -> DynScalar {
         DynScalar::U16(*self)
     }
 
@@ -291,7 +319,7 @@ impl BackendData for u16 {
 impl BackendData for u32 {
     const DTYPE: ScalarType = ScalarType::U32;
 
-    fn into_dyn(&self) -> DynScalar {
+    fn as_dyn(&self) -> DynScalar {
         DynScalar::U32(*self)
     }
 
@@ -319,7 +347,7 @@ impl BackendData for u32 {
 impl BackendData for u64 {
     const DTYPE: ScalarType = ScalarType::U64;
 
-    fn into_dyn(&self) -> DynScalar {
+    fn as_dyn(&self) -> DynScalar {
         DynScalar::U64(*self)
     }
 
@@ -347,7 +375,7 @@ impl BackendData for u64 {
 impl BackendData for f32 {
     const DTYPE: ScalarType = ScalarType::F32;
 
-    fn into_dyn(&self) -> DynScalar {
+    fn as_dyn(&self) -> DynScalar {
         DynScalar::F32(*self)
     }
 
@@ -375,7 +403,7 @@ impl BackendData for f32 {
 impl BackendData for f64 {
     const DTYPE: ScalarType = ScalarType::F64;
 
-    fn into_dyn(&self) -> DynScalar {
+    fn as_dyn(&self) -> DynScalar {
         DynScalar::F64(*self)
     }
 
@@ -403,7 +431,7 @@ impl BackendData for f64 {
 impl BackendData for String {
     const DTYPE: ScalarType = ScalarType::String;
 
-    fn into_dyn(&self) -> DynScalar {
+    fn as_dyn(&self) -> DynScalar {
         DynScalar::String(self.clone())
     }
 
@@ -431,7 +459,7 @@ impl BackendData for String {
 impl BackendData for bool {
     const DTYPE: ScalarType = ScalarType::Bool;
 
-    fn into_dyn(&self) -> DynScalar {
+    fn as_dyn(&self) -> DynScalar {
         DynScalar::Bool(*self)
     }
 

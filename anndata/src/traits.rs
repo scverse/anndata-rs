@@ -1,15 +1,15 @@
 use std::{collections::HashMap, path::Path};
 
 use crate::{
-    anndata::elem_io::{open_layers, new_mapping, open_obsm, open_obsp, open_varm, open_varp},
+    AnnData, AnnDataSet, ArrayElem, AxisArrays, Backend, ElemCollection, StackedArrayElem,
+    StackedAxisArrays,
+    anndata::elem_io::{new_mapping, open_layers, open_obsm, open_obsp, open_varm, open_varp},
     backend::DataType,
     container::{ChunkedArrayElem, InnerDataFrameElem, StackedChunkedArrayElem},
     data::*,
-    AnnData, AnnDataSet, ArrayElem, AxisArrays, Backend, ElemCollection, StackedArrayElem,
-    StackedAxisArrays,
 };
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use polars::prelude::DataFrame;
 use smallvec::SmallVec;
 
@@ -201,7 +201,7 @@ pub trait AnnDataOp {
         let adatas = indices
             .into_iter()
             .map(|(key, idx)| {
-                let path = out_dir.as_ref().join(format!("{}.h5ad", key));
+                let path = out_dir.as_ref().join(format!("{key}.h5ad"));
                 let adata = AnnData::<B>::new(&path)?;
                 adata.set_n_obs(idx.len())?;
                 adata.set_n_vars(n_vars)?;
@@ -278,8 +278,14 @@ pub trait AnnDataOp {
 
 impl<T: AnnDataOp> AnnDataOp for &T {
     type X = T::X;
-    type AxisArraysRef<'a> = T::AxisArraysRef<'a> where Self: 'a;
-    type ElemCollectionRef<'a> = T::ElemCollectionRef<'a> where Self: 'a;
+    type AxisArraysRef<'a>
+        = T::AxisArraysRef<'a>
+    where
+        Self: 'a;
+    type ElemCollectionRef<'a>
+        = T::ElemCollectionRef<'a>
+    where
+        Self: 'a;
 
     fn x(&self) -> Self::X {
         (*self).x()
@@ -462,7 +468,6 @@ impl<T: AnnDataOp> AnnDataOp for &T {
     }
 }
 
-
 impl<B: Backend> AnnDataOp for AnnData<B> {
     type X = ArrayElem<B>;
     type AxisArraysRef<'a> = &'a AxisArrays<B>;
@@ -598,7 +603,7 @@ impl<B: Backend> AnnDataOp for AnnData<B> {
                 inner
                     .index
                     .get_index(i)
-                    .context(format!("'{}' does not exist in obs_names", i))
+                    .context(format!("'{i}' does not exist in obs_names"))
             })
             .collect()
     }
@@ -611,7 +616,7 @@ impl<B: Backend> AnnDataOp for AnnData<B> {
                 inner
                     .index
                     .get_index(i)
-                    .context(format!("'{}' does not exist in obs_names", i))
+                    .context(format!("'{i}' does not exist in obs_names"))
             })
             .collect()
     }
@@ -620,13 +625,13 @@ impl<B: Backend> AnnDataOp for AnnData<B> {
         self.get_obs()
             .lock()
             .as_mut()
-            .map_or(Ok(DataFrame::empty()), |x| x.data().map(Clone::clone))
+            .map_or(Ok(DataFrame::empty()), |x| x.data().cloned())
     }
     fn read_var(&self) -> Result<DataFrame> {
         self.get_var()
             .lock()
             .as_mut()
-            .map_or(Ok(DataFrame::empty()), |x| x.data().map(Clone::clone))
+            .map_or(Ok(DataFrame::empty()), |x| x.data().cloned())
     }
 
     fn set_obs(&self, obs: DataFrame) -> Result<()> {
@@ -676,9 +681,8 @@ impl<B: Backend> AnnDataOp for AnnData<B> {
     }
     fn obsm(&self) -> Self::AxisArraysRef<'_> {
         if self.obsm.is_none() {
-            let arrays = new_mapping(&self.file, "obsm").and_then(|g|
-                open_obsm(g, Some(&self.n_obs))
-            );
+            let arrays =
+                new_mapping(&self.file, "obsm").and_then(|g| open_obsm(g, Some(&self.n_obs)));
             if let Ok(obsm) = arrays {
                 self.obsm.swap(&obsm);
             }
@@ -687,9 +691,8 @@ impl<B: Backend> AnnDataOp for AnnData<B> {
     }
     fn obsp(&self) -> Self::AxisArraysRef<'_> {
         if self.obsp.is_none() {
-            let arrays = new_mapping(&self.file, "obsp").and_then(|g|
-                open_obsp(g, Some(&self.n_obs))
-            );
+            let arrays =
+                new_mapping(&self.file, "obsp").and_then(|g| open_obsp(g, Some(&self.n_obs)));
             if let Ok(obsp) = arrays {
                 self.obsp.swap(&obsp);
             }
@@ -698,9 +701,8 @@ impl<B: Backend> AnnDataOp for AnnData<B> {
     }
     fn varm(&self) -> Self::AxisArraysRef<'_> {
         if self.varm.is_none() {
-            let arrays = new_mapping(&self.file, "varm").and_then(|g|
-                open_varm(g, Some(&self.n_vars))
-            );
+            let arrays =
+                new_mapping(&self.file, "varm").and_then(|g| open_varm(g, Some(&self.n_vars)));
             if let Ok(varm) = arrays {
                 self.varm.swap(&varm);
             }
@@ -709,9 +711,8 @@ impl<B: Backend> AnnDataOp for AnnData<B> {
     }
     fn varp(&self) -> Self::AxisArraysRef<'_> {
         if self.varp.is_none() {
-            let arrays = new_mapping(&self.file, "varp").and_then(|g|
-                open_varp(g, Some(&self.n_vars))
-            );
+            let arrays =
+                new_mapping(&self.file, "varp").and_then(|g| open_varp(g, Some(&self.n_vars)));
             if let Ok(varp) = arrays {
                 self.varp.swap(&varp);
             }
@@ -720,9 +721,8 @@ impl<B: Backend> AnnDataOp for AnnData<B> {
     }
     fn layers(&self) -> Self::AxisArraysRef<'_> {
         if self.layers.is_none() {
-            let arrays = new_mapping(&self.file, "layers").and_then(|g|
-                open_layers(g, Some(&self.n_obs), Some(&self.n_vars))
-            );
+            let arrays = new_mapping(&self.file, "layers")
+                .and_then(|g| open_layers(g, Some(&self.n_obs), Some(&self.n_vars)));
             if let Ok(layers) = arrays {
                 self.layers.swap(&layers);
             }
@@ -949,7 +949,7 @@ pub trait AxisArraysOp {
         self.get(key)
             .and_then(|x| x.get().transpose())
             .transpose()
-            .map_err(|e| e.context(format!("key: {}", key)))
+            .map_err(|e| e.context(format!("key: {key}")))
     }
 
     fn iter_item<D>(&self) -> impl Iterator<Item = (String, D)>
@@ -992,7 +992,7 @@ pub trait AxisArraysOp {
         &self,
         key: &str,
         chunk_size: usize,
-    ) -> Option<<Self::ArrayElem as ArrayElemOp>::ArrayIter<D>> 
+    ) -> Option<<Self::ArrayElem as ArrayElemOp>::ArrayIter<D>>
     where
         D: TryFrom<ArrayData>,
         <D as TryFrom<ArrayData>>::Error: std::fmt::Debug,
@@ -1131,7 +1131,8 @@ pub trait ArrayElemOp {
 }
 
 impl<B: Backend> ArrayElemOp for ArrayElem<B> {
-    type ArrayIter<D> = ChunkedArrayElem<B, D>
+    type ArrayIter<D>
+        = ChunkedArrayElem<B, D>
     where
         D: TryFrom<ArrayData>,
         <D as TryFrom<ArrayData>>::Error: std::fmt::Debug;
@@ -1188,7 +1189,8 @@ impl<B: Backend> ArrayElemOp for ArrayElem<B> {
 }
 
 impl<B: Backend> ArrayElemOp for StackedArrayElem<B> {
-    type ArrayIter<D> = StackedChunkedArrayElem<B, D>
+    type ArrayIter<D>
+        = StackedChunkedArrayElem<B, D>
     where
         D: TryFrom<ArrayData>,
         <D as TryFrom<ArrayData>>::Error: std::fmt::Debug;

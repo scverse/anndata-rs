@@ -13,9 +13,13 @@ use std::{
 };
 use std::{sync::Arc, vec};
 use zarrs::array::{
-    ZARR_NAN_F32, ZARR_NAN_F64, codec::bytes_to_bytes::zstd::ZstdCodec, data_type::{
-        BoolDataType, Float32DataType, Float64DataType, Int8DataType, Int16DataType, Int32DataType, Int64DataType, StringDataType, UInt8DataType, UInt16DataType, UInt32DataType, UInt64DataType
-    }
+    codec::bytes_to_bytes::zstd::ZstdCodec,
+    data_type::{
+        BoolDataType, Float32DataType, Float64DataType, Int16DataType, Int32DataType,
+        Int64DataType, Int8DataType, StringDataType, UInt16DataType, UInt32DataType,
+        UInt64DataType, UInt8DataType,
+    },
+    ZARR_NAN_F32, ZARR_NAN_F64,
 };
 use zarrs::filesystem::FilesystemStore;
 use zarrs::group::Group;
@@ -122,7 +126,7 @@ impl GroupOp<Zarr> for ZarrStore {
         let result = self.list_dir(&StorePrefix::root())?;
         Ok(result
             .prefixes()
-            .into_iter()
+            .iter()
             .map(|x| x.as_str().trim_end_matches("/").to_string())
             .collect())
     }
@@ -183,7 +187,7 @@ impl GroupOp<Zarr> for ZarrStore {
 
     /// Check if a group or dataset exists.
     fn exists(&self, name: &str) -> Result<bool> {
-        let path = format!("/{}", name);
+        let path = format!("/{name}");
         Ok(zarrs::node::node_exists(
             &self.inner,
             &path.as_str().try_into()?,
@@ -198,7 +202,7 @@ impl GroupOp<Zarr> for ZarrGroup {
             .store
             .list_dir(&current_path.as_str().try_into()?)?
             .prefixes()
-            .into_iter()
+            .iter()
             .map(|x| {
                 x.as_str()
                     .strip_prefix(current_path.as_str())
@@ -314,7 +318,7 @@ impl AttributeOp<Zarr> for ZarrGroup {
             .group
             .attributes()
             .get(name)
-            .with_context(|| format!("Attribute {} not found", name))?
+            .with_context(|| format!("Attribute {name} not found"))?
             .clone())
     }
 }
@@ -344,7 +348,7 @@ impl AttributeOp<Zarr> for ZarrDataset {
             .dataset
             .attributes()
             .get(name)
-            .with_context(|| format!("Attribute {} not found", name))?
+            .with_context(|| format!("Attribute {name} not found"))?
             .clone())
     }
 }
@@ -381,11 +385,7 @@ impl DatasetOp<Zarr> for ZarrDataset {
     }
 
     fn shape(&self) -> Shape {
-        self.dataset
-            .shape()
-            .into_iter()
-            .map(|x| *x as usize)
-            .collect()
+        self.dataset.shape().iter().map(|x| *x as usize).collect()
     }
 
     fn reshape(&mut self, shape: &Shape) -> Result<()> {
@@ -484,9 +484,13 @@ impl DatasetOp<Zarr> for ZarrDataset {
                 .collect();
             if starts.len() == selection.ndim() {
                 container.cache.clear();
-                container
-                    .dataset
-                    .store_array_subset(&ArraySubset::new_with_start_shape(starts, arr.shape().iter().map(|x| *x as u64).collect())?, arr.to_owned())?;
+                container.dataset.store_array_subset(
+                    &ArraySubset::new_with_start_shape(
+                        starts,
+                        arr.shape().iter().map(|x| *x as u64).collect(),
+                    )?,
+                    arr.to_owned(),
+                )?;
             } else {
                 panic!("Not implemented");
             }
@@ -519,9 +523,9 @@ where
     let arr = arr.into_dyn();
     let slices = info
         .as_ref()
-        .into_iter()
+        .iter()
         .map(|x| match x.as_ref() {
-            SelectInfoElem::Slice(slice) => Some(SliceInfoElem::from(slice.clone())),
+            SelectInfoElem::Slice(slice) => Some(SliceInfoElem::from(*slice)),
             _ => None,
         })
         .collect::<Option<Vec<_>>>();
@@ -531,16 +535,13 @@ where
         let shape = arr.shape();
         let select: Vec<_> = info
             .as_ref()
-            .into_iter()
+            .iter()
             .zip(shape)
             .map(|(x, n)| SelectInfoElemBounds::new(x.as_ref(), *n))
             .collect();
         let new_shape = select.iter().map(|x| x.len()).collect::<Vec<_>>();
         ArrayD::from_shape_fn(new_shape, |idx| {
-            let new_idx: Vec<_> = (0..idx.ndim())
-                .into_iter()
-                .map(|i| select[i].index(idx[i]))
-                .collect();
+            let new_idx: Vec<_> = (0..idx.ndim()).map(|i| select[i].index(idx[i])).collect();
             arr.index(new_idx.as_slice()).clone()
         })
     }
@@ -561,7 +562,7 @@ fn canoincalize_path<'a>(path: &'a str) -> Cow<'a, str> {
     if path.starts_with("/") {
         path.into()
     } else {
-        format!("/{}", path).into()
+        format!("/{path}").into()
     }
 }
 
@@ -629,14 +630,14 @@ fn new_empty_dataset_helper<T: BackendData, S: ?Sized>(
     let chunk_size: Vec<u64> = match config.block_size {
         Some(s) => s
             .as_ref()
-            .into_iter()
+            .iter()
             .map(|x| (*x).max(1) as u64)
             .collect::<Vec<_>>(),
         _ => {
             if shape.len() == 1 {
-                vec![shape[0].min(16384).max(1) as u64]
+                vec![shape[0].clamp(1, 16384) as u64]
             } else {
-                shape.iter().map(|&x| x.min(128).max(1) as u64).collect()
+                shape.iter().map(|&x| x.clamp(1, 128) as u64).collect()
             }
         }
     };

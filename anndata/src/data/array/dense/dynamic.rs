@@ -6,8 +6,8 @@ use crate::{
     },
 };
 
-use anyhow::{bail, ensure, Result};
-use ndarray::{arr0, Array, ArrayD, ArrayView, CowArray, Dimension, IxDyn};
+use anyhow::{Result, bail, ensure};
+use ndarray::{Array, ArrayD, ArrayView, CowArray, Dimension, IxDyn, arr0};
 use num::NumCast;
 use paste::paste;
 use polars::series::Series;
@@ -161,6 +161,11 @@ impl DynArray {
         crate::macros::dyn_map_fun!(self, DynArray, len)
     }
 
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        crate::macros::dyn_map_fun!(self, DynArray, is_empty)
+    }
+
     impl_dynarray_into_array!(
         I8, i8, I16, i16, I32, i32, I64, i64, U8, u8, U16, u16, U32, u32, U64, u64, F32, f32, F64,
         f64, Bool, bool, String, String
@@ -194,9 +199,9 @@ impl_dynarray_traits!(
     bool, Bool, String, String
 );
 
-impl Into<Series> for DynArray {
-    fn into(self) -> Series {
-        match self {
+impl From<DynArray> for Series {
+    fn from(val: DynArray) -> Self {
+        match val {
             DynArray::I8(x) => x.iter().collect(),
             DynArray::I16(x) => x.iter().collect(),
             DynArray::I32(x) => x.iter().collect(),
@@ -319,7 +324,7 @@ impl Stackable for DynArray {
 impl WritableArray for DynArray {}
 impl ReadableArray for DynArray {
     fn get_shape<B: Backend>(container: &DataContainer<B>) -> Result<Shape> {
-        Ok(container.as_dataset()?.shape().into())
+        Ok(container.as_dataset()?.shape())
     }
 
     fn read_select<B, S>(container: &DataContainer<B>, info: &[S]) -> Result<Self>
@@ -371,6 +376,11 @@ impl DynCowArray<'_> {
 
     pub fn len(&self) -> usize {
         crate::macros::dyn_map_fun!(self, DynCowArray, len)
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        crate::macros::dyn_map_fun!(self, DynCowArray, is_empty)
     }
 }
 
@@ -438,13 +448,25 @@ impl<D: Dimension> ArrayConvert<Array<i8, D>> for DynArray {
     fn try_convert(self) -> Result<Array<i8, D>> {
         match self {
             DynArray::I8(data) => Ok(data.into_dimensionality()?),
-            DynArray::I16(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::I32(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::I64(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
+            DynArray::I16(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
+            DynArray::I32(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
+            DynArray::I64(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
             DynArray::U8(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::U16(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::U32(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::U64(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
+            DynArray::U16(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
+            DynArray::U32(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
+            DynArray::U64(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
             DynArray::Bool(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             _ => bail!("Cannot convert to i8 Array"),
         }
@@ -456,12 +478,22 @@ impl<D: Dimension> ArrayConvert<Array<i16, D>> for DynArray {
         match self {
             DynArray::I16(data) => Ok(data.into_dimensionality()?),
             DynArray::I8(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
-            DynArray::I32(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::I64(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
+            DynArray::I32(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
+            DynArray::I64(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
             DynArray::U8(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
-            DynArray::U16(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::U32(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::U64(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
+            DynArray::U16(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
+            DynArray::U32(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
+            DynArray::U64(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
             DynArray::Bool(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             _ => bail!("Cannot convert to i16 Array"),
         }
@@ -474,11 +506,17 @@ impl<D: Dimension> ArrayConvert<Array<i32, D>> for DynArray {
             DynArray::I32(data) => Ok(data.into_dimensionality()?),
             DynArray::I8(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::I16(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
-            DynArray::I64(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
+            DynArray::I64(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
             DynArray::U8(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::U16(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
-            DynArray::U32(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::U64(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
+            DynArray::U32(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
+            DynArray::U64(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
             DynArray::Bool(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             _ => bail!("Cannot convert to i32 Array"),
         }
@@ -495,7 +533,9 @@ impl<D: Dimension> ArrayConvert<Array<i64, D>> for DynArray {
             DynArray::U8(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::U16(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::U32(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
-            DynArray::U64(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
+            DynArray::U64(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
             DynArray::Bool(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             _ => bail!("Cannot convert to i64 Array"),
         }
@@ -507,12 +547,24 @@ impl<D: Dimension> ArrayConvert<Array<u8, D>> for DynArray {
         match self {
             DynArray::U8(data) => Ok(data.into_dimensionality()?),
             DynArray::I8(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::I16(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::I32(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::I64(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::U16(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::U32(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::U64(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
+            DynArray::I16(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
+            DynArray::I32(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
+            DynArray::I64(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
+            DynArray::U16(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
+            DynArray::U32(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
+            DynArray::U64(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
             DynArray::Bool(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             _ => bail!("Cannot convert to u8 Array"),
         }
@@ -524,12 +576,22 @@ impl<D: Dimension> ArrayConvert<Array<u16, D>> for DynArray {
         match self {
             DynArray::U16(data) => Ok(data.into_dimensionality()?),
             DynArray::I8(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::I16(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::I32(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::I64(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
+            DynArray::I16(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
+            DynArray::I32(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
+            DynArray::I64(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
             DynArray::U8(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
-            DynArray::U32(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::U64(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
+            DynArray::U32(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
+            DynArray::U64(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
             DynArray::Bool(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             _ => bail!("Cannot convert to u16 Array"),
         }
@@ -541,12 +603,20 @@ impl<D: Dimension> ArrayConvert<Array<u32, D>> for DynArray {
         match self {
             DynArray::U32(data) => Ok(data.into_dimensionality()?),
             DynArray::I8(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::I16(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::I32(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::I64(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
+            DynArray::I16(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
+            DynArray::I32(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
+            DynArray::I64(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
             DynArray::U8(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::U16(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
-            DynArray::U64(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
+            DynArray::U64(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
             DynArray::Bool(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             _ => bail!("Cannot convert to u32 Array"),
         }
@@ -558,9 +628,15 @@ impl<D: Dimension> ArrayConvert<Array<u64, D>> for DynArray {
         match self {
             DynArray::U64(data) => Ok(data.into_dimensionality()?),
             DynArray::I8(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::I16(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::I32(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::I64(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
+            DynArray::I16(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
+            DynArray::I32(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
+            DynArray::I64(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
             DynArray::U8(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::U16(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::U32(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
@@ -574,13 +650,23 @@ impl<D: Dimension> ArrayConvert<Array<usize, D>> for DynArray {
     fn try_convert(self) -> Result<Array<usize, D>> {
         match self {
             DynArray::I8(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::I16(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::I32(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::I64(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
+            DynArray::I16(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
+            DynArray::I32(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
+            DynArray::I64(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
             DynArray::U8(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::U16(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
-            DynArray::U32(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
-            DynArray::U64(data) => Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?),
+            DynArray::U32(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
+            DynArray::U64(data) => {
+                Ok(data.mapv(|x| x.try_into().unwrap()).into_dimensionality()?)
+            }
             DynArray::Bool(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             _ => bail!("Cannot convert to usize Array"),
         }
@@ -596,7 +682,7 @@ impl<D: Dimension> ArrayConvert<Array<f32, D>> for DynArray {
             DynArray::U8(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::U16(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::Bool(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
-            _ => bail!("Cannot convert {:?} to f32 Array", self),
+            _ => bail!("Cannot convert {self:?} to f32 Array"),
         }
     }
 }
@@ -608,14 +694,18 @@ impl<D: Dimension> ArrayConvert<Array<f64, D>> for DynArray {
             DynArray::I8(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::I16(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::I32(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
-            DynArray::I64(data) => Ok(data.mapv(|x| NumCast::from(x).unwrap()).into_dimensionality()?),
+            DynArray::I64(data) => Ok(data
+                .mapv(|x| NumCast::from(x).unwrap())
+                .into_dimensionality()?),
             DynArray::U8(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::U16(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::U32(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
-            DynArray::U64(data) => Ok(data.mapv(|x| NumCast::from(x).unwrap()).into_dimensionality()?),
+            DynArray::U64(data) => Ok(data
+                .mapv(|x| NumCast::from(x).unwrap())
+                .into_dimensionality()?),
             DynArray::F32(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::Bool(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
-            _ => bail!("Cannot convert {:?} to f64 Array", self),
+            _ => bail!("Cannot convert {self:?} to f64 Array"),
         }
     }
 }
@@ -624,7 +714,7 @@ impl<D: Dimension> ArrayConvert<Array<bool, D>> for DynArray {
     fn try_convert(self) -> Result<Array<bool, D>> {
         match self {
             DynArray::Bool(data) => Ok(data.into_dimensionality()?),
-            _ => bail!("Cannot convert {:?} to bool Array", self),
+            _ => bail!("Cannot convert {self:?} to bool Array"),
         }
     }
 }

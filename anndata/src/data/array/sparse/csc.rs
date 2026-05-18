@@ -2,14 +2,14 @@ use std::collections::HashMap;
 
 use crate::backend::*;
 use crate::data::{
-    array::utils::{cs_major_index, cs_major_minor_index, cs_major_slice},
+    SelectInfoBounds, SelectInfoElemBounds,
     array::DynScalar,
+    array::utils::{cs_major_index, cs_major_minor_index, cs_major_slice},
     data_traits::*,
     slice::{SelectInfoElem, Shape},
-    SelectInfoBounds, SelectInfoElemBounds,
 };
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use nalgebra_sparse::csc::CscMatrix;
 use nalgebra_sparse::pattern::SparsityPattern;
 use ndarray::Ix1;
@@ -51,14 +51,10 @@ impl<T: BackendData + Clone> Selectable for CscMatrix<T> {
                     if step == 1 {
                         let (offsets, indices, data) =
                             cs_major_slice(start, end, col_offsets, row_indices, data);
-                        (
-                            offsets,
-                            indices.iter().copied().collect(),
-                            data.iter().cloned().collect(),
-                        )
+                        (offsets, indices.to_vec(), data.to_vec())
                     } else if step < 0 {
                         cs_major_index(
-                            (start..end).step_by(step.abs() as usize).rev(),
+                            (start..end).step_by(step.unsigned_abs()).rev(),
                             col_offsets,
                             row_indices,
                             data,
@@ -90,8 +86,8 @@ impl<T: BackendData + Clone> Selectable for CscMatrix<T> {
                             &SelectInfoElemBounds::Slice(row) => {
                                 if row.step < 0 {
                                     cs_major_minor_index(
-                                        (col_start..col_end).step_by(col_step.abs() as usize).rev(),
-                                        (row.start..row.end).step_by(row.step.abs() as usize).rev(),
+                                        (col_start..col_end).step_by(col_step.unsigned_abs()).rev(),
+                                        (row.start..row.end).step_by(row.step.unsigned_abs()).rev(),
                                         self.nrows(),
                                         col_offsets,
                                         row_indices,
@@ -99,7 +95,7 @@ impl<T: BackendData + Clone> Selectable for CscMatrix<T> {
                                     )
                                 } else {
                                     cs_major_minor_index(
-                                        (col_start..col_end).step_by(col_step.abs() as usize).rev(),
+                                        (col_start..col_end).step_by(col_step.unsigned_abs()).rev(),
                                         (row.start..row.end).step_by(row.step as usize),
                                         self.nrows(),
                                         col_offsets,
@@ -109,7 +105,7 @@ impl<T: BackendData + Clone> Selectable for CscMatrix<T> {
                                 }
                             }
                             SelectInfoElemBounds::Index(idx) => cs_major_minor_index(
-                                (col_start..col_end).step_by(col_step.abs() as usize).rev(),
+                                (col_start..col_end).step_by(col_step.unsigned_abs()).rev(),
                                 idx.iter().copied(),
                                 self.nrows(),
                                 col_offsets,
@@ -124,7 +120,7 @@ impl<T: BackendData + Clone> Selectable for CscMatrix<T> {
                                 if row.step < 0 {
                                     cs_major_minor_index(
                                         (col_start..col_end).step_by(col_step as usize),
-                                        (row.start..row.end).step_by(row.step.abs() as usize).rev(),
+                                        (row.start..row.end).step_by(row.step.unsigned_abs()).rev(),
                                         self.nrows(),
                                         col_offsets,
                                         row_indices,
@@ -157,7 +153,7 @@ impl<T: BackendData + Clone> Selectable for CscMatrix<T> {
                         if row.step < 0 {
                             cs_major_minor_index(
                                 i.iter().copied(),
-                                (row.start..row.end).step_by(row.step.abs() as usize).rev(),
+                                (row.start..row.end).step_by(row.step.unsigned_abs()).rev(),
                                 self.nrows(),
                                 col_offsets,
                                 row_indices,
@@ -269,7 +265,7 @@ impl<T: BackendData> Writable for CscMatrix<T> {
                     .map(|x| TryInto::<i64>::try_into(*x).unwrap())
                     .collect::<Vec<_>>()
                     .into(),
-                    get_default_write_config(),
+                get_default_write_config(),
             )?;
             group.new_array_dataset(
                 "indices",
@@ -278,13 +274,10 @@ impl<T: BackendData> Writable for CscMatrix<T> {
                     .map(|x| (*x) as i64)
                     .collect::<Vec<_>>()
                     .into(),
-                    get_default_write_config(),
+                get_default_write_config(),
             )?;
         } else {
-            panic!(
-                "The number of rows ({}) is too large to be stored as i64",
-                num_rows
-            );
+            panic!("The number of rows ({num_rows}) is too large to be stored as i64");
         }
 
         Ok(DataContainer::Group(group))
@@ -319,12 +312,9 @@ impl<T: BackendData> Readable for CscMatrix<T> {
                 indices,
                 data,
             )
-            .map_err(|e| anyhow::anyhow!("{}", e))
+            .map_err(|e| anyhow::anyhow!("{e}"))
         } else {
-            bail!(
-                "cannot read csc matrix from container with data type {:?}",
-                data_type
-            )
+            bail!("cannot read csc matrix from container with data type {data_type:?}")
         }
     }
 }
@@ -390,10 +380,7 @@ impl<T: BackendData> ReadableArray for CscMatrix<T> {
             };
             Ok(data)
         } else {
-            bail!(
-                "cannot read csc matrix from container with data type {:?}",
-                data_type
-            )
+            bail!("cannot read csc matrix from container with data type {data_type:?}")
         }
     }
 }
@@ -408,8 +395,8 @@ mod csc_matrix_index_tests {
     use nalgebra::base::DMatrix;
     use nalgebra_sparse::CooMatrix;
     use ndarray::Array;
-    use ndarray_rand::rand_distr::Uniform;
     use ndarray_rand::RandomExt;
+    use ndarray_rand::rand_distr::Uniform;
 
     fn csc_select<I1, I2>(csc: &CscMatrix<i64>, row_indices: I1, col_indices: I2) -> CscMatrix<i64>
     where
@@ -466,7 +453,8 @@ mod csc_matrix_index_tests {
             let values = Array::random(nnz, Uniform::new(-10000, 10000).unwrap()).to_vec();
 
             let csc_matrix: CscMatrix<i64> =
-                (&CooMatrix::try_from_triplets(n, m, row_indices, col_indices, values).unwrap()).into();
+                (&CooMatrix::try_from_triplets(n, m, row_indices, col_indices, values).unwrap())
+                    .into();
 
             // Row slice
             assert_csc_eq(

@@ -60,47 +60,47 @@ impl<B: Backend> std::fmt::Display for AnnData<B> {
             "AnnData object with n_obs x n_vars = {} x {} backed at '{}'",
             self.n_obs(),
             self.n_vars(),
-            self.filename().to_str().unwrap().to_string(),
+            self.filename().to_str().unwrap(),
         )?;
-        if let Some(obs) = self.obs.lock().as_ref().map(|x| x.get_column_names()) {
-            if !obs.is_empty() {
-                write!(f, "\n    obs: '{}'", obs.into_iter().join("', '"))?;
-            }
+        if let Some(obs) = self.obs.lock().as_ref().map(|x| x.get_column_names())
+            && !obs.is_empty()
+        {
+            write!(f, "\n    obs: '{}'", obs.into_iter().join("', '"))?;
         }
-        if let Some(var) = self.var.lock().as_ref().map(|x| x.get_column_names()) {
-            if !var.is_empty() {
-                write!(f, "\n    var: '{}'", var.into_iter().join("', '"))?;
-            }
+        if let Some(var) = self.var.lock().as_ref().map(|x| x.get_column_names())
+            && !var.is_empty()
+        {
+            write!(f, "\n    var: '{}'", var.into_iter().join("', '"))?;
         }
-        if let Some(keys) = self.uns.lock().as_ref().map(|x| x.keys().join("', '")) {
-            if !keys.is_empty() {
-                write!(f, "\n    uns: '{}'", keys)?;
-            }
+        if let Some(keys) = self.uns.lock().as_ref().map(|x| x.keys().join("', '"))
+            && !keys.is_empty()
+        {
+            write!(f, "\n    uns: '{keys}'")?;
         }
-        if let Some(keys) = self.obsm.lock().as_ref().map(|x| x.keys().join("', '")) {
-            if !keys.is_empty() {
-                write!(f, "\n    obsm: '{}'", keys)?;
-            }
+        if let Some(keys) = self.obsm.lock().as_ref().map(|x| x.keys().join("', '"))
+            && !keys.is_empty()
+        {
+            write!(f, "\n    obsm: '{keys}'")?;
         }
-        if let Some(keys) = self.obsp.lock().as_ref().map(|x| x.keys().join("', '")) {
-            if !keys.is_empty() {
-                write!(f, "\n    obsp: '{}'", keys)?;
-            }
+        if let Some(keys) = self.obsp.lock().as_ref().map(|x| x.keys().join("', '"))
+            && !keys.is_empty()
+        {
+            write!(f, "\n    obsp: '{keys}'")?;
         }
-        if let Some(keys) = self.varm.lock().as_ref().map(|x| x.keys().join("', '")) {
-            if !keys.is_empty() {
-                write!(f, "\n    varm: '{}'", keys)?;
-            }
+        if let Some(keys) = self.varm.lock().as_ref().map(|x| x.keys().join("', '"))
+            && !keys.is_empty()
+        {
+            write!(f, "\n    varm: '{keys}'")?;
         }
-        if let Some(keys) = self.varp.lock().as_ref().map(|x| x.keys().join("', '")) {
-            if !keys.is_empty() {
-                write!(f, "\n    varp: '{}'", keys)?;
-            }
+        if let Some(keys) = self.varp.lock().as_ref().map(|x| x.keys().join("', '"))
+            && !keys.is_empty()
+        {
+            write!(f, "\n    varp: '{keys}'")?;
         }
-        if let Some(keys) = self.layers.lock().as_ref().map(|x| x.keys().join("', '")) {
-            if !keys.is_empty() {
-                write!(f, "\n    layers: '{}'", keys)?;
-            }
+        if let Some(keys) = self.layers.lock().as_ref().map(|x| x.keys().join("', '"))
+            && !keys.is_empty()
+        {
+            write!(f, "\n    layers: '{keys}'")?;
         }
         Ok(())
     }
@@ -228,11 +228,11 @@ impl<B: Backend> AnnData<B> {
     ///
     /// * `filename` - The path to the output file.
     /// * `partial` - If Some, writes only the specified fields. If None, writes all fields.
-    ///             This can be useful for saving space when only a subset of the data is needed.
-    ///             Possible fields are: "X", "obs", "var", "obsm", "obsp", "varm", "varp", "uns", "layers".
+    ///   This can be useful for saving space when only a subset of the data is needed.
+    ///   Possible fields are: "X", "obs", "var", "obsm", "obsp", "varm", "varp", "uns", "layers".
     /// * `chunk_size` - If None, writes the entire data matrix at once. Otherwise,
-    ///                  writes the data matrix in chunks of the specified size.
-    ///              This can be useful for saving large datasets that do not fit into memory.
+    ///   writes the data matrix in chunks of the specified size.
+    ///   This can be useful for saving large datasets that do not fit into memory.
     pub fn write<O: Backend, P: AsRef<Path>>(
         &self,
         filename: P,

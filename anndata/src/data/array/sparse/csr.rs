@@ -53,14 +53,10 @@ impl<T: Clone> Selectable for CsrMatrix<T> {
                     if step == 1 {
                         let (offsets, indices, data) =
                             cs_major_slice(start, end, row_offsets, col_indices, data);
-                        (
-                            offsets,
-                            indices.iter().copied().collect(),
-                            data.iter().cloned().collect(),
-                        )
+                        (offsets, indices.to_vec(), data.to_vec())
                     } else if step < 0 {
                         cs_major_index(
-                            (start..end).step_by(step.abs() as usize).rev(),
+                            (start..end).step_by(step.unsigned_abs()).rev(),
                             row_offsets,
                             col_indices,
                             data,
@@ -90,8 +86,8 @@ impl<T: Clone> Selectable for CsrMatrix<T> {
                             &SelectInfoElemBounds::Slice(col) => {
                                 if col.step < 0 {
                                     cs_major_minor_index(
-                                        (row_start..row_end).step_by(row_step.abs() as usize).rev(),
-                                        (col.start..col.end).step_by(col.step.abs() as usize).rev(),
+                                        (row_start..row_end).step_by(row_step.unsigned_abs()).rev(),
+                                        (col.start..col.end).step_by(col.step.unsigned_abs()).rev(),
                                         self.ncols(),
                                         row_offsets,
                                         col_indices,
@@ -99,7 +95,7 @@ impl<T: Clone> Selectable for CsrMatrix<T> {
                                     )
                                 } else {
                                     cs_major_minor_index(
-                                        (row_start..row_end).step_by(row_step.abs() as usize).rev(),
+                                        (row_start..row_end).step_by(row_step.unsigned_abs()).rev(),
                                         (col.start..col.end).step_by(col.step as usize),
                                         self.ncols(),
                                         row_offsets,
@@ -109,7 +105,7 @@ impl<T: Clone> Selectable for CsrMatrix<T> {
                                 }
                             }
                             SelectInfoElemBounds::Index(idx) => cs_major_minor_index(
-                                (row_start..row_end).step_by(row_step.abs() as usize).rev(),
+                                (row_start..row_end).step_by(row_step.unsigned_abs()).rev(),
                                 idx.iter().copied(),
                                 self.ncols(),
                                 row_offsets,
@@ -123,7 +119,7 @@ impl<T: Clone> Selectable for CsrMatrix<T> {
                                 if col.step < 0 {
                                     cs_major_minor_index(
                                         (row_start..row_end).step_by(row_step as usize),
-                                        (col.start..col.end).step_by(col.step.abs() as usize).rev(),
+                                        (col.start..col.end).step_by(col.step.unsigned_abs()).rev(),
                                         self.ncols(),
                                         row_offsets,
                                         col_indices,
@@ -156,7 +152,7 @@ impl<T: Clone> Selectable for CsrMatrix<T> {
                         if col.step < 0 {
                             cs_major_minor_index(
                                 i.iter().copied(),
-                                (col.start..col.end).step_by(col.step.abs() as usize).rev(),
+                                (col.start..col.end).step_by(col.step.unsigned_abs()).rev(),
                                 self.ncols(),
                                 row_offsets,
                                 col_indices,
@@ -280,7 +276,7 @@ impl<T: BackendData> Writable for CsrMatrix<T> {
                     .map(|x| TryInto::<i64>::try_into(*x).unwrap())
                     .collect::<Vec<_>>()
                     .into(),
-                    get_default_write_config(),
+                get_default_write_config(),
             )?;
             group.new_array_dataset(
                 "indices",
@@ -289,13 +285,10 @@ impl<T: BackendData> Writable for CsrMatrix<T> {
                     .map(|x| (*x) as i64)
                     .collect::<Vec<_>>()
                     .into(),
-                    get_default_write_config(),
+                get_default_write_config(),
             )?;
         } else {
-            panic!(
-                "The number of columns ({}) is too large to be stored as i64",
-                num_cols
-            );
+            panic!("The number of columns ({num_cols}) is too large to be stored as i64");
         }
 
         Ok(DataContainer::Group(group))
@@ -330,12 +323,9 @@ impl<T: BackendData> Readable for CsrMatrix<T> {
                 indices,
                 data,
             )
-            .map_err(|e| anyhow!("cannot read csr matrix: {}", e))
+            .map_err(|e| anyhow!("cannot read csr matrix: {e}"))
         } else {
-            bail!(
-                "cannot read csr matrix from container with data type {:?}",
-                data_type
-            )
+            bail!("cannot read csr matrix from container with data type {data_type:?}")
         }
     }
 }
@@ -401,10 +391,7 @@ impl<T: BackendData> ReadableArray for CsrMatrix<T> {
             };
             Ok(data)
         } else {
-            bail!(
-                "cannot read csr matrix from container with data type {:?}",
-                data_type
-            )
+            bail!("cannot read csr matrix from container with data type {data_type:?}")
         }
     }
 }
@@ -414,12 +401,15 @@ impl<T: BackendData> WritableArray for CsrMatrix<T> {}
 
 impl<T: BackendData + Clone + ToPrimitive> ArrayArithmetic for CsrMatrix<T> {
     fn sum(&self) -> f64 {
-        self.values().iter().map(|x| <f64 as NumCast>::from(x.clone()).unwrap()).sum()
+        self.values()
+            .iter()
+            .map(|x| <f64 as NumCast>::from(x.clone()).unwrap())
+            .sum()
     }
 
     fn sum_axis(&self, axis: usize) -> Result<ArrayD<f64>> {
         if axis >= 2 {
-            anyhow::bail!("axis {} out of bounds", axis);
+            anyhow::bail!("axis {axis} out of bounds");
         }
 
         match axis {
@@ -438,10 +428,15 @@ impl<T: BackendData + Clone + ToPrimitive> ArrayArithmetic for CsrMatrix<T> {
             }
             1 => Ok(self
                 .row_iter()
-                .map(|row| row.values().iter().map(|v| <f64 as NumCast>::from(v.clone()).unwrap()).sum())
+                .map(|row| {
+                    row.values()
+                        .iter()
+                        .map(|v| <f64 as NumCast>::from(v.clone()).unwrap())
+                        .sum()
+                })
                 .collect::<Array1<f64>>()
                 .into_dyn()),
-            _ => anyhow::bail!("axis {} is out of bounds for 2D array", axis),
+            _ => anyhow::bail!("axis {axis} is out of bounds for 2D array"),
         }
     }
 

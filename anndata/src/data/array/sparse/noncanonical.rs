@@ -2,13 +2,13 @@ use std::collections::HashMap;
 
 use crate::backend::*;
 use crate::data::{
+    SelectInfoBounds, SelectInfoElemBounds,
     array::utils::{cs_major_index, cs_major_minor_index, cs_major_slice},
     data_traits::*,
     slice::{SelectInfoElem, Shape},
-    SelectInfoBounds, SelectInfoElemBounds,
 };
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use nalgebra_sparse::pattern::SparsityPattern;
 use nalgebra_sparse::{coo::CooMatrix, csr::CsrMatrix};
 use ndarray::Ix1;
@@ -159,7 +159,7 @@ impl Readable for DynCsrNonCanonical {
                     };
                 }
                 crate::macros::dyn_match!(group.open_dataset("data")?.dtype()?, ScalarType, fun)
-            },
+            }
             _ => bail!("cannot read csr matrix from non-group container"),
         }
     }
@@ -466,14 +466,10 @@ impl<T: Clone> Selectable for CsrNonCanonical<T> {
                     if step == 1 {
                         let (offsets, indices, data) =
                             cs_major_slice(start, end, row_offsets, col_indices, data);
-                        (
-                            offsets,
-                            indices.iter().copied().collect(),
-                            data.iter().cloned().collect(),
-                        )
+                        (offsets, indices.to_vec(), data.to_vec())
                     } else if step < 0 {
                         cs_major_index(
-                            (start..end).step_by(step.abs() as usize).rev(),
+                            (start..end).step_by(step.unsigned_abs()).rev(),
                             row_offsets,
                             col_indices,
                             data,
@@ -503,8 +499,8 @@ impl<T: Clone> Selectable for CsrNonCanonical<T> {
                             &SelectInfoElemBounds::Slice(col) => {
                                 if col.step < 0 {
                                     cs_major_minor_index(
-                                        (row_start..row_end).step_by(row_step.abs() as usize).rev(),
-                                        (col.start..col.end).step_by(col.step.abs() as usize).rev(),
+                                        (row_start..row_end).step_by(row_step.unsigned_abs()).rev(),
+                                        (col.start..col.end).step_by(col.step.unsigned_abs()).rev(),
                                         self.ncols(),
                                         row_offsets,
                                         col_indices,
@@ -512,7 +508,7 @@ impl<T: Clone> Selectable for CsrNonCanonical<T> {
                                     )
                                 } else {
                                     cs_major_minor_index(
-                                        (row_start..row_end).step_by(row_step.abs() as usize).rev(),
+                                        (row_start..row_end).step_by(row_step.unsigned_abs()).rev(),
                                         (col.start..col.end).step_by(col.step as usize),
                                         self.ncols(),
                                         row_offsets,
@@ -522,7 +518,7 @@ impl<T: Clone> Selectable for CsrNonCanonical<T> {
                                 }
                             }
                             SelectInfoElemBounds::Index(idx) => cs_major_minor_index(
-                                (row_start..row_end).step_by(row_step.abs() as usize).rev(),
+                                (row_start..row_end).step_by(row_step.unsigned_abs()).rev(),
                                 idx.iter().copied(),
                                 self.ncols(),
                                 row_offsets,
@@ -536,7 +532,7 @@ impl<T: Clone> Selectable for CsrNonCanonical<T> {
                                 if col.step < 0 {
                                     cs_major_minor_index(
                                         (row_start..row_end).step_by(row_step as usize),
-                                        (col.start..col.end).step_by(col.step.abs() as usize).rev(),
+                                        (col.start..col.end).step_by(col.step.unsigned_abs()).rev(),
                                         self.ncols(),
                                         row_offsets,
                                         col_indices,
@@ -569,7 +565,7 @@ impl<T: Clone> Selectable for CsrNonCanonical<T> {
                         if col.step < 0 {
                             cs_major_minor_index(
                                 i.iter().copied(),
-                                (col.start..col.end).step_by(col.step.abs() as usize).rev(),
+                                (col.start..col.end).step_by(col.step.unsigned_abs()).rev(),
                                 self.ncols(),
                                 row_offsets,
                                 col_indices,
@@ -702,7 +698,7 @@ impl<T: BackendData> Writable for CsrNonCanonical<T> {
                     .map(|x| TryInto::<i64>::try_into(*x).unwrap())
                     .collect::<Vec<_>>()
                     .into(),
-                    get_default_write_config(),
+                get_default_write_config(),
             )?;
             group.new_array_dataset(
                 "indices",
@@ -711,13 +707,10 @@ impl<T: BackendData> Writable for CsrNonCanonical<T> {
                     .map(|x| (*x) as i64)
                     .collect::<Vec<_>>()
                     .into(),
-                    get_default_write_config(),
+                get_default_write_config(),
             )?;
         } else {
-            panic!(
-                "The number of columns ({}) is too large to be stored as i64",
-                num_cols
-            );
+            panic!("The number of columns ({num_cols}) is too large to be stored as i64");
         }
 
         Ok(DataContainer::Group(group))

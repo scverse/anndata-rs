@@ -18,9 +18,9 @@ use ndarray::{Array, ArrayD, ArrayView, CowArray, Dimension, IxDyn, SliceInfo, S
 use std::ops::{Deref, Index};
 use std::path::{Path, PathBuf};
 
-///////////////////////////////////////////////////////////////////////////////
-/// Type definitions
-///////////////////////////////////////////////////////////////////////////////
+//-----------------------------------------------------------------------------
+// Type definitions
+//-----------------------------------------------------------------------------
 
 pub struct H5;
 
@@ -54,9 +54,9 @@ impl Deref for H5Dataset {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////////
-/// Backend implementation
-///////////////////////////////////////////////////////////////////////////////
+//-----------------------------------------------------------------------------
+// Backend implementation
+//-----------------------------------------------------------------------------
 
 impl Backend for H5 {
     const NAME: &'static str = "hdf5";
@@ -82,7 +82,7 @@ impl Backend for H5 {
 
 impl StoreOp<H5> for H5File {
     fn filename(&self) -> PathBuf {
-        hdf5::Location::filename(&self).into()
+        hdf5::Location::filename(self).into()
     }
 
     fn close(self) -> Result<()> {
@@ -166,7 +166,7 @@ fn exists(group: &Group, name: &str) -> Result<bool> {
 }
 
 fn create_scalar_data<D: BackendData>(group: &Group, name: &str, data: &D) -> Result<H5Dataset> {
-    match data.into_dyn() {
+    match data.as_dyn() {
         DynScalar::U8(x) => {
             let dataset = group.new_dataset::<u8>().create(name)?;
             dataset.write_scalar(&x)?;
@@ -247,7 +247,7 @@ impl DatasetOp<H5> for H5Dataset {
             TypeDescriptor::Boolean => ScalarType::Bool,
             TypeDescriptor::VarLenAscii => ScalarType::String,
             TypeDescriptor::VarLenUnicode => ScalarType::String,
-            ty => bail!("Unsupported type: {:?}", ty),
+            ty => bail!("Unsupported type: {ty:?}"),
         };
         Ok(ty)
     }
@@ -262,20 +262,20 @@ impl DatasetOp<H5> for H5Dataset {
 
     fn read_scalar<T: BackendData>(&self) -> Result<T> {
         let val = match T::DTYPE {
-            ScalarType::Bool => self.deref().read_scalar::<bool>()?.into_dyn(),
-            ScalarType::U8 => self.deref().read_scalar::<u8>()?.into_dyn(),
-            ScalarType::U16 => self.deref().read_scalar::<u16>()?.into_dyn(),
-            ScalarType::U32 => self.deref().read_scalar::<u32>()?.into_dyn(),
-            ScalarType::U64 => self.deref().read_scalar::<u64>()?.into_dyn(),
-            ScalarType::I8 => self.deref().read_scalar::<i8>()?.into_dyn(),
-            ScalarType::I16 => self.deref().read_scalar::<i16>()?.into_dyn(),
-            ScalarType::I32 => self.deref().read_scalar::<i32>()?.into_dyn(),
-            ScalarType::I64 => self.deref().read_scalar::<i64>()?.into_dyn(),
-            ScalarType::F32 => self.deref().read_scalar::<f32>()?.into_dyn(),
-            ScalarType::F64 => self.deref().read_scalar::<f64>()?.into_dyn(),
+            ScalarType::Bool => self.deref().read_scalar::<bool>()?.as_dyn(),
+            ScalarType::U8 => self.deref().read_scalar::<u8>()?.as_dyn(),
+            ScalarType::U16 => self.deref().read_scalar::<u16>()?.as_dyn(),
+            ScalarType::U32 => self.deref().read_scalar::<u32>()?.as_dyn(),
+            ScalarType::U64 => self.deref().read_scalar::<u64>()?.as_dyn(),
+            ScalarType::I8 => self.deref().read_scalar::<i8>()?.as_dyn(),
+            ScalarType::I16 => self.deref().read_scalar::<i16>()?.as_dyn(),
+            ScalarType::I32 => self.deref().read_scalar::<i32>()?.as_dyn(),
+            ScalarType::I64 => self.deref().read_scalar::<i64>()?.as_dyn(),
+            ScalarType::F32 => self.deref().read_scalar::<f32>()?.as_dyn(),
+            ScalarType::F64 => self.deref().read_scalar::<f64>()?.as_dyn(),
             ScalarType::String => {
                 let s = self.deref().read_scalar::<VarLenUnicode>()?;
-                s.to_string().into_dyn()
+                s.to_string().as_dyn()
             }
         };
         BackendData::from_dyn(val)
@@ -296,9 +296,9 @@ impl DatasetOp<H5> for H5Dataset {
             let arr = arr_.view().into_dyn();
             let slices = info
                 .as_ref()
-                .into_iter()
+                .iter()
                 .map(|x| match x.as_ref() {
-                    SelectInfoElem::Slice(slice) => Some(SliceInfoElem::from(slice.clone())),
+                    SelectInfoElem::Slice(slice) => Some(SliceInfoElem::from(*slice)),
                     _ => None,
                 })
                 .collect::<Option<Vec<_>>>();
@@ -308,7 +308,7 @@ impl DatasetOp<H5> for H5Dataset {
                 let shape = arr_.shape();
                 let select: Vec<_> = info
                     .as_ref()
-                    .into_iter()
+                    .iter()
                     .zip_longest(shape)
                     .map(|ty| match ty {
                         EitherOrBoth::Both(x, n) => SelectInfoElemBounds::new(x.as_ref(), *n),
@@ -321,10 +321,8 @@ impl DatasetOp<H5> for H5Dataset {
                     .collect();
                 let new_shape = select.iter().map(|x| x.len()).collect::<Vec<_>>();
                 ArrayD::from_shape_fn(new_shape, |idx| {
-                    let new_idx: Vec<_> = (0..idx.ndim())
-                        .into_iter()
-                        .map(|i| select[i].index(idx[i]))
-                        .collect();
+                    let new_idx: Vec<_> =
+                        (0..idx.ndim()).map(|i| select[i].index(idx[i])).collect();
                     arr.index(new_idx.as_slice()).clone()
                 })
             }
@@ -449,9 +447,9 @@ fn path(loc: &Location) -> PathBuf {
     hdf5::Location::name(loc).into()
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Derived implementations
-////////////////////////////////////////////////////////////////////////////////
+//-----------------------------------------------------------------------------
+// Derived implementations
+//-----------------------------------------------------------------------------
 
 impl GroupOp<H5> for H5File {
     fn list(&self) -> Result<Vec<String>> {
@@ -643,7 +641,7 @@ fn read_scalar_attr(loc: &Location, name: &str) -> Result<Value> {
         TypeDescriptor::Unsigned(_) => attr.read_scalar::<u64>()?.into(),
         TypeDescriptor::Integer(_) => attr.read_scalar::<i64>()?.into(),
         TypeDescriptor::Float(_) => attr.read_scalar::<f64>()?.into(),
-        v => bail!("Unsupported type {}", v),
+        v => bail!("Unsupported type {v}"),
     };
     Ok(result)
 }
@@ -661,7 +659,7 @@ fn read_array_attr(loc: &Location, name: &str) -> Result<Value> {
         TypeDescriptor::Unsigned(_) => ndarray_to_json(&attr.read::<u64, IxDyn>()?),
         TypeDescriptor::Integer(_) => ndarray_to_json(&attr.read::<i64, IxDyn>()?),
         TypeDescriptor::Float(_) => ndarray_to_json(&attr.read::<f64, IxDyn>()?),
-        v => bail!("Unsupported type {}", v),
+        v => bail!("Unsupported type {v}"),
     };
     Ok(result)
 }
@@ -697,7 +695,7 @@ where
 
 fn write_scalar_attr<D: BackendData>(loc: &Location, name: &str, value: D) -> Result<()> {
     del_attr(loc, name);
-    match value.into_dyn() {
+    match value.as_dyn() {
         DynScalar::U8(x) => loc.new_attr::<u8>().create(name)?.write_scalar(&x)?,
         DynScalar::U16(x) => loc.new_attr::<u16>().create(name)?.write_scalar(&x)?,
         DynScalar::U32(x) => loc.new_attr::<u32>().create(name)?.write_scalar(&x)?,
@@ -724,7 +722,7 @@ where
     S: AsRef<[E]>,
     E: AsRef<SelectInfoElem>,
 {
-    if selection.as_ref().into_iter().all(|x| x.as_ref().is_full()) {
+    if selection.as_ref().iter().all(|x| x.as_ref().is_full()) {
         (Selection::All, shape)
     } else {
         let bounded_selection = SelectInfoBounds::new(&selection, &shape);

@@ -1,7 +1,7 @@
 use crate::container::{
     PyArrayElem, PyAxisArrays, PyChunkedArray, PyDataFrameElem, PyElemCollection,
 };
-use crate::data::{isinstance_of_pandas, to_select_elem, PyArrayData, PyData};
+use crate::data::{PyArrayData, PyData, isinstance_of_pandas, to_select_elem};
 use crate::{AnnData, PyAnnData};
 
 use anndata::container::Slot;
@@ -10,8 +10,8 @@ use anndata::{self, ArrayElemOp, Data, Selectable};
 use anndata::{AnnDataOp, Backend};
 use anndata::{AxisArraysOp, ElemCollectionOp};
 use anndata_hdf5::H5;
-use anyhow::{bail, Result};
-use downcast_rs::{impl_downcast, Downcast};
+use anyhow::{Result, bail};
+use downcast_rs::{Downcast, impl_downcast};
 use pyo3::prelude::*;
 use pyo3_polars::PyDataFrame;
 use std::collections::HashMap;
@@ -96,7 +96,7 @@ impl AnnDataSet {
                     .map(|name| {
                         index
                             .get_index(&name)
-                            .expect(&format!("Unknown obs name: {}", name))
+                            .unwrap_or_else(|| panic!("Unknown obs name: {name}"))
                     })
                     .collect::<Vec<_>>()
             });
@@ -123,7 +123,7 @@ impl AnnDataSet {
                     .map(|name| {
                         index
                             .get_index(&name)
-                            .expect(&format!("Unknown obs name: {}", name))
+                            .unwrap_or_else(|| panic!("Unknown obs name: {name}"))
                     })
                     .collect::<Vec<_>>()
             });
@@ -166,7 +166,10 @@ impl AnnDataSet {
                     };
                     (key, adata)
                 });
-                Ok(anndata::AnnDataSet::new(anndatas, filename, add_key, use_absolute_path)?.into())
+                Ok(
+                    anndata::AnnDataSet::new(anndatas, filename, add_key, use_absolute_path)?
+                        .into(),
+                )
             }
             _ => todo!(),
         }
@@ -442,8 +445,8 @@ impl AnnDataSet {
     }
 }
 
-/// Lazily concatenated AnnData objects.
 /*
+/// Lazily concatenated AnnData objects.
 #[pyclass]
 #[repr(transparent)]
 pub struct StackedAnnData(pub Slot<anndata::StackedAnnData>);
@@ -712,7 +715,7 @@ impl<B: Backend> AnnDataSetTrait for Slot<anndata::AnnDataSet<B>> {
                     let adata = inner.to_adata_select::<H5, _, _>(slice, file, copy_x)?;
                     Ok(AnnData::from(adata).into_pyobject(py)?.into_any())
                 }
-                x => bail!("Unsupported backend: {}", x),
+                x => bail!("Unsupported backend: {x}"),
             }
         } else {
             let adata = PyAnnData::new(py)?;
@@ -841,7 +844,7 @@ impl<B: Backend> AnnDataSetTrait for Slot<anndata::AnnDataSet<B>> {
         if self.is_none() {
             "Closed AnnDataSet object".to_string()
         } else {
-            format!("{}", self)
+            format!("{self}")
         }
     }
 

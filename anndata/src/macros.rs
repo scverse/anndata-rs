@@ -55,4 +55,4 @@ macro_rules! dyn_map_fun {
     };
 }
 
-pub(crate) use {dyn_match, dyn_map, dyn_map_fun};
+pub(crate) use {dyn_map, dyn_map_fun, dyn_match};

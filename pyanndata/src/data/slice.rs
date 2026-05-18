@@ -1,14 +1,15 @@
 use crate::data::instance::*;
 
+use anndata::data::{SelectInfo, SelectInfoElem, Shape};
 use pyo3::prelude::*;
-use anndata::data::{Shape, SelectInfo, SelectInfoElem};
 
 pub fn to_select_info(ob: &Bound<'_, PyAny>, shape: &Shape) -> PyResult<SelectInfo> {
     let ndim = shape.ndim();
     if is_none_slice(ob)? {
-        Ok(std::iter::repeat(SelectInfoElem::full()).take(ndim).collect())
+        Ok(std::iter::repeat_n(SelectInfoElem::full(), ndim).collect())
     } else if ob.is_instance_of::<pyo3::types::PyTuple>() {
-        ob.try_iter()?.zip(shape.as_ref())
+        ob.try_iter()?
+            .zip(shape.as_ref())
             .map(|(x, len)| to_select_elem(&x?, *len))
             .collect()
     } else {
@@ -47,20 +48,22 @@ pub fn to_select_info(ob: &Bound<'_, PyAny>, shape: &Shape) -> PyResult<SelectIn
 pub fn to_select_elem(ob: &Bound<'_, PyAny>, length: usize) -> PyResult<SelectInfoElem> {
     let select = if let Ok(slice) = ob.cast::<pyo3::types::PySlice>() {
         let s = slice.indices(length.try_into()?)?;
-        ndarray::Slice { 
+        ndarray::Slice {
             start: s.start,
             end: Some(s.stop),
             step: s.step,
-        }.into()
+        }
+        .into()
     } else if is_none_slice(ob)? {
         SelectInfoElem::full()
     } else if ob.is_instance_of::<pyo3::types::PyInt>() {
         ob.extract::<usize>()?.into()
-    } else if isinstance_of_arr(ob)? && ob.getattr("dtype")?.getattr("name")?.extract::<&str>()? == "bool" {
-        let arr = ob
-            .extract::<numpy::PyReadonlyArray1<bool>>()?;
+    } else if isinstance_of_arr(ob)?
+        && ob.getattr("dtype")?.getattr("name")?.extract::<&str>()? == "bool"
+    {
+        let arr = ob.extract::<numpy::PyReadonlyArray1<bool>>()?;
         if arr.len()? == length {
-            boolean_mask_to_indices(arr.as_array().into_iter().map(|x| *x)).into()
+            boolean_mask_to_indices(arr.as_array().into_iter().copied()).into()
         } else {
             panic!("boolean mask dimension mismatched")
         }
@@ -71,13 +74,17 @@ pub fn to_select_elem(ob: &Bound<'_, PyAny>, length: usize) -> PyResult<SelectIn
             Ok(mask) => {
                 if mask.len() == length {
                     boolean_mask_to_indices(mask.into_iter()).into()
-                } else if mask.len() == 0 {
+                } else if mask.is_empty() {
                     Vec::new().into()
                 } else {
                     panic!("boolean mask dimension mismatched")
                 }
             }
-            _ => ob.try_iter()?.map(|x| x.unwrap().extract()).collect::<PyResult<Vec<usize>>>()?.into(),
+            _ => ob
+                .try_iter()?
+                .map(|x| x.unwrap().extract())
+                .collect::<PyResult<Vec<usize>>>()?
+                .into(),
         }
     };
     Ok(select)

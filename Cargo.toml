@@ -14,3 +14,10 @@ anndata = { path = "anndata" }
 anndata-hdf5 = { path = "anndata-hdf5" }
 anndata-zarr = { path = "anndata-zarr" }
 pyanndata = { path = "pyanndata" }
+
+[workspace.lints.clippy]
+# TODO: replace these with `pedantic`
+uninlined_format_args = "warn"
+#pedantic = { priority = -1, level = "warn" }
+# TODO: remove these “allow”s
+similar_names = "allow"

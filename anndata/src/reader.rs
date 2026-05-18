@@ -1,5 +1,5 @@
 use crate::data::utils::to_csr_data;
-use crate::{data::array::DataFrameIndex, AnnDataOp, ArrayData};
+use crate::{AnnDataOp, ArrayData, data::array::DataFrameIndex};
 
 use anyhow::Result;
 use flate2::read::MultiGzDecoder;
@@ -58,16 +58,16 @@ impl MMReader {
         if self.sorted {
             let (_, cols, iter) = read_sorted_mm_body_from_bufread::<_, f64>(&mut self.reader);
             output.set_x_from_iter(
-                iter
-                    .chunk_by(|x| x.0)
+                iter.chunk_by(|x| x.0)
                     .into_iter()
                     .map(|x| x.1.map(|(_, j, v)| (j, v)).collect::<Vec<_>>())
                     .chunks(2000)
                     .into_iter()
                     .map(|x| {
-                        let (r, c, indptr, indices, data) = to_csr_data(x.into_iter().collect::<Vec<_>>(), cols);
+                        let (r, c, indptr, indices, data) =
+                            to_csr_data(x.into_iter().collect::<Vec<_>>(), cols);
                         CsrMatrix::try_from_csr_data(r, c, indptr, indices, data).unwrap()
-                    })
+                    }),
             )?;
         } else {
             output.set_x(read_matrix_market_from_bufread(&mut self.reader)?)?;
@@ -213,7 +213,7 @@ where
             line.clear();
             let len = reader.read_line(&mut line).unwrap();
             // check for an all whitespace line
-            if len != 0 && line.split_whitespace().next() == None {
+            if len != 0 && line.split_whitespace().next().is_none() {
                 continue 'empty_lines;
             }
             break;
@@ -248,10 +248,10 @@ where
             panic!("BadMatrixMarketFile");
         }
         (row, col, val)
-    }).take(entries);
+    })
+    .take(entries);
     (rows, cols, iter)
 }
-
 
 fn read_matrix_market_from_bufread<R>(reader: &mut R) -> Result<ArrayData, IoError>
 where
@@ -327,7 +327,7 @@ where
             line.clear();
             let len = reader.read_line(&mut line)?;
             // check for an all whitespace line
-            if len != 0 && line.split_whitespace().next() == None {
+            if len != 0 && line.split_whitespace().next().is_none() {
                 continue 'empty_lines;
             }
             break;

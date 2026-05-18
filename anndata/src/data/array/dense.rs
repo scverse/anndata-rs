@@ -11,12 +11,12 @@ use crate::{
     },
 };
 
+use crate::backend::get_default_write_config;
 use anyhow::{Result, anyhow};
 use ndarray::{Array, Array1, ArrayD, ArrayView, Axis, Dimension, RemoveAxis, SliceInfoElem};
 use polars::series::Series;
 use std::collections::HashMap;
 use std::ops::Index;
-use crate::backend::get_default_write_config;
 
 impl<'a, T: BackendData, D> Element for ArrayView<'a, T, D> {
     fn metadata(&self) -> MetaData {
@@ -83,7 +83,7 @@ impl<T, D: Dimension> HasShape for Array<T, D> {
 
 impl<T: BackendData, D: Dimension> Indexable for Array<T, D> {
     fn get(&self, index: &[usize]) -> Option<DynScalar> {
-        self.view().into_dyn().get(index).map(|x| x.into_dyn())
+        self.view().into_dyn().get(index).map(|x| x.as_dyn())
     }
 }
 
@@ -95,9 +95,9 @@ impl<T: Clone, D: Dimension> Selectable for Array<T, D> {
         let arr = self.view().into_dyn();
         let slices = info
             .as_ref()
-            .into_iter()
+            .iter()
             .map(|x| match x.as_ref() {
-                SelectInfoElem::Slice(slice) => Some(SliceInfoElem::from(slice.clone())),
+                SelectInfoElem::Slice(slice) => Some(SliceInfoElem::from(*slice)),
                 _ => None,
             })
             .collect::<Option<Vec<_>>>();
@@ -107,16 +107,13 @@ impl<T: Clone, D: Dimension> Selectable for Array<T, D> {
             let shape = self.shape();
             let select: Vec<_> = info
                 .as_ref()
-                .into_iter()
+                .iter()
                 .zip(shape)
                 .map(|(x, n)| SelectInfoElemBounds::new(x.as_ref(), *n))
                 .collect();
             let new_shape = select.iter().map(|x| x.len()).collect::<Vec<_>>();
             ArrayD::from_shape_fn(new_shape, |idx| {
-                let new_idx: Vec<_> = (0..idx.ndim())
-                    .into_iter()
-                    .map(|i| select[i].index(idx[i]))
-                    .collect();
+                let new_idx: Vec<_> = (0..idx.ndim()).map(|i| select[i].index(idx[i])).collect();
                 arr.index(new_idx.as_slice()).clone()
             })
         }
@@ -137,13 +134,13 @@ impl<T: Clone, D: RemoveAxis> Stackable for Array<T, D> {
 
 impl<T: BackendData, D: Dimension> Readable for Array<T, D> {
     fn read<B: Backend>(container: &DataContainer<B>) -> Result<Self> {
-        Ok(container.as_dataset()?.read_array::<T, D>()?)
+        container.as_dataset()?.read_array::<T, D>()
     }
 }
 
 impl<T: BackendData, D: Dimension> ReadableArray for Array<T, D> {
     fn get_shape<B: Backend>(container: &DataContainer<B>) -> Result<Shape> {
-        Ok(container.as_dataset()?.shape().into())
+        Ok(container.as_dataset()?.shape())
     }
 
     fn read_select<B, S>(container: &DataContainer<B>, info: &[S]) -> Result<Self>
@@ -176,10 +173,13 @@ impl TryInto<Series> for CategoricalArray {
         if self.codes.shape().len() != 1 {
             return Err(anyhow!("Can only convert 1D CategoricalArray to Series"));
         }
-        let series = self.codes.into_iter().map(|x|
-            x.and_then(|idx| 
-                ndarray::ArrayRef::get(&self.categories, idx as usize).cloned())
-        ).collect();
+        let series = self
+            .codes
+            .into_iter()
+            .map(|x| {
+                x.and_then(|idx| ndarray::ArrayRef::get(&self.categories, idx as usize).cloned())
+            })
+            .collect();
         Ok(series)
     }
 }
@@ -287,7 +287,7 @@ impl ReadableArray for CategoricalArray {
     fn get_shape<B: Backend>(container: &DataContainer<B>) -> Result<Shape> {
         let group = container.as_group()?;
         let codes = group.open_dataset("codes")?.shape();
-        Ok(codes.into())
+        Ok(codes)
     }
 
     fn read_select<B, S>(container: &DataContainer<B>, info: &[S]) -> Result<Self>
@@ -303,14 +303,22 @@ impl ReadableArray for CategoricalArray {
     }
 }
 
-impl<T: BackendData + num::ToPrimitive + Clone, D: Dimension + RemoveAxis> ArrayArithmetic for Array<T, D> {
+impl<T: BackendData + num::ToPrimitive + Clone, D: Dimension + RemoveAxis> ArrayArithmetic
+    for Array<T, D>
+{
     fn sum(&self) -> f64 {
-        self.iter().map(|x| <f64 as NumCast>::from(x.clone()).unwrap()).sum()
+        self.iter()
+            .map(|x| <f64 as NumCast>::from(x.clone()).unwrap())
+            .sum()
     }
 
     fn sum_axis(&self, axis: usize) -> Result<ArrayD<f64>> {
         if axis >= self.ndim() {
-            anyhow::bail!("axis {} out of bounds for array of dimension {}", axis, self.ndim());
+            anyhow::bail!(
+                "axis {} out of bounds for array of dimension {}",
+                axis,
+                self.ndim()
+            );
         }
         let arr = self.map(|x| <f64 as NumCast>::from(x.clone()).unwrap());
         Ok(Array::sum_axis(&arr, axis)?.into_dyn())

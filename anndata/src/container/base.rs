@@ -71,12 +71,12 @@ impl<T> Slot<T> {
 
     /// Insert data to the slot, and return the old data.
     pub fn insert(&self, data: T) -> Option<T> {
-        std::mem::replace(self.0.lock().deref_mut(), Some(data))
+        self.0.lock().deref_mut().replace(data)
     }
 
     /// Extract the data from the slot. The slot becomes empty after this operation.
     pub fn extract(&self) -> Option<T> {
-        std::mem::replace(self.0.lock().deref_mut(), None)
+        self.0.lock().deref_mut().take()
     }
 
     /// Remove the data from the slot.
@@ -202,7 +202,7 @@ impl<B: Backend> InnerDataFrameElem<B> {
             None => {
                 let df = DataFrame::read(&self.container)?;
                 self.element = Some(df);
-                Ok(&self.element.as_ref().unwrap())
+                Ok(self.element.as_ref().unwrap())
             }
         }
     }
@@ -283,7 +283,7 @@ impl<B: Backend> TryFrom<DataContainer<B>> for DataFrameElem<B> {
                 };
                 Ok(Slot::new(df))
             }
-            ty => bail!("Expecting a dataframe but found: '{}'", ty),
+            ty => bail!("Expecting a dataframe but found: '{ty}'"),
         }
     }
 }
@@ -337,11 +337,11 @@ impl<B: Backend> InnerElem<B> {
 
     pub fn data(&mut self) -> Result<Data> {
         match self.element.as_ref() {
-            Some(data) => Ok(data.clone().try_into()?),
+            Some(data) => Ok(data.clone()),
             None => {
                 let data = Data::read(&self.container)?;
                 if self.cache_enabled {
-                    self.element = Some(data.clone().into());
+                    self.element = Some(data.clone());
                 }
                 Ok(data)
             }
@@ -353,7 +353,7 @@ impl<B: Backend> InnerElem<B> {
         let _ = std::mem::replace(&mut self.container, new);
         self.dtype = data.data_type();
         if self.element.is_some() {
-            self.element = Some(data.into());
+            self.element = Some(data);
         }
         Ok(())
     }
@@ -429,11 +429,11 @@ impl<B: Backend> InnerArrayElem<B> {
 
     pub fn data(&mut self) -> Result<ArrayData> {
         match self.element.as_ref() {
-            Some(data) => Ok(data.clone().try_into()?),
+            Some(data) => Ok(data.clone()),
             None => {
                 let data = ArrayData::read(&self.container)?;
                 if self.cache_enabled {
-                    self.element = Some(data.clone().into());
+                    self.element = Some(data.clone());
                 }
                 Ok(data)
             }
@@ -446,7 +446,7 @@ impl<B: Backend> InnerArrayElem<B> {
         self.dtype = data.data_type();
         self.shape = data.shape();
         if self.element.is_some() {
-            self.element = Some(data.into());
+            self.element = Some(data);
         }
         Ok(())
     }
@@ -459,7 +459,7 @@ impl<B: Backend> InnerArrayElem<B> {
             self.data()
         } else {
             match self.element.as_ref() {
-                Some(data) => Ok(data.select(selection).try_into()?),
+                Some(data) => Ok(data.select(selection)),
                 None => ArrayData::read_select(&self.container, selection),
             }
         }
@@ -632,7 +632,7 @@ impl<B: Backend> StackedDataFrame<B> {
                     .collect::<Vec<_>>()
             })
             .reduce(|mut acc, next| {
-                acc.iter_mut().zip(next.into_iter()).for_each(|(a, b)| {
+                acc.iter_mut().zip(next).for_each(|(a, b)| {
                     a.append(&b).unwrap();
                 });
                 acc
@@ -646,7 +646,7 @@ impl<B: Backend> StackedDataFrame<B> {
     where
         S: AsRef<SelectInfoElem>,
     {
-        let (indices, mapping) = self.index.split_select(selection.as_ref()[0].as_ref());
+        let (indices, mapping) = self.index.split_select(selection[0].as_ref());
         let dfs = self
             .elems
             .iter()
@@ -654,7 +654,7 @@ impl<B: Backend> StackedDataFrame<B> {
             .flat_map(|(i, el)| {
                 indices.get(&i).and_then(|idx| {
                     let select: SmallVec<[_; 3]> = std::iter::once(idx)
-                        .chain(selection.as_ref()[1..].iter().map(|x| x.as_ref()))
+                        .chain(selection[1..].iter().map(|x| x.as_ref()))
                         .collect();
                     el.lock()
                         .as_mut()
@@ -673,7 +673,10 @@ impl<B: Backend> StackedDataFrame<B> {
         .collect()?;
         if let Some(m) = mapping {
             let select: SmallVec<[SelectInfoElem; 3]> = std::iter::once(m.into())
-                .chain(std::iter::repeat((..).into()).take(selection.as_ref().len() - 1))
+                .chain(std::iter::repeat_n(
+                    (..).into(),
+                    selection.as_ref().len() - 1,
+                ))
                 .collect();
             Ok(Selectable::select(&df, select.as_slice()))
         } else {
@@ -699,7 +702,7 @@ pub struct InnerStackedArrayElem<B: Backend> {
 
 impl<B: Backend> std::fmt::Display for InnerStackedArrayElem<B> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.elems.len() == 0 {
+        if self.elems.is_empty() {
             write!(f, "empty stacked elements")
         } else {
             write!(
@@ -786,7 +789,7 @@ impl<B: Backend> InnerStackedArrayElem<B> {
         let data = if self.is_none() {
             None
         } else {
-            let (indices, mapping) = self.index.split_select(selection.as_ref()[0].as_ref());
+            let (indices, mapping) = self.index.split_select(selection[0].as_ref());
             let array: ArrayData = self
                 .elems
                 .iter()
@@ -794,13 +797,13 @@ impl<B: Backend> InnerStackedArrayElem<B> {
                 .map(|(i, el)| {
                     if let Some(idx) = indices.get(&i) {
                         let select: SmallVec<[_; 3]> = std::iter::once(idx)
-                            .chain(selection.as_ref()[1..].iter().map(|x| x.as_ref()))
+                            .chain(selection[1..].iter().map(|x| x.as_ref()))
                             .collect();
                         el.inner().select(select.as_slice())
                     } else {
                         let idx = SelectInfoElem::empty();
                         let select: SmallVec<[_; 3]> = std::iter::once(&idx)
-                            .chain(selection.as_ref()[1..].iter().map(|x| x.as_ref()))
+                            .chain(selection[1..].iter().map(|x| x.as_ref()))
                             .collect();
                         el.inner().select(select.as_slice())
                     }
@@ -829,7 +832,7 @@ impl<B: Backend> InnerStackedArrayElem<B> {
         let data = if self.is_none() {
             None
         } else {
-            let (indices, mapping) = self.index.split_select(selection.as_ref()[0].as_ref());
+            let (indices, mapping) = self.index.split_select(selection[0].as_ref());
             let array: ArrayData = self
                 .elems
                 .par_iter()
@@ -837,7 +840,7 @@ impl<B: Backend> InnerStackedArrayElem<B> {
                 .flat_map(|(i, el)| {
                     indices.get(&i).map(|idx| {
                         let select: SmallVec<[_; 3]> = std::iter::once(idx)
-                            .chain(selection.as_ref()[1..].iter().map(|x| x.as_ref()))
+                            .chain(selection[1..].iter().map(|x| x.as_ref()))
                             .collect();
                         el.inner().select(select.as_slice())
                     })
@@ -929,7 +932,7 @@ impl<B: Backend> StackedArrayElem<B> {
             "all elements must have the same shape except for the first axis"
         );
         let index: VecVecIndex = shapes.iter().flatten().map(|x| x.as_ref()[0]).collect();
-        let shape = shapes.get(0).and_then(|x| {
+        let shape = shapes.first().and_then(|x| {
             x.as_ref().map(|s| {
                 let mut ss = s.clone();
                 ss[0] = index.len();
@@ -947,7 +950,7 @@ impl<B: Backend> StackedArrayElem<B> {
     where
         D: TryFrom<ArrayData>,
     {
-        StackedChunkedArrayElem::new(self.elems.iter().map(|x| x.clone()), chunk_size)
+        StackedChunkedArrayElem::new(self.elems.iter().cloned(), chunk_size)
     }
 }
 

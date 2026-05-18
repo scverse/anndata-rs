@@ -30,7 +30,7 @@ pub fn test_save<B: Backend>() {
     with_tmp_dir(|dir| {
         let input = dir.join("input");
         let output = dir.join("output");
-        let anndatas = ((0 as usize..100), (0 as usize..100)).prop_flat_map(|(n_obs, n_vars)| {
+        let anndatas = ((0_usize..100), (0_usize..100)).prop_flat_map(|(n_obs, n_vars)| {
             (
                 anndata_strat::<B, _>(&input, n_obs, n_vars),
                 select_strat(n_obs),
@@ -94,7 +94,7 @@ where
         vec![1, 2, 3, 4, 5, 6, 7],
     )
     .unwrap();
-    adata.set_x(&CsrNonCanonical::from(&coo)).unwrap();
+    adata.set_x(CsrNonCanonical::from(&coo)).unwrap();
     assert!(adata.x().get::<CsrMatrix<i32>>().is_err());
     adata.x().get::<CsrNonCanonical<i32>>().unwrap().unwrap();
     adata.x().get::<ArrayData>().unwrap().unwrap();
@@ -106,7 +106,7 @@ where
     T: AnnDataOp,
 {
     let arrays =
-        proptest::collection::vec(0 as usize..50, 2..4).prop_flat_map(|shape| array_strat(&shape));
+        proptest::collection::vec(0_usize..50, 2..4).prop_flat_map(|shape| array_strat(&shape));
     proptest!(ProptestConfig::with_cases(256), |(x in arrays)| {
         let adata = adata_gen();
         adata.set_x(&x).unwrap();
@@ -119,7 +119,7 @@ where
     F: Fn() -> T,
     T: AnnDataOp,
 {
-    let arrays = proptest::collection::vec(0 as usize..50, 2..4)
+    let arrays = proptest::collection::vec(0_usize..50, 2..4)
         .prop_flat_map(|shape| array_slice_strat(&shape));
     proptest!(ProptestConfig::with_cases(256), |((x, select) in arrays)| {
         let adata = adata_gen();
@@ -143,7 +143,7 @@ where
     T: AnnDataOp,
 {
     let arrays =
-        proptest::collection::vec(20 as usize..50, 2..3).prop_flat_map(|shape| array_strat(&shape));
+        proptest::collection::vec(20_usize..50, 2..3).prop_flat_map(|shape| array_strat(&shape));
     proptest!(ProptestConfig::with_cases(10), |(x in arrays)| {
         if let ArrayData::CscMatrix(_) = x {
         } else {
@@ -163,10 +163,10 @@ pub fn test_concat<B: Backend>() {
         let input2 = dir.join("input2");
         let output = dir.join("output");
         let anndatas = (
-            (0 as usize..100),
-            (0 as usize..100),
-            (0 as usize..100),
-            (0 as usize..100),
+            (0_usize..100),
+            (0_usize..100),
+            (0_usize..100),
+            (0_usize..100),
         )
             .prop_flat_map(|(n_obs1, n_vars1, n_obs2, n_vars2)| {
                 (

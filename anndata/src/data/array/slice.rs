@@ -1,16 +1,16 @@
-use ndarray::{Array1, Array2, Slice, SliceInfo, SliceInfoElem, IxDyn};
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use itertools::Itertools;
+use ndarray::{Array1, Array2, IxDyn, Slice, SliceInfo, SliceInfoElem};
 use serde_json::Value;
-use std::ops::{RangeFull, Range, Index, IndexMut, RangeFrom, RangeTo};
 use smallvec::{SmallVec, smallvec};
+use std::ops::{Index, IndexMut, Range, RangeFrom, RangeFull, RangeTo};
 
 /// A structure that represents a shape, internally represented as a small vector.
-/// 
+///
 /// # Examples
 /// ```
 /// use anndata::data::Shape;
-/// 
+///
 /// let shape = Shape::from(vec![3, 4, 5]);
 /// assert_eq!(shape.ndim(), 3);
 /// ```
@@ -24,15 +24,19 @@ impl Shape {
     }
 }
 
-impl Into<Value> for Shape {
-    fn into(self) -> Value {
-        Value::Array(self.0.into_iter().map(|x| x.into()).collect())
+impl From<Shape> for Value {
+    fn from(val: Shape) -> Self {
+        Value::Array(val.0.into_iter().map(|x| x.into()).collect())
     }
 }
 
 impl std::fmt::Display for Shape {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0.as_slice().iter().map(|x| x.to_string()).join(" x "))
+        write!(
+            f,
+            "{}",
+            self.0.as_slice().iter().map(|x| x.to_string()).join(" x ")
+        )
     }
 }
 
@@ -120,20 +124,27 @@ impl FromIterator<Slice> for SelectInfo {
 
 impl<'a> FromIterator<&'a Slice> for SelectInfo {
     fn from_iter<T: IntoIterator<Item = &'a Slice>>(iter: T) -> Self {
-        Self(iter.into_iter().map(|x| SelectInfoElem::Slice(x.clone())).collect())
+        Self(
+            iter.into_iter()
+                .map(|x| SelectInfoElem::Slice(*x))
+                .collect(),
+        )
     }
 }
-
 
 impl TryInto<SliceInfo<Vec<SliceInfoElem>, IxDyn, IxDyn>> for SelectInfo {
     type Error = anyhow::Error;
 
     /// Attempts to convert `SelectInfo` into a `SliceInfo` object. Returns an error if conversion fails.
     fn try_into(self) -> Result<SliceInfo<Vec<SliceInfoElem>, IxDyn, IxDyn>> {
-        let elems: Result<Vec<_>> = self.0.into_iter().map(|e| match e {
-            SelectInfoElem::Slice(s) => Ok(SliceInfoElem::from(s)),
-            _ => bail!("Cannot convert SelectInfo to SliceInfo"),
-        }).collect();
+        let elems: Result<Vec<_>> = self
+            .0
+            .into_iter()
+            .map(|e| match e {
+                SelectInfoElem::Slice(s) => Ok(SliceInfoElem::from(s)),
+                _ => bail!("Cannot convert SelectInfo to SliceInfo"),
+            })
+            .collect();
         let slice = SliceInfo::try_from(elems?)?;
         Ok(slice)
     }
@@ -179,7 +190,7 @@ impl From<usize> for SelectInfoElem {
 
 impl From<&[usize]> for SelectInfoElem {
     fn from(x: &[usize]) -> Self {
-        Self::Index(x.into_iter().map(|x| *x).collect())
+        Self::Index(x.to_vec())
     }
 }
 
@@ -277,20 +288,20 @@ impl SelectInfoElem {
     /// Will panic if the index is out of bounds.
     pub fn bound_check(&self, bound: usize) -> Result<()> {
         match self {
-            SelectInfoElem::Index(index) => index.iter().try_for_each(|i|
+            SelectInfoElem::Index(index) => index.iter().try_for_each(|i| {
                 if *i >= bound {
-                    bail!("index out of bounds: {} >= {}", i, bound)
+                    bail!("index out of bounds: {i} >= {bound}")
                 } else {
                     Ok(())
                 }
-            ),
-            SelectInfoElem::Slice(slice) => {
-                slice.end.map_or(Ok(()), |end| if end > bound as isize {
-                    bail!("slice end out of bounds: {} >= {}", end, bound)
+            }),
+            SelectInfoElem::Slice(slice) => slice.end.map_or(Ok(()), |end| {
+                if end > bound as isize {
+                    bail!("slice end out of bounds: {end} >= {bound}")
                 } else {
                     Ok(())
-                })
-            }
+                }
+            }),
         }
     }
 
@@ -314,7 +325,12 @@ impl SelectInfoElem {
         })
     }
 
-    pub(crate) fn set_axis<'a>(&'a self, axis: usize, ndim: usize, fill: &'a Self) -> SmallVec<[&'a Self; 3]> {
+    pub(crate) fn set_axis<'a>(
+        &'a self,
+        axis: usize,
+        ndim: usize,
+        fill: &'a Self,
+    ) -> SmallVec<[&'a Self; 3]> {
         let mut slice = smallvec![fill; ndim];
         slice[axis] = self;
         slice
@@ -332,14 +348,14 @@ impl SelectInfoElem {
     }
 }
 
-/// `SelectInfoBounds` represents bounds-aware selection information. 
+/// `SelectInfoBounds` represents bounds-aware selection information.
 /// It includes an input shape and a list of selection elements with bound information for each axis.
-/// 
+///
 /// # Example
 /// ```
 /// use anndata::data::{Shape, SelectInfoElem, SelectInfoBounds};
 /// use ndarray::Slice;
-/// 
+///
 /// let shape = Shape::from(vec![5, 10]);
 /// let select = SelectInfoBounds::new(&[SelectInfoElem::Slice(Slice { start: 0, end: Some(5), step: 1 })], &shape);
 /// assert_eq!(select.in_shape(), shape);
@@ -357,20 +373,23 @@ impl<'a> AsRef<[SelectInfoElemBounds<'a>]> for SelectInfoBounds<'a> {
     }
 }
 
-impl<'a> TryInto<SliceInfo<Vec<SliceInfoElem>, IxDyn, IxDyn>> for SelectInfoBounds<'a>{
+impl<'a> TryInto<SliceInfo<Vec<SliceInfoElem>, IxDyn, IxDyn>> for SelectInfoBounds<'a> {
     type Error = anyhow::Error;
 
     /// Attempts to convert `SelectInfoBounds` into a `SliceInfo`, retaining the bounded selection elements.
     fn try_into(self) -> Result<SliceInfo<Vec<SliceInfoElem>, IxDyn, IxDyn>> {
-        let elems: Result<Vec<_>> = self.select.into_iter().map(|e| match e {
-            SelectInfoElemBounds::Slice(s) => Ok(s.into()),
-            _ => bail!("Cannot convert SelectInfo to SliceInfo"),
-        }).collect();
+        let elems: Result<Vec<_>> = self
+            .select
+            .into_iter()
+            .map(|e| match e {
+                SelectInfoElemBounds::Slice(s) => Ok(s.into()),
+                _ => bail!("Cannot convert SelectInfo to SliceInfo"),
+            })
+            .collect();
         let slice = SliceInfo::try_from(elems?)?;
         Ok(slice)
     }
 }
-
 
 impl<'a> SelectInfoBounds<'a> {
     /// Constructs a new `SelectInfoBounds` with a given selection and shape.
@@ -383,9 +402,12 @@ impl<'a> SelectInfoBounds<'a> {
         S: AsRef<[E]>,
         E: AsRef<SelectInfoElem> + 'a,
     {
-        let res: Vec<_> = select.as_ref().iter().zip(shape.as_ref()).map(|(sel, dim)|
-            SelectInfoElemBounds::new(sel.as_ref(), *dim)
-        ).collect();
+        let res: Vec<_> = select
+            .as_ref()
+            .iter()
+            .zip(shape.as_ref())
+            .map(|(sel, dim)| SelectInfoElemBounds::new(sel.as_ref(), *dim))
+            .collect();
         Self {
             input_shape: shape.clone(),
             select: res,
@@ -412,9 +434,9 @@ impl<'a> SelectInfoBounds<'a> {
         self.select.len()
     }
 
+    /*
     /// Convert to a new slice that contain only the unique indices. A mapping for
     /// getting back the original indices is also returned.
-    /*
     pub fn to_unique(&self) -> (Self, Self) {
         let out_shape = self.out_shape();
         let (unique, mapping): (Vec<_>, Vec<_>) = self.select.iter().zip(out_shape.as_ref())
@@ -430,11 +452,15 @@ impl<'a> SelectInfoBounds<'a> {
     */
 
     /// Attempts to convert the selection into indices. Fail if elements are all slices.
-    /// 
+    ///
     /// # Returns
     /// An optional `Array2` of indices if conversion is possible.
     pub fn try_into_indices(&self) -> Option<Array2<usize>> {
-        if self.select.iter().all(|e| matches!(e, SelectInfoElemBounds::Slice(_))) {
+        if self
+            .select
+            .iter()
+            .all(|e| matches!(e, SelectInfoElemBounds::Slice(_)))
+        {
             return None;
         }
 
@@ -445,33 +471,43 @@ impl<'a> SelectInfoBounds<'a> {
         let mut result: Array2<usize> = Array2::zeros((nrows, ncols));
 
         for c in 0..ncols {
-            let n_repeat = shape.as_ref()[(c+1)..].iter().product();
+            let n_repeat = shape.as_ref()[(c + 1)..].iter().product();
             match self.select[c] {
-                SelectInfoElemBounds::Index(ref x) => {
-                    let mut values = x.iter().flat_map(|x| std::iter::repeat(x).take(n_repeat)).cycle();
+                SelectInfoElemBounds::Index(x) => {
+                    let mut values = x
+                        .iter()
+                        .flat_map(|x| std::iter::repeat_n(x, n_repeat))
+                        .cycle();
                     for r in 0..nrows {
                         result[[r, c]] = *values.next().unwrap();
                     }
-                },
+                }
                 SelectInfoElemBounds::Slice(SliceBounds { start, end, step }) => {
                     if step > 0 {
-                        let mut values = (start..end).step_by(step as usize).flat_map(|x| std::iter::repeat(x).take(n_repeat)).cycle();
+                        let mut values = (start..end)
+                            .step_by(step as usize)
+                            .flat_map(|x| std::iter::repeat_n(x, n_repeat))
+                            .cycle();
                         for r in 0..nrows {
                             result[[r, c]] = values.next().unwrap();
                         }
                     } else {
-                        let mut values = (start..end).step_by(step.abs() as usize).rev().flat_map(|x| std::iter::repeat(x).take(n_repeat)).cycle();
+                        let mut values = (start..end)
+                            .step_by(step.unsigned_abs())
+                            .rev()
+                            .flat_map(|x| std::iter::repeat_n(x, n_repeat))
+                            .cycle();
                         for r in 0..nrows {
                             result[[r, c]] = values.next().unwrap();
                         }
                     }
-                },
+                }
             }
         }
         Some(result)
     }
 
-    pub fn iter(&self) -> impl ExactSizeIterator<Item=&SelectInfoElemBounds<'a>> + '_ {
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = &SelectInfoElemBounds<'a>> + '_ {
         self.select.iter()
     }
 }
@@ -500,6 +536,12 @@ impl<'a> SelectInfoElemBounds<'a> {
         }
     }
 
+    /// Checks if the selection element is empty.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Retrieves the index at the specified position.
     pub fn index(&self, i: usize) -> usize {
         match self {
@@ -512,35 +554,49 @@ impl<'a> SelectInfoElemBounds<'a> {
     pub fn is_full(&self, bound: usize) -> bool {
         match self {
             Self::Slice(slice) => slice.start == 0 && slice.end == bound && slice.step == 1,
-            Self::Index(indices) => indices.len() == bound && indices.iter().enumerate().all(|(i, &x)| x == i),
+            Self::Index(indices) => {
+                indices.len() == bound && indices.iter().enumerate().all(|(i, &x)| x == i)
+            }
         }
     }
 
     /// Converts the selection element into a vector of indices.
     pub fn to_vec(&self) -> Vec<usize> {
         match self {
-            Self::Index(idx) => idx.iter().copied().collect(),
-            Self::Slice(slice) => if slice.step > 0 {
-                (slice.start..slice.end).step_by(slice.step as usize).collect()
-            } else {
-                (slice.start..slice.end).step_by(slice.step.abs() as usize).rev().collect()
-            },
+            Self::Index(idx) => idx.to_vec(),
+            Self::Slice(slice) => {
+                if slice.step > 0 {
+                    (slice.start..slice.end)
+                        .step_by(slice.step as usize)
+                        .collect()
+                } else {
+                    (slice.start..slice.end)
+                        .step_by(slice.step.unsigned_abs())
+                        .rev()
+                        .collect()
+                }
+            }
         }
     }
 
     /// Returns an iterator over the indices represented by the selection element.
-    pub fn iter(&self) -> Box<dyn ExactSizeIterator<Item=usize> + 'a> {
+    pub fn iter(&self) -> Box<dyn ExactSizeIterator<Item = usize> + 'a> {
         match self {
             Self::Index(idx) => Box::new(idx.iter().copied()),
-            Self::Slice(slice) => if slice.step > 0 {
-                Box::new((slice.start..slice.end).step_by(slice.step as usize))
-            } else {
-                Box::new((slice.start..slice.end).step_by(slice.step.abs() as usize).rev())
-            },
+            Self::Slice(slice) => {
+                if slice.step > 0 {
+                    Box::new((slice.start..slice.end).step_by(slice.step as usize))
+                } else {
+                    Box::new(
+                        (slice.start..slice.end)
+                            .step_by(slice.step.unsigned_abs())
+                            .rev(),
+                    )
+                }
+            }
         }
     }
 }
-
 
 /// `SliceBounds` represents bounds-aware slicing information, holding the start, end, and step values.
 #[derive(Debug, Copy, Clone)]
@@ -550,17 +606,17 @@ pub struct SliceBounds {
     pub step: isize,
 }
 
-impl Into<SliceInfoElem> for SliceBounds {
+impl From<SliceBounds> for SliceInfoElem {
     /// Converts `SliceBounds` into a `SliceInfoElem`.
-    fn into(self) -> SliceInfoElem {
+    fn from(val: SliceBounds) -> Self {
         Slice {
-            start: self.start as isize,
-            end: Some(self.end as isize),
-            step: self.step,
-        }.into()
+            start: val.start as isize,
+            end: Some(val.end as isize),
+            step: val.step,
+        }
+        .into()
     }
 }
-
 
 impl SliceBounds {
     /// Constructs a new `SliceBounds` from a `Slice` and an axis bound.
@@ -581,7 +637,9 @@ impl SliceBounds {
     }
 
     pub(crate) fn len(&self) -> usize {
-        (self.end - self.start).checked_div(self.step.unsigned_abs()).unwrap()
+        (self.end - self.start)
+            .checked_div(self.step.unsigned_abs())
+            .unwrap()
     }
 
     pub(crate) fn index(&self, i: usize) -> usize {
@@ -601,9 +659,9 @@ pub const SLICE_FULL: Slice = Slice {
 };
 
 /// find unique indices and return the mapping
-/// 
+///
 /// Example:
-/// 
+///
 /// (unique_idx, mapping) = unique_indices_sorted(ori_idx, upper_bound)
 /// assert_eq!(ori_idx, mapping.iter().map(|x| unique_idx[*x]).collect::<Vec<usize>>())
 fn _unique_indices_sorted(indices: &[usize], upper_bound: usize) -> (Vec<usize>, Vec<usize>) {
@@ -612,7 +670,11 @@ fn _unique_indices_sorted(indices: &[usize], upper_bound: usize) -> (Vec<usize>,
     for i in indices {
         mask[*i] = *i;
     }
-    let unique = mask.iter().filter(|x| **x != upper_bound).map(|x| *x).collect();
+    let unique = mask
+        .iter()
+        .filter(|x| **x != upper_bound)
+        .copied()
+        .collect();
 
     // Find the new order
     mask.iter_mut().fold(0, |acc, x| {
@@ -665,11 +727,11 @@ fn _unique_indices_sorted(indices: &[usize], upper_bound: usize) -> (Vec<usize>,
 macro_rules! s{
     ( $( $x:expr ),* ) => {
         {
-            let mut temp_vec = Vec::new();
-            $(
-                temp_vec.push($crate::data::SelectInfoElem::from($x));
-            )*
-            $crate::data::SelectInfo(temp_vec)
+            $crate::data::SelectInfo(vec![
+                $(
+                    $crate::data::SelectInfoElem::from($x),
+                )*
+            ])
         }
 
     };
@@ -685,7 +747,7 @@ mod tests {
         fn test_indices(input: Vec<u16>) {
             let max = (*input.iter().max().unwrap_or(&0) as usize) + 1;
             let indices = input.into_iter().map(|x| x as usize).collect::<Vec<_>>();
-            let sorted_expected = indices.iter().map(|x| *x).unique().sorted().collect::<Vec<_>>();
+            let sorted_expected = indices.iter().copied().unique().sorted().collect::<Vec<_>>();
             let (sorted, mapping) = _unique_indices_sorted(indices.as_slice(), max);
             assert_eq!(sorted, sorted_expected);
             assert_eq!(indices, mapping.iter().map(|x| sorted[*x]).collect::<Vec<_>>());

@@ -25,9 +25,9 @@ pub fn with_tmp_dir<T, F: FnMut(PathBuf) -> T>(mut func: F) -> T {
     func(path)
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Strategies
-////////////////////////////////////////////////////////////////////////////////
+//-----------------------------------------------------------------------------
+// Strategies
+//-----------------------------------------------------------------------------
 
 /// Strategy for generating a random AnnData
 pub fn anndata_strat<B: Backend, P: AsRef<Path> + Clone>(
@@ -35,33 +35,33 @@ pub fn anndata_strat<B: Backend, P: AsRef<Path> + Clone>(
     n_obs: usize,
     n_vars: usize,
 ) -> impl Strategy<Value = AnnData<B>> {
-    let x = array_strat(&vec![n_obs, n_vars]);
+    let x = array_strat(&[n_obs, n_vars]);
     let obs_names = index_strat(n_obs);
-    let obsm = proptest::collection::vec(0 as usize..100, 0..3).prop_flat_map(move |shapes| {
+    let obsm = proptest::collection::vec(0_usize..100, 0..3).prop_flat_map(move |shapes| {
         shapes
             .into_iter()
-            .map(|d| array_strat(&vec![n_obs, d]))
+            .map(|d| array_strat(&[n_obs, d]))
             .collect::<Vec<_>>()
     });
-    let obsp = (0 as usize..3).prop_flat_map(move |d| {
-        std::iter::repeat_with(|| array_strat(&vec![n_obs, n_obs]))
+    let obsp = (0_usize..3).prop_flat_map(move |d| {
+        std::iter::repeat_with(|| array_strat(&[n_obs, n_obs]))
             .take(d)
             .collect::<Vec<_>>()
     });
     let var_names = index_strat(n_vars);
-    let varm = proptest::collection::vec(0 as usize..100, 0..3).prop_flat_map(move |shapes| {
+    let varm = proptest::collection::vec(0_usize..100, 0..3).prop_flat_map(move |shapes| {
         shapes
             .into_iter()
-            .map(|d| array_strat(&vec![n_vars, d]))
+            .map(|d| array_strat(&[n_vars, d]))
             .collect::<Vec<_>>()
     });
-    let varp = (0 as usize..3).prop_flat_map(move |d| {
-        std::iter::repeat_with(|| array_strat(&vec![n_vars, n_vars]))
+    let varp = (0_usize..3).prop_flat_map(move |d| {
+        std::iter::repeat_with(|| array_strat(&[n_vars, n_vars]))
             .take(d)
             .collect::<Vec<_>>()
     });
-    let layers = (0 as usize..3).prop_flat_map(move |d| {
-        std::iter::repeat_with(|| array_strat(&vec![n_obs, n_vars]))
+    let layers = (0_usize..3).prop_flat_map(move |d| {
+        std::iter::repeat_with(|| array_strat(&[n_obs, n_vars]))
             .take(d)
             .collect::<Vec<_>>()
     });
@@ -72,19 +72,19 @@ pub fn anndata_strat<B: Backend, P: AsRef<Path> + Clone>(
             adata.set_obs_names(obs_names).unwrap();
             adata.set_var_names(var_names).unwrap();
             obsm.into_iter().enumerate().for_each(|(i, arr)| {
-                adata.obsm().add(&format!("varm_{}", i), arr).unwrap();
+                adata.obsm().add(&format!("varm_{i}"), arr).unwrap();
             });
             obsp.into_iter().enumerate().for_each(|(i, arr)| {
-                adata.obsp().add(&format!("obsp_{}", i), arr).unwrap();
+                adata.obsp().add(&format!("obsp_{i}"), arr).unwrap();
             });
             varm.into_iter().enumerate().for_each(|(i, arr)| {
-                adata.varm().add(&format!("varm_{}", i), arr).unwrap();
+                adata.varm().add(&format!("varm_{i}"), arr).unwrap();
             });
             varp.into_iter().enumerate().for_each(|(i, arr)| {
-                adata.varp().add(&format!("varp_{}", i), arr).unwrap();
+                adata.varp().add(&format!("varp_{i}"), arr).unwrap();
             });
             layers.into_iter().enumerate().for_each(|(i, arr)| {
-                adata.layers().add(&format!("layer_{}", i), arr).unwrap();
+                adata.layers().add(&format!("layer_{i}"), arr).unwrap();
             });
             adata
         },
@@ -95,7 +95,7 @@ pub fn index_strat(n: usize) -> BoxedStrategy<DataFrameIndex> {
     if n == 0 {
         Just(DataFrameIndex::empty()).boxed()
     } else {
-        let list = (0..n).map(|i| format!("i_{}", i)).collect();
+        let list = (0..n).map(|i| format!("i_{i}")).collect();
         let range = n.into();
         let interval = (0..n).prop_flat_map(move |i| {
             (Just(i), (0..n - i)).prop_flat_map(move |(a, b)| {
@@ -103,7 +103,7 @@ pub fn index_strat(n: usize) -> BoxedStrategy<DataFrameIndex> {
                 [a, b, c]
                     .into_iter()
                     .filter(|x| *x != 0)
-                    .map(|x| interval_strat(x))
+                    .map(interval_strat)
                     .collect::<Vec<_>>()
                     .prop_map(move |x| {
                         x.into_iter()
@@ -118,7 +118,7 @@ pub fn index_strat(n: usize) -> BoxedStrategy<DataFrameIndex> {
 }
 
 fn interval_strat(n: usize) -> impl Strategy<Value = Interval> {
-    (1 as usize..100, 1 as usize..100).prop_map(move |(size, step)| Interval {
+    (1_usize..100, 1_usize..100).prop_map(move |(size, step)| Interval {
         start: 0,
         end: n * step,
         size,
@@ -127,9 +127,9 @@ fn interval_strat(n: usize) -> impl Strategy<Value = Interval> {
 }
 
 pub fn array_slice_strat(
-    shape: &Vec<usize>,
+    shape: &[usize],
 ) -> impl Strategy<Value = (ArrayData, Vec<SelectInfoElem>)> {
-    array_strat(&shape).prop_flat_map(|x| {
+    array_strat(shape).prop_flat_map(|x| {
         let select = x
             .shape()
             .as_ref()
@@ -140,7 +140,7 @@ pub fn array_slice_strat(
     })
 }
 
-pub fn array_strat(shape: &Vec<usize>) -> impl Strategy<Value = ArrayData> {
+pub fn array_strat(shape: &[usize]) -> impl Strategy<Value = ArrayData> {
     prop_oneof![
         csr_strat(shape[0], shape[1]),
         csc_strat(shape[0], shape[1]),
@@ -184,87 +184,88 @@ pub fn csc_strat(num_rows: usize, num_cols: usize) -> impl Strategy<Value = Arra
     ]
 }
 
-fn dense_array_strat(shape: &Vec<usize>) -> impl Strategy<Value = ArrayData> {
-    let s: Vec<_> = shape.clone().into_iter().rev().collect();
+fn dense_array_strat(shape: &[usize]) -> impl Strategy<Value = ArrayData> {
+    let s: Vec<_> = shape.iter().copied().rev().collect();
+    let s = &s[..];
     prop_oneof![
-        Just(Array::random(shape.clone(), Uniform::new(0u8, 255u8).unwrap()).into()),
-        Just(Array::random(shape.clone(), Uniform::new(0u16, 255u16).unwrap()).into()),
-        Just(Array::random(shape.clone(), Uniform::new(0u32, 255u32).unwrap()).into()),
-        Just(Array::random(shape.clone(), Uniform::new(0u64, 255u64).unwrap()).into()),
-        Just(Array::random(shape.clone(), Uniform::new(-128i8, 127i8).unwrap()).into()),
-        Just(Array::random(shape.clone(), Uniform::new(-128i16, 127i16).unwrap()).into()),
-        Just(Array::random(shape.clone(), Uniform::new(-128i32, 127i32).unwrap()).into()),
-        Just(Array::random(shape.clone(), Uniform::new(-128i64, 127i64).unwrap()).into()),
-        Just(Array::random(shape.clone(), Uniform::new(-128f32, 127f32).unwrap()).into()),
-        Just(Array::random(shape.clone(), Uniform::new(-128f64, 127f64).unwrap()).into()),
+        Just(Array::random(shape, Uniform::new(0u8, 255u8).unwrap()).into()),
+        Just(Array::random(shape, Uniform::new(0u16, 255u16).unwrap()).into()),
+        Just(Array::random(shape, Uniform::new(0u32, 255u32).unwrap()).into()),
+        Just(Array::random(shape, Uniform::new(0u64, 255u64).unwrap()).into()),
+        Just(Array::random(shape, Uniform::new(-128i8, 127i8).unwrap()).into()),
+        Just(Array::random(shape, Uniform::new(-128i16, 127i16).unwrap()).into()),
+        Just(Array::random(shape, Uniform::new(-128i32, 127i32).unwrap()).into()),
+        Just(Array::random(shape, Uniform::new(-128i64, 127i64).unwrap()).into()),
+        Just(Array::random(shape, Uniform::new(-128f32, 127f32).unwrap()).into()),
+        Just(Array::random(shape, Uniform::new(-128f64, 127f64).unwrap()).into()),
         Just(
-            Array::random(shape.clone(), Uniform::new(0u8, 1u8).unwrap())
+            Array::random(shape, Uniform::new(0u8, 1u8).unwrap())
                 .mapv(|x| x == 1)
                 .into()
         ),
         Just(
-            Array::random(shape.clone(), Uniform::new(-1000f32, 1000f32).unwrap())
+            Array::random(shape, Uniform::new(-1000f32, 1000f32).unwrap())
                 .mapv(|x| x.to_string())
                 .into()
         ),
         Just(
-            Array::random(s.clone(), Uniform::new(0u8, 255u8).unwrap())
+            Array::random(s, Uniform::new(0u8, 255u8).unwrap())
                 .reversed_axes()
                 .into()
         ),
         Just(
-            Array::random(s.clone(), Uniform::new(0u16, 255u16).unwrap())
+            Array::random(s, Uniform::new(0u16, 255u16).unwrap())
                 .reversed_axes()
                 .into()
         ),
         Just(
-            Array::random(s.clone(), Uniform::new(0u32, 255u32).unwrap())
+            Array::random(s, Uniform::new(0u32, 255u32).unwrap())
                 .reversed_axes()
                 .into()
         ),
         Just(
-            Array::random(s.clone(), Uniform::new(0u64, 255u64).unwrap())
+            Array::random(s, Uniform::new(0u64, 255u64).unwrap())
                 .reversed_axes()
                 .into()
         ),
         Just(
-            Array::random(s.clone(), Uniform::new(-128i8, 127i8).unwrap())
+            Array::random(s, Uniform::new(-128i8, 127i8).unwrap())
                 .reversed_axes()
                 .into()
         ),
         Just(
-            Array::random(s.clone(), Uniform::new(-128i16, 127i16).unwrap())
+            Array::random(s, Uniform::new(-128i16, 127i16).unwrap())
                 .reversed_axes()
                 .into()
         ),
         Just(
-            Array::random(s.clone(), Uniform::new(-128i32, 127i32).unwrap())
+            Array::random(s, Uniform::new(-128i32, 127i32).unwrap())
                 .reversed_axes()
                 .into()
         ),
         Just(
-            Array::random(s.clone(), Uniform::new(-128i64, 127i64).unwrap())
+            Array::random(s, Uniform::new(-128i64, 127i64).unwrap())
                 .reversed_axes()
                 .into()
         ),
         Just(
-            Array::random(s.clone(), Uniform::new(-128f32, 127f32).unwrap())
+            Array::random(s, Uniform::new(-128f32, 127f32).unwrap())
                 .reversed_axes()
                 .into()
         ),
         Just(
-            Array::random(s.clone(), Uniform::new(-128f64, 127f64).unwrap())
+            Array::random(s, Uniform::new(-128f64, 127f64).unwrap())
                 .reversed_axes()
                 .into()
         ),
         Just(
-            Array::random(s.clone(), Uniform::new(0u8, 1u8).unwrap())
+            Array::random(s, Uniform::new(0u8, 1u8).unwrap())
                 .mapv(|x| x == 1)
                 .reversed_axes()
                 .into()
         ),
         Just(
-            Array::random(s.clone(), Uniform::new(-1000f32, 1000f32).unwrap())
+            Array::random(s, Uniform::new(-1000f32, 1000f32).unwrap())
                 .mapv(|x| x.to_string())
                 .reversed_axes()
                 .into()
@@ -314,9 +315,9 @@ pub fn select_strat(n: usize) -> BoxedStrategy<SelectInfoElem> {
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// AnnData operations
-////////////////////////////////////////////////////////////////////////////////
+//-----------------------------------------------------------------------------
+// AnnData operations
+//-----------------------------------------------------------------------------
 
 pub fn anndata_eq<B1: Backend, B2: Backend>(
     adata1: &AnnData<B1>,
@@ -327,12 +328,12 @@ pub fn anndata_eq<B1: Backend, B2: Backend>(
         && adata1.obs_names() == adata2.obs_names()
         && adata1.var_names() == adata2.var_names()
         && {
-            let a = adata1.read_obs()?; 
+            let a = adata1.read_obs()?;
             let b = adata2.read_obs()?;
             a == b || (a.height() == 0 && b.height() == 0)
         }
         && {
-            let a = adata1.read_var()?; 
+            let a = adata1.read_var()?;
             let b = adata2.read_var()?;
             a == b || (a.height() == 0 && b.height() == 0)
         }
@@ -353,14 +354,15 @@ pub fn anndata_eq<B1: Backend, B2: Backend>(
             adata1.uns().get_item::<Data>(k).unwrap() == adata2.uns().get_item(k).unwrap()
         })
         && adata1.layers().keys().iter().all(|k| {
-            adata1.layers().get_item::<ArrayData>(k).unwrap() == adata2.layers().get_item(k).unwrap()
+            adata1.layers().get_item::<ArrayData>(k).unwrap()
+                == adata2.layers().get_item(k).unwrap()
         });
     Ok(is_equal)
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Array operations
-////////////////////////////////////////////////////////////////////////////////
+//-----------------------------------------------------------------------------
+// Array operations
+//-----------------------------------------------------------------------------
 
 pub fn array_select(arr: &ArrayData, select: &[SelectInfoElem]) -> ArrayData {
     match arr {
@@ -492,7 +494,7 @@ where
 {
     let nrow = csr.nrows();
     let mat: DMatrix<T> = DMatrix::from(csr);
-    (0..nrow).into_iter().step_by(chunk_size).map(move |i| {
+    (0..nrow).step_by(chunk_size).map(move |i| {
         let j = (i + chunk_size).min(nrow);
         let m = mat.index((i..j, ..));
         CsrMatrix::from(&m)
@@ -515,7 +517,7 @@ fn dense_array_select<T: Clone, D: Dimension + RemoveAxis>(
     select: &[SelectInfoElem],
 ) -> Array<T, D> {
     let mut result = array.clone();
-    array.shape().into_iter().enumerate().for_each(|(i, &dim)| {
+    array.shape().iter().enumerate().for_each(|(i, &dim)| {
         let idx = SelectInfoElemBounds::new(&select[i], dim).to_vec();
         result = result.deref().select(Axis(i), idx.as_slice());
     });
@@ -531,8 +533,10 @@ where
     D: Dimension + RemoveAxis,
 {
     let nrow = array.shape()[0];
-    (0..nrow).into_iter().step_by(chunk_size).map(move |i| {
+    (0..nrow).step_by(chunk_size).map(move |i| {
         let j = (i + chunk_size).min(nrow);
-        array.deref().select(Axis(0), (i..j).collect::<Vec<_>>().as_slice())
+        array
+            .deref()
+            .select(Axis(0), (i..j).collect::<Vec<_>>().as_slice())
     })
 }

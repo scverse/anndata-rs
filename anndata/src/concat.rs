@@ -1,5 +1,5 @@
 use crate::data::utils::{array_major_minor_index_default, cs_major_minor_index2};
-use crate::data::{DataFrameIndex, DynCsrMatrix, Data, ArrayData, DynArray};
+use crate::data::{ArrayData, Data, DataFrameIndex, DynArray, DynCsrMatrix};
 use crate::{AnnDataOp, ArrayElemOp, AxisArraysOp, ElemCollectionOp, HasShape};
 use anyhow::{Result, ensure};
 use indexmap::IndexSet;
@@ -19,7 +19,7 @@ pub enum JoinType {
 }
 
 /// Concatenate multiple AnnData objects into one.
-/// 
+///
 /// This function concatenates multiple AnnData objects along the observation axis (`obs`),
 /// aligning the variable axis (`var`) according to the specified join type (inner or outer).
 /// It also concatenates associated data structures such as `obsm`, `obsp`, `layers`, and shared `uns` elements.
@@ -168,10 +168,8 @@ where
                 .map(|x| x.get_item::<Data>(&key).unwrap().unwrap())
                 .all_equal()
             {
-                out.uns().add(
-                    &key,
-                    uns.iter().next().unwrap().get_item::<Data>(&key)?.unwrap(),
-                )?;
+                out.uns()
+                    .add(&key, uns.first().unwrap().get_item::<Data>(&key)?.unwrap())?;
             }
         }
     }
@@ -266,7 +264,7 @@ fn align_series(
                     }
                 })
                 .collect();
-            Series::from_any_values_and_dtype(name.clone(), &values?, &dtype, false)?
+            Series::from_any_values_and_dtype(name.clone(), &values?, dtype, false)?
         }
     };
     Ok(new_series.into())
@@ -329,10 +327,7 @@ fn concat_x<A: AnnDataOp>(
         let arr = adata.x().get().unwrap().unwrap();
         index_array(
             arr,
-            &(0..adata.n_obs())
-                .into_iter()
-                .map(|x| Some(x))
-                .collect::<Vec<_>>(),
+            &(0..adata.n_obs()).map(Some).collect::<Vec<_>>(),
             &common_vars
                 .iter()
                 .map(|x| var_names.get_index(x))
@@ -348,7 +343,7 @@ fn concat_axis_arrays<A: AxisArraysOp>(
     let size = axis_arrays[0].get(key).unwrap().shape().unwrap()[1];
     axis_arrays.iter().map(move |arr| {
         let arr: ArrayData = arr.get_item(key).unwrap().unwrap();
-        assert_eq!(arr.shape()[1], size, "dimension mismatch for key: {}", key);
+        assert_eq!(arr.shape()[1], size, "dimension mismatch for key: {key}");
         arr
     })
 }

@@ -24,3 +24,6 @@ ndarray = "0.17"
 tempfile = "3.2"
 rand = "0.8.5"
 ndarray-rand = "0.16"
+
+[lints]
+workspace = true

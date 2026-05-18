@@ -1,14 +1,14 @@
+mod array;
 mod instance;
 mod slice;
-mod array;
 
 pub(crate) use instance::*;
 use pyo3_polars::PyDataFrame;
-pub use slice::{to_select_info, to_select_elem};
+pub use slice::{to_select_elem, to_select_info};
 
-use std::{collections::HashMap, ops::Deref};
+use anndata::data::{ArrayData, Data, DynScalar, Mapping};
 use pyo3::{prelude::*, types::PyDict};
-use anndata::data::{Data, ArrayData, DynScalar, Mapping};
+use std::{collections::HashMap, ops::Deref};
 
 pub struct PyArrayData(ArrayData);
 
@@ -26,9 +26,9 @@ impl From<ArrayData> for PyArrayData {
     }
 }
 
-impl Into<ArrayData> for PyArrayData {
-    fn into(self) -> ArrayData {
-        self.0
+impl From<PyArrayData> for ArrayData {
+    fn from(val: PyArrayData) -> Self {
+        val.0
     }
 }
 
@@ -47,14 +47,18 @@ impl FromPyObject<'_, '_> for PyArrayData {
         } else if isinstance_of_csc(&ob)? {
             Ok(ArrayData::from(array::to_csc(&ob)?).into())
         } else if isinstance_of_pandas(&ob)? {
-            let ob = ob.py().import("polars")?.call_method1("from_pandas", (ob, ))?;
+            let ob = ob
+                .py()
+                .import("polars")?
+                .call_method1("from_pandas", (ob,))?;
             Ok(ArrayData::from(ob.extract::<PyDataFrame>()?.0).into())
         } else if isinstance_of_polars(&ob)? {
             Ok(ArrayData::from(ob.extract::<PyDataFrame>()?.0).into())
         } else {
-            Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-                format!("Could not convert Python type {} to Rust data", ob.get_type())
-            ))?
+            Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
+                "Could not convert Python type {} to Rust data",
+                ob.get_type()
+            )))?
         }
     }
 }
@@ -83,13 +87,13 @@ impl From<Data> for PyData {
     }
 }
 
-impl Into<Data> for PyData {
-    fn into(self) -> Data {
-        self.0
+impl From<PyData> for Data {
+    fn from(val: PyData) -> Self {
+        val.0
     }
 }
 
-impl<'py> FromPyObject<'_, '_> for PyData {
+impl FromPyObject<'_, '_> for PyData {
     type Error = PyErr;
 
     fn extract(ob: Borrowed<'_, '_, PyAny>) -> PyResult<Self> {
@@ -117,16 +121,18 @@ fn to_scalar(ob: &Bound<'_, PyAny>) -> PyResult<DynScalar> {
         ob.extract::<f64>().map(Into::into)
     } else {
         Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-            "Could not convert to Scalar"
+            "Could not convert to Scalar",
         ))
     }
 }
 
 fn to_mapping(ob: &Bound<'_, PyAny>) -> PyResult<Mapping> {
     let data: HashMap<String, PyData> = ob.extract()?;
-    let mapping = data.into_iter()
+    let mapping = data
+        .into_iter()
         .map(|(k, v)| (k, v.0))
-        .collect::<HashMap<_, _>>().into();
+        .collect::<HashMap<_, _>>()
+        .into();
     Ok(mapping)
 }
 
@@ -164,8 +170,7 @@ fn scalar_to_py<'py>(s: DynScalar, py: Python<'py>) -> PyResult<Bound<'py, PyAny
 fn mapping_to_python<'py>(d: Mapping, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
     let dict = PyDict::new(py);
     let data: HashMap<String, Data> = d.into();
-    data.into_iter().try_for_each(|(k, v)| {
-        dict.set_item(k, PyData(v).into_pyobject(py)?)
-    })?;
+    data.into_iter()
+        .try_for_each(|(k, v)| dict.set_item(k, PyData(v).into_pyobject(py)?))?;
     Ok(dict.into_any())
 }

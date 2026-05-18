@@ -2,7 +2,7 @@ pub(crate) mod base;
 pub(crate) mod collection;
 
 pub use base::{
-    InnerDataFrameElem, DataFrameElem, Elem, Inner, ArrayElem, Slot,
-    StackedDataFrame, StackedArrayElem, ChunkedArrayElem, StackedChunkedArrayElem,
+    ArrayElem, ChunkedArrayElem, DataFrameElem, Elem, Inner, InnerDataFrameElem, Slot,
+    StackedArrayElem, StackedChunkedArrayElem, StackedDataFrame,
 };
-pub use collection::{Dim, Axis, AxisArrays, ElemCollection, StackedAxisArrays};
+pub use collection::{Axis, AxisArrays, Dim, ElemCollection, StackedAxisArrays};

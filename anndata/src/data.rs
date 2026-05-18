@@ -9,7 +9,7 @@ pub use mapping::*;
 
 use crate::backend::{Backend, DataContainer, DataType, GroupOp};
 
-use anyhow::{bail, Ok, Result};
+use anyhow::{Ok, Result, bail};
 use nalgebra_sparse::csc::CscMatrix;
 use nalgebra_sparse::csr::CsrMatrix;
 use ndarray::{Array, RemoveAxis};
@@ -140,9 +140,9 @@ impl TryFrom<Data> for Mapping {
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Data traits
-////////////////////////////////////////////////////////////////////////////////
+//-----------------------------------------------------------------------------
+// Data traits
+//-----------------------------------------------------------------------------
 
 impl Readable for Data {
     fn read<B: Backend>(container: &DataContainer<B>) -> Result<Self> {

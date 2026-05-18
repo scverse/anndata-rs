@@ -37,7 +37,7 @@ impl<B: Backend> std::fmt::Display for AnnDataSet<B> {
             self.annotation.filename().display(),
         )?;
         let adatas = self.anndatas.inner();
-        if adatas.len() > 0 {
+        if !adatas.is_empty() {
             write!(f, "\ncontains {} AnnData objects", adatas.len(),)?;
         }
         if let Some(obs) = self
@@ -46,10 +46,9 @@ impl<B: Backend> std::fmt::Display for AnnDataSet<B> {
             .lock()
             .as_ref()
             .map(|x| x.get_column_names())
+            && !obs.is_empty()
         {
-            if !obs.is_empty() {
-                write!(f, "\n    obs: '{}'", obs.into_iter().join("', '"))?;
-            }
+            write!(f, "\n    obs: '{}'", obs.into_iter().join("', '"))?;
         }
         if let Some(var) = self
             .annotation
@@ -57,10 +56,9 @@ impl<B: Backend> std::fmt::Display for AnnDataSet<B> {
             .lock()
             .as_ref()
             .map(|x| x.get_column_names())
+            && !var.is_empty()
         {
-            if !var.is_empty() {
-                write!(f, "\n    var: '{}'", var.into_iter().join("', '"))?;
-            }
+            write!(f, "\n    var: '{}'", var.into_iter().join("', '"))?;
         }
         if let Some(keys) = self
             .annotation
@@ -68,10 +66,9 @@ impl<B: Backend> std::fmt::Display for AnnDataSet<B> {
             .lock()
             .as_ref()
             .map(|x| x.keys().join("', '"))
+            && !keys.is_empty()
         {
-            if !keys.is_empty() {
-                write!(f, "\n    uns: '{}'", keys)?;
-            }
+            write!(f, "\n    uns: '{keys}'")?;
         }
         if let Some(keys) = self
             .annotation
@@ -79,10 +76,9 @@ impl<B: Backend> std::fmt::Display for AnnDataSet<B> {
             .lock()
             .as_ref()
             .map(|x| x.keys().join("', '"))
+            && !keys.is_empty()
         {
-            if !keys.is_empty() {
-                write!(f, "\n    obsm: '{}'", keys)?;
-            }
+            write!(f, "\n    obsm: '{keys}'")?;
         }
         if let Some(keys) = self
             .annotation
@@ -90,10 +86,9 @@ impl<B: Backend> std::fmt::Display for AnnDataSet<B> {
             .lock()
             .as_ref()
             .map(|x| x.keys().join("', '"))
+            && !keys.is_empty()
         {
-            if !keys.is_empty() {
-                write!(f, "\n    obsp: '{}'", keys)?;
-            }
+            write!(f, "\n    obsp: '{keys}'")?;
         }
         if let Some(keys) = self
             .annotation
@@ -101,10 +96,9 @@ impl<B: Backend> std::fmt::Display for AnnDataSet<B> {
             .lock()
             .as_ref()
             .map(|x| x.keys().join("', '"))
+            && !keys.is_empty()
         {
-            if !keys.is_empty() {
-                write!(f, "\n    varm: '{}'", keys)?;
-            }
+            write!(f, "\n    varm: '{keys}'")?;
         }
         if let Some(keys) = self
             .annotation
@@ -112,10 +106,9 @@ impl<B: Backend> std::fmt::Display for AnnDataSet<B> {
             .lock()
             .as_ref()
             .map(|x| x.keys().join("', '"))
+            && !keys.is_empty()
         {
-            if !keys.is_empty() {
-                write!(f, "\n    varp: '{}'", keys)?;
-            }
+            write!(f, "\n    varp: '{keys}'")?;
         }
         Ok(())
     }
@@ -130,7 +123,7 @@ impl<B: Backend> AnnDataSet<B> {
         &self.annotation
     }
 
-    pub fn new<'a, T, S, P>(
+    pub fn new<T, S, P>(
         data: T,
         filename: P,
         add_key: &str,
@@ -218,10 +211,9 @@ impl<B: Backend> AnnDataSet<B> {
                 .map(|x| x.get_item::<Data>(&key).unwrap().unwrap())
                 .all_equal()
             {
-                annotation.uns().add(
-                    &key,
-                    uns.iter().next().unwrap().get_item::<Data>(&key)?.unwrap(),
-                )?;
+                annotation
+                    .uns()
+                    .add(&key, uns.first().unwrap().get_item::<Data>(&key)?.unwrap())?;
             }
         }
 
@@ -475,6 +467,10 @@ impl<B: Backend> StackedAnnData<B> {
 
     pub fn len(&self) -> usize {
         self.files.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.files.is_empty()
     }
 }
 

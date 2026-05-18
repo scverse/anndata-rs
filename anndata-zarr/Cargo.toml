@@ -23,3 +23,6 @@ tempfile = "3.2"
 proptest = "1"
 rand = "0.9"
 ndarray-rand = "0.16"
+
+[lints]
+workspace = true

@@ -7,8 +7,8 @@ pub use dataset::AnnDataSet;
 pub use memory::PyAnnData;
 
 use anndata;
-use anndata::concat::JoinType;
 use anndata::Backend;
+use anndata::concat::JoinType;
 use anndata_hdf5::H5;
 use anyhow::Result;
 use pyo3::prelude::*;
@@ -75,7 +75,7 @@ pub fn read<'py>(
 }
 
 /// Concatenates AnnData objects.
-/// 
+///
 /// When `file` is provided, this function saves the merged AnnData object on disk
 /// in a streaming fashion. This is memory efficient and allows merging large datasets
 /// that do not fit into memory.
@@ -95,13 +95,13 @@ pub fn read<'py>(
 ///     If provided, the concatenated AnnData will be saved to this file.
 /// backend: Literal['hdf5', 'zarr']
 ///     Backend to use for writing the output file.
-/// 
+///
 /// Returns
 /// -------
-/// 
+///
 /// AnnData
 ///     The concatenated AnnData object.
-/// 
+///
 /// See Also
 /// --------
 /// AnnDataSet
@@ -130,7 +130,7 @@ pub fn concat<'py>(
         Py(PyAnnData<'a>),
     }
 
-    let keys = keys.as_ref().map(|x| x.as_slice());
+    let keys = keys.as_deref();
     let out = if let Some(file) = file {
         let backend = get_backend(&file, backend);
         match backend {
