@@ -14,7 +14,7 @@ use std::{
 use std::{sync::Arc, vec};
 use zarrs::array::{
     ZARR_NAN_F32, ZARR_NAN_F64,
-    codec::bytes_to_bytes::zstd::ZstdCodec,
+    codec::{SubchunkWriteOrder, bytes_to_bytes::zstd::ZstdCodec},
     data_type::{
         BoolDataType, Float32DataType, Float64DataType, Int8DataType, Int16DataType, Int32DataType,
         Int64DataType, StringDataType, UInt8DataType, UInt16DataType, UInt32DataType,
@@ -671,13 +671,19 @@ fn new_empty_dataset_helper<T: BackendData, S: ?Sized>(
             &datatype,
         );
         sharding_codec_builder.bytes_to_bytes_codecs(vec![Arc::new(ZstdCodec::new(7, false))]);
+        // For 1D arrays, use lexicographic ordering to improve performance for contiguous reads.
+        // TODO: morton ordering for 2D, possibly: https://github.com/zarrs/zarrs/pull/364
+        let mut sharding_codec = sharding_codec_builder.build();
+        if shape.len() == 1 {
+            sharding_codec = sharding_codec.with_subchunk_write_order(SubchunkWriteOrder::C)
+        }
         zarrs::array::ArrayBuilder::new(
             shape.iter().map(|x| *x as u64).collect::<Vec<_>>(),
             shard_shape.as_slice(),
             datatype,
             fill,
         )
-        .array_to_bytes_codec(sharding_codec_builder.build_arc())
+        .array_to_bytes_codec(Arc::new(sharding_codec))
         .build(store, path)?
     } else {
         zarrs::array::ArrayBuilder::new(
