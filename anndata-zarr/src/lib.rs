@@ -643,7 +643,6 @@ fn new_empty_dataset_helper<T: BackendData, S: ?Sized>(
 
     let mut use_sharding = true;
     if datatype == data_type::string() || shape.len() == 0 {
-        //|| shape.iter().sum::<usize>() == 0 {
         // Strings are not sharded, they are stored as a single chunk.
         // Scalars are also not sharded
         use_sharding = false;
