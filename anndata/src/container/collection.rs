@@ -298,7 +298,10 @@ impl<B: Backend> InnerAxisArrays<B> {
         if let Some(dim) = &self.dim1 {
             dim.get()
         } else {
-            self.data.values().next().map_or(0, |x| x.inner().shape()[0])
+            self.data
+                .values()
+                .next()
+                .map_or(0, |x| x.inner().shape()[0])
         }
     }
 
@@ -351,9 +354,8 @@ impl<B: Backend> InnerAxisArrays<B> {
         if let Some(elem) = self.get(key) {
             elem.clear()?;
         }
-        let elem = ArrayChunk::write_by_chunk(data, &self.container, key).with_context(|| {
-            format!("failed to write data to AxisArrays with key: '{}'", key)
-        })?;
+        let elem = ArrayChunk::write_by_chunk(data, &self.container, key)
+            .with_context(|| format!("failed to write data to AxisArrays with key: '{}'", key))?;
         let elem = ArrayElem::try_from(elem)?;
 
         let shape = { elem.inner().shape().clone() };
@@ -369,7 +371,8 @@ impl<B: Backend> InnerAxisArrays<B> {
             }
             Axis::RowColumn => {
                 if let Err(e) = self
-                    .dim1().try_set(shape[0])
+                    .dim1()
+                    .try_set(shape[0])
                     .and(self.dim2.as_ref().unwrap().try_set(shape[1]))
                 {
                     elem.clear()?;
@@ -484,15 +487,20 @@ impl<B: Backend> AxisArrays<B> {
         self.is_none() || self.inner().data.is_empty()
     }
 
-    pub fn new(group: B::Group, axis: Axis, dim1: Option<&Dim>, dim2: Option<&Dim>) -> Result<Self> {
+    pub fn new(
+        group: B::Group,
+        axis: Axis,
+        dim1: Option<&Dim>,
+        dim2: Option<&Dim>,
+    ) -> Result<Self> {
         let data: HashMap<_, _> = iter_containers::<B>(&group)
             .map(|(k, v)| (k, ArrayElem::try_from(v).unwrap()))
             .collect();
 
         // Get shapes of arrays
         let shapes = data
-            .iter()
-            .map(|(_, v)| v.inner().shape().clone())
+            .values()
+            .map(|v| v.inner().shape().clone())
             .collect::<Vec<_>>();
 
         // Check if shapes of arrays conform to axis
@@ -513,14 +521,14 @@ impl<B: Backend> AxisArrays<B> {
             );
         }
 
-        if let Some(s) = shapes.get(0) {
+        if let Some(s) = shapes.first() {
             if let Some(d) = dim1 {
                 d.try_set(s[0])?;
             }
-            if let Axis::RowColumn = axis {
-                if let Some(d) = dim2 {
-                    d.try_set(s[1])?;
-                }
+            if let Axis::RowColumn = axis
+                && let Some(d) = dim2
+            {
+                d.try_set(s[1])?;
             }
         }
 
@@ -635,7 +643,7 @@ impl<B: Backend> StackedAxisArrays<B> {
             );
         }
         Ok(Self {
-            axis: axis,
+            axis,
             data: Arc::new(data),
         })
     }

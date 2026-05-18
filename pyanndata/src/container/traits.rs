@@ -1,24 +1,22 @@
 use std::ops::Deref;
 
-use crate::data::{
-    is_none_slice, to_select_info, PyArrayData, PyData,
-};
+use crate::data::{PyArrayData, PyData, is_none_slice, to_select_info};
 
 use anndata::backend::DataType;
+use anndata::container::{ChunkedArrayElem, StackedChunkedArrayElem};
 use anndata::data::SelectInfoElem;
 use anndata::{
-    ArrayData, ArrayElem, AxisArrays, Backend,
-    DataFrameElem, Elem, ElemCollection, StackedArrayElem, StackedDataFrame, StackedAxisArrays,
+    ArrayData, ArrayElem, AxisArrays, Backend, DataFrameElem, Elem, ElemCollection,
+    StackedArrayElem, StackedAxisArrays, StackedDataFrame,
 };
-use anndata::container::{ChunkedArrayElem, StackedChunkedArrayElem};
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use polars::series::Series;
 use pyo3::prelude::*;
-use pyo3_polars::{PySeries, PyDataFrame};
+use pyo3_polars::{PyDataFrame, PySeries};
 use rand::Rng;
 use rand::SeedableRng;
 
-use super::{PyArrayElem, PyElem, PyChunkedArray};
+use super::{PyArrayElem, PyChunkedArray, PyElem};
 
 /// Trait for `Elem` to abtract over different backends.
 pub trait ElemTrait: Send + Sync {
@@ -31,18 +29,19 @@ pub trait ElemTrait: Send + Sync {
 
 impl<B: Backend> ElemTrait for Elem<B> {
     fn enable_cache(&self) {
-        self.lock().as_mut().map(|x| x.enable_cache());
+        if let Some(x) = self.lock().as_mut() {
+            x.enable_cache()
+        }
     }
 
     fn disable_cache(&self) {
-        self.lock().as_mut().map(|x| x.disable_cache());
+        if let Some(x) = self.lock().as_mut() {
+            x.disable_cache()
+        }
     }
 
     fn is_scalar(&self) -> bool {
-        match self.inner().dtype() {
-            DataType::Scalar(_) => true,
-            _ => false,
-        }
+        matches!(self.inner().dtype(), DataType::Scalar(_))
     }
 
     fn get<'py>(&self, slice: &Bound<'py, PyAny>) -> Result<PyData> {
@@ -64,29 +63,26 @@ pub trait ArrayElemTrait: Send + Sync {
     fn show(&self) -> String;
     fn get(&self, subscript: &Bound<'_, PyAny>) -> Result<PyArrayData>;
     fn shape(&self) -> Vec<usize>;
-    fn chunk(
-        &self,
-        size: usize,
-        replace: bool,
-        seed: u64,
-    ) -> Result<ArrayData>;
+    fn chunk(&self, size: usize, replace: bool, seed: u64) -> Result<ArrayData>;
     fn chunked(&self, chunk_size: usize) -> PyChunkedArray;
 }
 
 impl<B: Backend + 'static> ArrayElemTrait for ArrayElem<B> {
     fn enable_cache(&self) {
-        self.lock().as_mut().map(|x| x.enable_cache());
+        if let Some(x) = self.lock().as_mut() {
+            x.enable_cache()
+        }
     }
 
     fn disable_cache(&self) {
-        self.lock().as_mut().map(|x| x.disable_cache());
+        if let Some(x) = self.lock().as_mut() {
+            x.disable_cache()
+        }
     }
 
     fn get(&self, subscript: &Bound<'_, PyAny>) -> Result<PyArrayData> {
         let slice = to_select_info(subscript, self.inner().shape())?;
-        self.inner()
-            .select::<_>(slice.as_ref())
-            .map(|x| x.into())
+        self.inner().select::<_>(slice.as_ref()).map(|x| x.into())
     }
 
     fn show(&self) -> String {
@@ -97,12 +93,7 @@ impl<B: Backend + 'static> ArrayElemTrait for ArrayElem<B> {
         self.inner().shape().as_ref().to_vec()
     }
 
-    fn chunk(
-        &self,
-        size: usize,
-        replace: bool,
-        seed: u64,
-    ) -> Result<ArrayData> {
+    fn chunk(&self, size: usize, replace: bool, seed: u64) -> Result<ArrayData> {
         let length = self.shape()[0];
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
         let idx: Vec<usize> = if replace {
@@ -143,12 +134,7 @@ impl<B: Backend + 'static> ArrayElemTrait for StackedArrayElem<B> {
         self.deref().shape().as_ref().unwrap().as_ref().to_vec()
     }
 
-    fn chunk(
-        &self,
-        size: usize,
-        replace: bool,
-        seed: u64,
-    ) -> Result<ArrayData> {
+    fn chunk(&self, size: usize, replace: bool, seed: u64) -> Result<ArrayData> {
         let length = self.shape()[0];
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
         let idx: Vec<usize> = if replace {
@@ -178,7 +164,10 @@ impl<B: Backend> DataFrameElemTrait for DataFrameElem<B> {
     fn get<'py>(&self, subscript: &Bound<'py, PyAny>) -> Result<Bound<'py, PyAny>> {
         let py = subscript.py();
         if let Ok(key) = subscript.extract::<&str>() {
-            Ok(PySeries(self.inner().column(key)?.clone().take_materialized_series()).into_pyobject(py)?)
+            Ok(
+                PySeries(self.inner().column(key)?.clone().take_materialized_series())
+                    .into_pyobject(py)?,
+            )
         } else {
             let width = self.inner().width();
             let height = self.inner().height();
@@ -294,7 +283,8 @@ impl<B: Backend + 'static> AxisArrayTrait for StackedAxisArrays<B> {
             .deref()
             .get(key)
             .context(format!("No such key: {}", key))?
-            .data::<ArrayData>()?.unwrap()
+            .data::<ArrayData>()?
+            .unwrap()
             .into())
     }
 
@@ -315,8 +305,6 @@ impl<B: Backend + 'static> AxisArrayTrait for StackedAxisArrays<B> {
         format!("{}", self)
     }
 }
-
-
 
 pub trait ElemCollectionTrait: Send + Sync {
     fn keys(&self) -> Vec<String>;
@@ -364,7 +352,10 @@ impl<B: Backend + 'static> ElemCollectionTrait for ElemCollection<B> {
     }
 }
 
-pub trait ChunkedArrayTrait: ExactSizeIterator<Item = (ArrayData, usize, usize)> + Send + Sync {}
+pub trait ChunkedArrayTrait:
+    ExactSizeIterator<Item = (ArrayData, usize, usize)> + Send + Sync
+{
+}
 
 impl<B: Backend> ChunkedArrayTrait for ChunkedArrayElem<B, ArrayData> {}
 impl<B: Backend> ChunkedArrayTrait for StackedChunkedArrayElem<B, ArrayData> {}

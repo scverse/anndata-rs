@@ -23,3 +23,6 @@ extension-module = ["pyo3/extension-module", "pyanndata/extension-module"]
 [lib]
 name = "anndata_rs"
 crate-type = ["cdylib"]
+
+[lints]
+workspace = true

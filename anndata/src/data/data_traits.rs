@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use crate::backend::{AttributeOp, Backend, DataContainer, DataType, GroupOp};
 use crate::data::{
-    array::slice::{SelectInfoElem, Shape},
     array::DynScalar,
+    array::slice::{SelectInfoElem, Shape},
 };
 
 use anyhow::Result;
@@ -107,9 +107,9 @@ where
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Traits for arrays
-////////////////////////////////////////////////////////////////////////////////
+//-----------------------------------------------------------------------------
+// Traits for arrays
+//-----------------------------------------------------------------------------
 
 /// Anything that has a shape.
 pub trait HasShape {

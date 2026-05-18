@@ -7,7 +7,7 @@ use crate::data::{
     slice::{SelectInfoElem, Shape},
 };
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use nalgebra_sparse::csc::CscMatrix;
 use nalgebra_sparse::csr::CsrMatrix;
 use ndarray::ArrayD;
@@ -387,9 +387,9 @@ impl ReadableArray for DynCscMatrix {
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
+//-----------------------------------------------------------------------------
 // ArrayConvert implementations
-////////////////////////////////////////////////////////////////////////////////
+//-----------------------------------------------------------------------------
 
 macro_rules! impl_arrayconvert {
     ($($ty:ident, $fun:expr),*) => {
@@ -463,7 +463,7 @@ where
     let (pattern, values) = csr.into_pattern_and_values();
     let out = CsrMatrix::try_from_pattern_and_values(
         pattern,
-        values.into_iter().map(|x| f(x)).collect::<Result<_, _>>()?,
+        values.into_iter().map(f).collect::<Result<_, _>>()?,
     )
     .unwrap();
     Ok(out)
@@ -476,7 +476,7 @@ where
     let (pattern, values) = csc.into_pattern_and_values();
     let out = CscMatrix::try_from_pattern_and_values(
         pattern,
-        values.into_iter().map(|x| f(x)).collect::<Result<_, _>>()?,
+        values.into_iter().map(f).collect::<Result<_, _>>()?,
     )
     .unwrap();
     Ok(out)

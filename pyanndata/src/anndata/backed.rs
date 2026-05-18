@@ -118,7 +118,7 @@ impl AnnData {
                     .map(|name| {
                         index
                             .get_index(&name)
-                            .expect(&format!("Unknown obs name: {}", name))
+                            .unwrap_or_else(|| panic!("Unknown obs name: {}", name))
                     })
                     .collect::<Vec<_>>()
             });
@@ -145,7 +145,7 @@ impl AnnData {
                     .map(|name| {
                         index
                             .get_index(&name)
-                            .expect(&format!("Unknown var name: {}", name))
+                            .unwrap_or_else(|| panic!("Unknown var name: {}", name))
                     })
                     .collect::<Vec<_>>()
             });
@@ -170,6 +170,7 @@ impl<B: Backend> From<anndata::AnnData<B>> for AnnData {
 }
 
 #[pymethods]
+#[allow(clippy::too_many_arguments)]
 impl AnnData {
     #[new]
     #[pyo3(
@@ -182,7 +183,7 @@ impl AnnData {
     )]
     pub fn new(
         filename: PathBuf,
-        X: Option<PyArrayData>,
+        #[allow(non_snake_case)] X: Option<PyArrayData>,
         obs: Option<Bound<'_, PyAny>>,
         var: Option<Bound<'_, PyAny>>,
         obsm: Option<HashMap<String, PyArrayData>>,
@@ -616,7 +617,7 @@ impl AnnData {
     /// partial : list[str] | None
     ///     A list of fields to copy. If None, copies all fields. Possible fields are:
     ///     "X", "obs", "var", "obsm", "obsp", "varm", "varp", "uns", "layers".
-
+    ///
     /// Returns
     /// -------
     /// AnnData
@@ -1160,11 +1161,7 @@ impl<B: Backend> AnnDataTrait for InnerAnnData<B> {
         py: Python<'py>,
         partial: Option<HashSet<String>>,
     ) -> Result<PyAnnData<'py>> {
-        Ok(PyAnnData::from_anndata(
-            py,
-            self.adata.inner().deref(),
-            partial,
-        )?)
+        PyAnnData::from_anndata(py, self.adata.inner().deref(), partial)
     }
 
     fn filename(&self) -> PathBuf {

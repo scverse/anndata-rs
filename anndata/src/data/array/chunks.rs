@@ -3,11 +3,11 @@ use crate::data::{ArrayData, array::DynArray, array::utils::ExtendableDataset};
 use crate::{ArrayElem, Selectable};
 
 use super::{CsrNonCanonical, DynCscMatrix, DynCsrMatrix, DynCsrNonCanonical};
+use crate::backend::get_default_write_config;
 use anyhow::{Context, Result, bail};
 use nalgebra_sparse::na::Scalar;
 use nalgebra_sparse::{CscMatrix, CsrMatrix};
 use ndarray::{Array, Array1, ArrayD, ArrayView1, RemoveAxis};
-use crate::backend::get_default_write_config;
 
 pub enum MatrixBuilder<B: Backend> {
     CsrMatrix(CsrMatrixBuilder<B>),

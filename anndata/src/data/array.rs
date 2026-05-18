@@ -5,7 +5,7 @@ pub mod slice;
 mod sparse;
 pub mod utils;
 
-pub use chunks::{MatrixBuilder, ArrayChunk};
+pub use chunks::{ArrayChunk, MatrixBuilder};
 pub use dataframe::DataFrameIndex;
 pub use dense::{ArrayConvert, CategoricalArray, DynArray, DynCowArray, DynScalar};
 pub use slice::{SelectInfo, SelectInfoBounds, SelectInfoElem, SelectInfoElemBounds, Shape};
@@ -13,10 +13,10 @@ pub use sparse::{CsrNonCanonical, DynCscMatrix, DynCsrMatrix, DynCsrNonCanonical
 
 use crate::backend::*;
 use crate::data::utils::from_csr_data;
-use crate::data::{data_traits::*, DataType};
+use crate::data::{DataType, data_traits::*};
 
 use ::ndarray::{Array, ArrayD, Ix1, RemoveAxis};
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use nalgebra_sparse::csc::CscMatrix;
 use nalgebra_sparse::csr::CsrMatrix;
 use polars::prelude::DataFrame;
@@ -440,7 +440,7 @@ fn read_csr<B: Backend>(container: &DataContainer<B>) -> Result<ArrayData> {
     }
 }
 
-fn read_csr_select<B: Backend, S>(container: &DataContainer<B>, info: &[S]) -> Result<ArrayData>
+fn read_csr_select<B, S>(container: &DataContainer<B>, info: &[S]) -> Result<ArrayData>
 where
     B: Backend,
     S: AsRef<SelectInfoElem>,

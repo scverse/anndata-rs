@@ -35,3 +35,6 @@ extension-module = ["pyo3/extension-module"]
 
 [lib]
 crate-type = ["lib"]
+
+[lints]
+workspace = true

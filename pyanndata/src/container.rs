@@ -1,14 +1,13 @@
 mod traits;
 
-use crate::data::{PyData, PyArrayData};
+use crate::data::{PyArrayData, PyData};
 
+use anyhow::Result;
 use pyo3::prelude::*;
 use pyo3_polars::PySeries;
-use traits::{ElemTrait, ArrayElemTrait, DataFrameElemTrait, AxisArrayTrait};
-use anyhow::Result;
+use traits::{ArrayElemTrait, AxisArrayTrait, DataFrameElemTrait, ElemTrait};
 
-use self::traits::{ElemCollectionTrait, ChunkedArrayTrait};
-
+use self::traits::{ChunkedArrayTrait, ElemCollectionTrait};
 
 #[pyclass]
 #[repr(transparent)]
@@ -103,12 +102,7 @@ impl PyArrayElem {
         signature = (size, replace=true, seed=2022),
         text_signature = "($self, size, replace=True, seed=2022)",
     )]
-    fn chunk(
-        &self,
-        size: usize,
-        replace: bool,
-        seed: u64,
-    ) -> Result<PyArrayData> {
+    fn chunk(&self, size: usize, replace: bool, seed: u64) -> Result<PyArrayData> {
         self.0.chunk(size, replace, seed).map(PyArrayData::from)
     }
 
@@ -154,7 +148,11 @@ impl PyDataFrameElem {
     }
 
     fn __setitem__(&self, key: &str, data: &Bound<'_, PyAny>) -> Result<()> {
-        let data: PySeries = data.py().import("polars")?.call_method1("Series", (data, ))?.extract()?;
+        let data: PySeries = data
+            .py()
+            .import("polars")?
+            .call_method1("Series", (data,))?
+            .extract()?;
         self.0.set(key, data.into())
     }
 
@@ -305,7 +303,6 @@ impl PyElemCollection {
     }
 }
 
-
 #[pyclass]
 #[repr(transparent)]
 pub struct PyChunkedArray(Box<dyn ChunkedArrayTrait>);
@@ -321,7 +318,9 @@ impl PyChunkedArray {
     }
 
     fn __next__(mut slf: PyRefMut<Self>) -> Option<(PyArrayData, usize, usize)> {
-        slf.0.next().map(|(data, start, end)| (data.into(), start, end))
+        slf.0
+            .next()
+            .map(|(data, start, end)| (data.into(), start, end))
     }
 }
 

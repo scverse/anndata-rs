@@ -34,3 +34,6 @@ proptest = "1"
 rand = "0.8.5"
 ndarray-rand = "0.16"
 nalgebra = { version = "0.34", features = ["rand"] }
+
+[lints]
+workspace = true
