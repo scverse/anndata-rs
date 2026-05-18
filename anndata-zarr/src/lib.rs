@@ -14,7 +14,7 @@ use std::{
 use std::{sync::Arc, vec};
 use zarrs::array::{
     ZARR_NAN_F32, ZARR_NAN_F64,
-    codec::bytes_to_bytes::zstd::ZstdCodec,
+    codec::{SubchunkWriteOrder, bytes_to_bytes::zstd::ZstdCodec},
     data_type::{
         BoolDataType, Float32DataType, Float64DataType, Int8DataType, Int16DataType, Int32DataType,
         Int64DataType, StringDataType, UInt8DataType, UInt16DataType, UInt32DataType,
@@ -676,7 +676,7 @@ fn new_empty_dataset_helper<T: BackendData, S: ?Sized>(
         let mut sharding_codec = sharding_codec_builder.build();
         if shape.len() == 1 {
             sharding_codec =
-                sharding_codec.with_subchunk_write_order(zarrs::array::codec::SubchunkWriteOrder::C)
+                sharding_codec.with_subchunk_write_order(SubchunkWriteOrder::C)
         }
         zarrs::array::ArrayBuilder::new(
             shape.iter().map(|x| *x as u64).collect::<Vec<_>>(),
