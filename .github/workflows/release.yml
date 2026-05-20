@@ -5,19 +5,15 @@ on:
     branches:
       - main
 
-permissions:
-  contents: write  # create and modify the release PR branch
-  pull-requests: write  # create and edit the release PR
-  id-token: write  # trusted publishing
-
 jobs:
   # Release unpublished packages.
   release-plz-release:
     name: Release-plz release
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: read
+    permissions: &permissions
+      contents: write  # create and modify the release PR branch
+      pull-requests: write  # create and edit the release PR
+      id-token: write  # trusted publishing
     steps:
     - &checkout
       name: Checkout repository
@@ -42,6 +38,7 @@ jobs:
     concurrency:
       group: release-plz-${{ github.ref }}
       cancel-in-progress: false
+    permissions: *permissions
     steps:
     - *checkout
     - *install-rust
