@@ -9,15 +9,21 @@ jobs:
   test_rust_code:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - &checkout
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+        persist-credentials: false
 
-    - uses: actions-rs/toolchain@v1
+    - &install-rust
+      uses: actions-rs/toolchain@v1
       with:
         profile: minimal
         toolchain: stable
         override: true
 
-    - name: Cache rust build
+    - &cache-rust
+      name: Cache rust build
       uses: Swatinem/rust-cache@v2
 
     - name: Test Rust package
@@ -45,17 +51,9 @@ jobs:
       matrix:
         anndata_version: ['0.9.*', '0.10.*', '0.11.*', '0.12.*']
     steps:
-    - uses: actions/checkout@v6
-
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        override: true
-
-    - name: Cache rust build
-      uses: Swatinem/rust-cache@v2
-
+    - *checkout
+    - *install-rust
+    - *cache-rust
     - name: Build and test package
       run: |
         pip install --user --upgrade pip
@@ -67,16 +65,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test_python_code]
     steps:
-    - uses: actions/checkout@v6
-
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        override: true
-
-    - name: Cache rust build
-      uses: Swatinem/rust-cache@v2
+    - *checkout
+    - *install-rust
+    - *cache-rust
 
     - name: Install dependency
       run: |
