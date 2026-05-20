@@ -1,19 +1,21 @@
 name: Release-plz
-if: ${{ github.repository_owner == 'scverse' }}
 
 on:
   push:
     branches:
       - main
 
+permissions: {}
+
 jobs:
   # Release unpublished packages.
   release-plz-release:
+    if: ${{ github.repository_owner == 'scverse' }}
     name: Release-plz release
     runs-on: ubuntu-latest
-    permissions: &permissions
-      contents: write  # create and modify the release PR branch
-      pull-requests: write  # create and edit the release PR
+    permissions:
+      contents: write  # delete the release PR branch
+      pull-requests: write  # close the release PR
       id-token: write  # trusted publishing
     steps:
     - &checkout
@@ -34,12 +36,15 @@ jobs:
 
   # Create a PR with the new versions and changelog, preparing the next release.
   release-plz-pr:
+    if: ${{ github.repository_owner == 'scverse' }}
     name: Release-plz PR
     runs-on: ubuntu-latest
     concurrency:
       group: release-plz-${{ github.ref }}
       cancel-in-progress: false
-    permissions: *permissions
+    permissions:
+      contents: write  # create/modify the release PR branch
+      pull-requests: write  # create/edit the release PR
     steps:
     - *checkout
     - *install-rust
