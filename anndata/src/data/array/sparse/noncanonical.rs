@@ -89,7 +89,7 @@ impl DynCsrNonCanonical {
 }
 
 macro_rules! impl_noncanonicalcsr_traits {
-    ($($from_type:ty, $to_type:ident),*) => {
+    ($($from_type:ty => $to_type:ident),*) => {
         $(
             impl From<CsrNonCanonical<$from_type>> for DynCsrNonCanonical {
                 fn from(data: CsrNonCanonical<$from_type>) -> Self {
@@ -114,8 +114,10 @@ macro_rules! impl_noncanonicalcsr_traits {
 }
 
 impl_noncanonicalcsr_traits!(
-    i8, I8, i16, I16, i32, I32, i64, I64, u8, U8, u16, U16, u32, U32, u64, U64, f32, F32, f64, F64,
-    bool, Bool, String, String
+    i8 => I8, i16 => I16, i32 => I32, i64 => I64,
+    u8 => U8, u16 => U16, u32 => U32, u64 => U64,
+    f32 => F32, f64 => F64,
+    bool => Bool, String => String
 );
 
 impl From<DynCsrMatrix> for DynCsrNonCanonical {

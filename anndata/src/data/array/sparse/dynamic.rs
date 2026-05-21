@@ -30,7 +30,7 @@ pub enum DynCsrMatrix {
 }
 
 macro_rules! impl_dyncsr_traits {
-    ($($scalar_ty:ty, $variant:ident),*) => {
+    ($($scalar_ty:ty => $variant:ident),*) => {
         $(
             impl From<CsrMatrix<$scalar_ty>> for DynCsrMatrix {
                 fn from(data: CsrMatrix<$scalar_ty>) -> Self {
@@ -55,8 +55,10 @@ macro_rules! impl_dyncsr_traits {
 }
 
 impl_dyncsr_traits!(
-    i8, I8, i16, I16, i32, I32, i64, I64, u8, U8, u16, U16, u32, U32, u64, U64, f32, F32, f64, F64,
-    bool, Bool, String, String
+    i8 => I8, i16 => I16, i32 => I32, i64 => I64,
+    u8 => U8, u16 => U16, u32 => U32, u64 => U64,
+    f32 => F32, f64 => F64,
+    bool => Bool, String => String
 );
 
 impl Element for DynCsrMatrix {
@@ -172,7 +174,7 @@ impl ArrayArithmetic for DynCsrMatrix {
             DynCsrMatrix::U64(arr) => ArrayArithmetic::sum(arr),
             DynCsrMatrix::F32(arr) => ArrayArithmetic::sum(arr),
             DynCsrMatrix::F64(arr) => ArrayArithmetic::sum(arr),
-            DynCsrMatrix::Bool(_) => panic!("Cannot compute sum for Bool csr matrix"),
+            DynCsrMatrix::Bool(arr) => arr.values().iter().map(|b| f64::from(*b)).sum(),
             DynCsrMatrix::String(_) => panic!("Cannot compute sum for String csr matrix"),
         }
     }
@@ -206,7 +208,7 @@ impl ArrayArithmetic for DynCsrMatrix {
             DynCsrMatrix::U64(arr) => ArrayArithmetic::min(arr),
             DynCsrMatrix::F32(arr) => ArrayArithmetic::min(arr),
             DynCsrMatrix::F64(arr) => ArrayArithmetic::min(arr),
-            DynCsrMatrix::Bool(_) => panic!("Cannot compute min for Bool csr matrix"),
+            DynCsrMatrix::Bool(arr) => arr.values().iter().copied().any(|b| b).into(),
             DynCsrMatrix::String(_) => panic!("Cannot compute min for String csr matrix"),
         }
     }
@@ -223,7 +225,7 @@ impl ArrayArithmetic for DynCsrMatrix {
             DynCsrMatrix::U64(arr) => ArrayArithmetic::max(arr),
             DynCsrMatrix::F32(arr) => ArrayArithmetic::max(arr),
             DynCsrMatrix::F64(arr) => ArrayArithmetic::max(arr),
-            DynCsrMatrix::Bool(_) => panic!("Cannot compute max for Bool csr matrix"),
+            DynCsrMatrix::Bool(arr) => arr.values().iter().copied().all(|b| b).into(),
             DynCsrMatrix::String(_) => panic!("Cannot compute max for String csr matrix"),
         }
     }
@@ -274,7 +276,7 @@ pub enum DynCscMatrix {
 }
 
 macro_rules! impl_dyncsc_traits {
-    ($($from_type:ty, $to_type:ident),*) => {
+    ($($from_type:ty => $to_type:ident),*) => {
         $(
             impl From<CscMatrix<$from_type>> for DynCscMatrix {
                 fn from(data: CscMatrix<$from_type>) -> Self {
@@ -299,8 +301,10 @@ macro_rules! impl_dyncsc_traits {
 }
 
 impl_dyncsc_traits!(
-    i8, I8, i16, I16, i32, I32, i64, I64, u8, U8, u16, U16, u32, U32, u64, U64, f32, F32, f64, F64,
-    bool, Bool, String, String
+    i8 => I8, i16 => I16, i32 => I32, i64 => I64,
+    u8 => U8, u16 => U16, u32 => U32, u64 => U64,
+    f32 => F32, f64 => F64,
+    bool => Bool, String => String
 );
 
 impl Element for DynCscMatrix {
@@ -392,7 +396,7 @@ impl ReadableArray for DynCscMatrix {
 //-----------------------------------------------------------------------------
 
 macro_rules! impl_arrayconvert {
-    ($($ty:ident, $fun:expr),*) => {
+    ($($ty:ident => $fun:expr),*) => {
         $(paste::paste! {
 
             impl ArrayConvert<$ty<u32>> for [<Dyn $ty>] {
@@ -454,7 +458,7 @@ macro_rules! impl_arrayconvert {
     };
 }
 
-impl_arrayconvert!(CsrMatrix, convert_csr_with, CscMatrix, convert_csc_with);
+impl_arrayconvert!(CsrMatrix => convert_csr_with, CscMatrix => convert_csc_with);
 
 fn convert_csr_with<T, U, F>(csr: CsrMatrix<T>, f: F) -> Result<CsrMatrix<U>>
 where
@@ -480,4 +484,20 @@ where
     )
     .unwrap();
     Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sum() {
+        assert_eq!(DynCsrMatrix::Bool(CsrMatrix::zeros(5, 5)).sum(), 0.0);
+
+        let row_offsets = vec![0, 2, 3, 4];
+        let col_indices = vec![0, 2, 1, 0];
+        let values = vec![true, false, true, true];
+        let csc = CsrMatrix::try_from_csr_data(3, 4, row_offsets, col_indices, values).unwrap();
+        assert_eq!(DynCsrMatrix::Bool(csc).sum(), 3.0);
+    }
 }

@@ -30,7 +30,7 @@ pub enum DynScalar {
 
 /// macro to implement `From` trait for `DynScalar`
 macro_rules! impl_from_dynscalar {
-    ($($from:ident, $to:ident),*) => {
+    ($($from:ident => $to:ident),*) => {
         $(
             impl From<$from> for DynScalar {
                 fn from(val: $from) -> Self {
@@ -76,8 +76,10 @@ macro_rules! impl_from_dynscalar {
 }
 
 impl_from_dynscalar!(
-    i8, I8, i16, I16, i32, I32, i64, I64, u8, U8, u16, U16, u32, U32, u64, U64, f32, F32, f64, F64,
-    bool, Bool, String, String
+    i8 => I8, i16 => I16, i32 => I32, i64 => I64,
+    u8 => U8, u16 => U16, u32 => U32, u64 => U64,
+    f32 => F32, f64 => F64,
+    bool => Bool, String => String
 );
 
 impl Element for DynScalar {
@@ -132,7 +134,7 @@ pub enum DynArray {
 }
 
 macro_rules! impl_dynarray_into_array{
-    ($($variant:ident, $scalar_ty:ident),*) => {
+    ($($variant:ident => $scalar_ty:ident),*) => {
         $(
             paste! {
                 pub fn [<as_ $scalar_ty:lower>](&self) -> Result<&ArrayD<$scalar_ty>> {
@@ -167,13 +169,15 @@ impl DynArray {
     }
 
     impl_dynarray_into_array!(
-        I8, i8, I16, i16, I32, i32, I64, i64, U8, u8, U16, u16, U32, u32, U64, u64, F32, f32, F64,
-        f64, Bool, bool, String, String
+        I8 => i8, I16 => i16, I32 => i32, I64 => i64,
+        U8 => u8, U16 => u16, U32 => u32, U64 => u64,
+        F32 => f32, F64 => f64,
+        Bool => bool, String => String
     );
 }
 
 macro_rules! impl_dynarray_traits{
-    ($($scalar_ty:ty, $ident:ident),*) => {
+    ($($scalar_ty:ty => $ident:ident),*) => {
         $(
             impl<D: Dimension> From<Array<$scalar_ty, D>> for DynArray {
                 fn from(data: Array<$scalar_ty, D>) -> Self {
@@ -195,8 +199,10 @@ macro_rules! impl_dynarray_traits{
 }
 
 impl_dynarray_traits!(
-    i8, I8, i16, I16, i32, I32, i64, I64, u8, U8, u16, U16, u32, U32, u64, U64, f32, F32, f64, F64,
-    bool, Bool, String, String
+    i8 => I8, i16 => I16, i32 => I32, i64 => I64,
+    u8 => U8, u16 => U16, u32 => U32, u64 => U64,
+    f32 => F32, f64 => F64,
+    bool => Bool, String => String
 );
 
 impl From<DynArray> for Series {
@@ -385,6 +391,9 @@ impl DynCowArray<'_> {
 }
 
 macro_rules! impl_dyn_cowarray_convert {
+    ($($from_type:ty => $to_type:ident),+) => {
+        $( impl_dyn_cowarray_convert!($from_type, $to_type); )*
+    };
     ($from_type:ty, $to_type:ident) => {
         impl<D: Dimension> From<Array<$from_type, D>> for DynCowArray<'_> {
             fn from(data: Array<$from_type, D>) -> Self {
@@ -425,18 +434,12 @@ macro_rules! impl_dyn_cowarray_convert {
     };
 }
 
-impl_dyn_cowarray_convert!(i8, I8);
-impl_dyn_cowarray_convert!(i16, I16);
-impl_dyn_cowarray_convert!(i32, I32);
-impl_dyn_cowarray_convert!(i64, I64);
-impl_dyn_cowarray_convert!(u8, U8);
-impl_dyn_cowarray_convert!(u16, U16);
-impl_dyn_cowarray_convert!(u32, U32);
-impl_dyn_cowarray_convert!(u64, U64);
-impl_dyn_cowarray_convert!(f32, F32);
-impl_dyn_cowarray_convert!(f64, F64);
-impl_dyn_cowarray_convert!(bool, Bool);
-impl_dyn_cowarray_convert!(String, String);
+impl_dyn_cowarray_convert!(
+    i8 => I8, i16 => I16, i32 => I32, i64 => I64,
+    u8 => U8, u16 => U16, u32 => U32, u64 => U64,
+    f32 => F32, f64 => F64,
+    bool => Bool, String => String
+);
 
 /// `ArrayConvert` trait for converting dynamic arrays to concrete arrays.
 /// The `try_convert` method performs the conversion and returns the result.
