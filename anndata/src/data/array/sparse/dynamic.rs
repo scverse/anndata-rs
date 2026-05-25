@@ -174,7 +174,7 @@ impl ArrayArithmetic for DynCsrMatrix {
             DynCsrMatrix::U64(arr) => ArrayArithmetic::sum(arr),
             DynCsrMatrix::F32(arr) => ArrayArithmetic::sum(arr),
             DynCsrMatrix::F64(arr) => ArrayArithmetic::sum(arr),
-            DynCsrMatrix::Bool(arr) => arr.values().iter().map(|b| f64::from(*b)).sum(),
+            DynCsrMatrix::Bool(_) => panic!("Cannot compute sum for Bool csr matrix"),
             DynCsrMatrix::String(_) => panic!("Cannot compute sum for String csr matrix"),
         }
     }
@@ -208,7 +208,7 @@ impl ArrayArithmetic for DynCsrMatrix {
             DynCsrMatrix::U64(arr) => ArrayArithmetic::min(arr),
             DynCsrMatrix::F32(arr) => ArrayArithmetic::min(arr),
             DynCsrMatrix::F64(arr) => ArrayArithmetic::min(arr),
-            DynCsrMatrix::Bool(arr) => arr.values().iter().copied().any(|b| b).into(),
+            DynCsrMatrix::Bool(_) => panic!("Cannot compute min for Bool csr matrix"),
             DynCsrMatrix::String(_) => panic!("Cannot compute min for String csr matrix"),
         }
     }
@@ -225,7 +225,7 @@ impl ArrayArithmetic for DynCsrMatrix {
             DynCsrMatrix::U64(arr) => ArrayArithmetic::max(arr),
             DynCsrMatrix::F32(arr) => ArrayArithmetic::max(arr),
             DynCsrMatrix::F64(arr) => ArrayArithmetic::max(arr),
-            DynCsrMatrix::Bool(arr) => arr.values().iter().copied().all(|b| b).into(),
+            DynCsrMatrix::Bool(_) => panic!("Cannot compute max for Bool csr matrix"),
             DynCsrMatrix::String(_) => panic!("Cannot compute max for String csr matrix"),
         }
     }
@@ -484,20 +484,4 @@ where
     )
     .unwrap();
     Ok(out)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn sum() {
-        assert_eq!(DynCsrMatrix::Bool(CsrMatrix::zeros(5, 5)).sum(), 0.0);
-
-        let row_offsets = vec![0, 2, 3, 4];
-        let col_indices = vec![0, 2, 1, 0];
-        let values = vec![true, false, true, true];
-        let csc = CsrMatrix::try_from_csr_data(3, 4, row_offsets, col_indices, values).unwrap();
-        assert_eq!(DynCsrMatrix::Bool(csc).sum(), 3.0);
-    }
 }
