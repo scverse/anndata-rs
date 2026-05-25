@@ -86,28 +86,29 @@ macro_rules! impl_into_data2 {
 impl_into_data2!(DynScalar => Scalar, ArrayData => ArrayData, Mapping => Mapping);
 
 macro_rules! impl_try_from_for_scalar {
-    ($($from:ident => $to:ident), *) => {
-        $(
-            impl TryFrom<Data> for $to {
-                type Error = anyhow::Error;
-                fn try_from(data: Data) -> Result<Self> {
-                    match data {
-                        Data::Scalar(DynScalar::$from(data)) => Ok(data),
-                        _ => bail!("Cannot convert data to {}", stringify!($to)),
-                    }
+    ($($from:ident => $to:ident),*) => {
+        $( impl_try_from_for_scalar!($from, $to); )*
+    };
+    ($from:ident, $to:ident) => {
+        impl TryFrom<Data> for $to {
+            type Error = anyhow::Error;
+            fn try_from(data: Data) -> Result<Self> {
+                match data {
+                    Data::Scalar(DynScalar::$from(data)) => Ok(data),
+                    _ => bail!("Cannot convert data to {}", stringify!($to)),
                 }
             }
+        }
 
-            impl<D: RemoveAxis> TryFrom<Data> for Array<$to, D> {
-                type Error = anyhow::Error;
-                fn try_from(v: Data) -> Result<Self> {
-                    match v {
-                        Data::ArrayData(data) => data.try_into(),
-                        _ => bail!("Cannot convert data to {} Array", stringify!($to)),
-                    }
+        impl<D: RemoveAxis> TryFrom<Data> for Array<$to, D> {
+            type Error = anyhow::Error;
+            fn try_from(v: Data) -> Result<Self> {
+                match v {
+                    Data::ArrayData(data) => data.try_into(),
+                    _ => bail!("Cannot convert data to {} Array", stringify!($to)),
                 }
             }
-        )*
+        }
     };
 }
 

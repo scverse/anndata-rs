@@ -31,26 +31,27 @@ pub enum DynCsrMatrix {
 
 macro_rules! impl_dyncsr_traits {
     ($($scalar_ty:ty => $variant:ident),*) => {
-        $(
-            impl From<CsrMatrix<$scalar_ty>> for DynCsrMatrix {
-                fn from(data: CsrMatrix<$scalar_ty>) -> Self {
-                    DynCsrMatrix::$variant(data)
+        $( impl_dyncsr_traits!($scalar_ty, $variant); )*
+    };
+    ($scalar_ty:ty, $variant:ident) => {
+        impl From<CsrMatrix<$scalar_ty>> for DynCsrMatrix {
+            fn from(data: CsrMatrix<$scalar_ty>) -> Self {
+                DynCsrMatrix::$variant(data)
+            }
+        }
+        impl TryFrom<DynCsrMatrix> for CsrMatrix<$scalar_ty> {
+            type Error = anyhow::Error;
+            fn try_from(data: DynCsrMatrix) -> Result<Self> {
+                match data {
+                    DynCsrMatrix::$variant(data) => Ok(data),
+                    _ => bail!(
+                        "Cannot convert {} to {} CsrMatrix",
+                        data.data_type(),
+                        stringify!($scalar_ty)
+                    ),
                 }
             }
-            impl TryFrom<DynCsrMatrix> for CsrMatrix<$scalar_ty> {
-                type Error = anyhow::Error;
-                fn try_from(data: DynCsrMatrix) -> Result<Self> {
-                    match data {
-                        DynCsrMatrix::$variant(data) => Ok(data),
-                        _ => bail!(
-                            "Cannot convert {} to {} CsrMatrix",
-                            data.data_type(),
-                            stringify!($scalar_ty)
-                        ),
-                    }
-                }
-            }
-        )*
+        }
     };
 }
 
@@ -277,26 +278,27 @@ pub enum DynCscMatrix {
 
 macro_rules! impl_dyncsc_traits {
     ($($from_type:ty => $to_type:ident),*) => {
-        $(
-            impl From<CscMatrix<$from_type>> for DynCscMatrix {
-                fn from(data: CscMatrix<$from_type>) -> Self {
-                    DynCscMatrix::$to_type(data)
+        $( impl_dyncsc_traits!($from_type, $to_type); )*
+    };
+    ($from_type:ty, $to_type:ident) => {
+        impl From<CscMatrix<$from_type>> for DynCscMatrix {
+            fn from(data: CscMatrix<$from_type>) -> Self {
+                DynCscMatrix::$to_type(data)
+            }
+        }
+        impl TryFrom<DynCscMatrix> for CscMatrix<$from_type> {
+            type Error = anyhow::Error;
+            fn try_from(data: DynCscMatrix) -> Result<Self> {
+                match data {
+                    DynCscMatrix::$to_type(data) => Ok(data),
+                    _ => bail!(
+                        "Cannot convert {:?} to {} CscMatrix",
+                        data.data_type(),
+                        stringify!($from_type)
+                    ),
                 }
             }
-            impl TryFrom<DynCscMatrix> for CscMatrix<$from_type> {
-                type Error = anyhow::Error;
-                fn try_from(data: DynCscMatrix) -> Result<Self> {
-                    match data {
-                        DynCscMatrix::$to_type(data) => Ok(data),
-                        _ => bail!(
-                            "Cannot convert {:?} to {} CscMatrix",
-                            data.data_type(),
-                            stringify!($from_type)
-                        ),
-                    }
-                }
-            }
-        )*
+        }
     };
 }
 
@@ -397,8 +399,10 @@ impl ReadableArray for DynCscMatrix {
 
 macro_rules! impl_arrayconvert {
     ($($ty:ident => $fun:expr),*) => {
-        $(paste::paste! {
-
+        $( impl_arrayconvert!($ty, $fun); )*
+    };
+    ($ty:ident, $fun:expr) => {
+        paste::paste! {
             impl ArrayConvert<$ty<u32>> for [<Dyn $ty>] {
                 fn try_convert(self) -> Result<$ty<u32>> {
                     match self {
@@ -453,8 +457,7 @@ macro_rules! impl_arrayconvert {
                     }
                 }
             }
-
-        })*
+        }
     };
 }
 

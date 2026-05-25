@@ -31,47 +31,48 @@ pub enum DynScalar {
 /// macro to implement `From` trait for `DynScalar`
 macro_rules! impl_from_dynscalar {
     ($($from:ident => $to:ident),*) => {
-        $(
-            impl From<$from> for DynScalar {
-                fn from(val: $from) -> Self {
-                    DynScalar::$to(val)
+        $( impl_from_dynscalar!($from, $to); )*
+    };
+    ($from:ident, $to:ident) => {
+        impl From<$from> for DynScalar {
+            fn from(val: $from) -> Self {
+                DynScalar::$to(val)
+            }
+        }
+
+        impl Readable for $from {
+            fn read<B: Backend>(container: &DataContainer<B>) -> Result<Self> {
+                let dataset = container.as_dataset()?;
+                match dataset.dtype()? {
+                    ScalarType::$to => Ok(dataset.read_scalar()?),
+                    _ => bail!("Cannot read $from"),
                 }
             }
+        }
 
-            impl Readable for $from {
-                fn read<B: Backend>(container: &DataContainer<B>) -> Result<Self> {
-                    let dataset = container.as_dataset()?;
-                    match dataset.dtype()? {
-                        ScalarType::$to => Ok(dataset.read_scalar()?),
-                        _ => bail!("Cannot read $from"),
-                    }
-                }
+        impl Element for $from {
+            fn data_type(&self) -> DataType {
+                DataType::Scalar(ScalarType::$to)
             }
 
-            impl Element for $from {
-                fn data_type(&self) -> DataType {
-                    DataType::Scalar(ScalarType::$to)
-                }
-
-                fn metadata(&self) -> MetaData {
-                    let encoding_type = if $from::DTYPE == ScalarType::String {
-                        "string"
-                    } else {
-                        "numeric-scalar"
-                    };
-                    MetaData::new(encoding_type, "0.2.0", None)
-                }
+            fn metadata(&self) -> MetaData {
+                let encoding_type = if $from::DTYPE == ScalarType::String {
+                    "string"
+                } else {
+                    "numeric-scalar"
+                };
+                MetaData::new(encoding_type, "0.2.0", None)
             }
+        }
 
-            impl Writable for $from {
-                fn write<B: Backend, G: GroupOp<B>>(&self, location: &G, name: &str) -> Result<DataContainer<B>> {
-                    let dataset = location.new_scalar_dataset(name, self)?;
-                    let mut container = DataContainer::Dataset(dataset);
-                    self.metadata().save(&mut container)?;
-                    Ok(container)
-                }
+        impl Writable for $from {
+            fn write<B: Backend, G: GroupOp<B>>(&self, location: &G, name: &str) -> Result<DataContainer<B>> {
+                let dataset = location.new_scalar_dataset(name, self)?;
+                let mut container = DataContainer::Dataset(dataset);
+                self.metadata().save(&mut container)?;
+                Ok(container)
             }
-        )*
+        }
     };
 }
 
@@ -135,16 +136,17 @@ pub enum DynArray {
 
 macro_rules! impl_dynarray_into_array{
     ($($variant:ident => $scalar_ty:ident),*) => {
-        $(
-            paste! {
-                pub fn [<as_ $scalar_ty:lower>](&self) -> Result<&ArrayD<$scalar_ty>> {
-                    match self {
-                        DynArray::$variant(x) => Ok(x),
-                        v => bail!("Cannot convert {} to {}", v.data_type(), stringify!($scalar_ty)),
-                    }
+        $( impl_dynarray_into_array!($variant, $scalar_ty); )*
+    };
+    ($variant:ident, $scalar_ty:ident) => {
+        paste! {
+            pub fn [<as_ $scalar_ty:lower>](&self) -> Result<&ArrayD<$scalar_ty>> {
+                match self {
+                    DynArray::$variant(x) => Ok(x),
+                    v => bail!("Cannot convert {} to {}", v.data_type(), stringify!($scalar_ty)),
                 }
-           }
-        )*
+            }
+        }
     };
 }
 
@@ -178,23 +180,24 @@ impl DynArray {
 
 macro_rules! impl_dynarray_traits{
     ($($scalar_ty:ty => $ident:ident),*) => {
-        $(
-            impl<D: Dimension> From<Array<$scalar_ty, D>> for DynArray {
-                fn from(data: Array<$scalar_ty, D>) -> Self {
-                    DynArray::$ident(data.into_dyn())
-                }
+        $( impl_dynarray_traits!($scalar_ty, $ident); )*
+    };
+    ($scalar_ty:ty, $ident:ident) => {
+        impl<D: Dimension> From<Array<$scalar_ty, D>> for DynArray {
+            fn from(data: Array<$scalar_ty, D>) -> Self {
+                DynArray::$ident(data.into_dyn())
             }
+        }
 
-            impl<D: Dimension> TryFrom<DynArray> for Array<$scalar_ty, D> {
-                type Error = anyhow::Error;
-                fn try_from(arr: DynArray) -> Result<Self, Self::Error> {
-                    match arr {
-                        DynArray::$ident(x) => Ok(x.into_dimensionality::<D>()?),
-                        v => bail!("Cannot convert {} to {}", v.data_type(), stringify!($scalar_ty)),
-                    }
+        impl<D: Dimension> TryFrom<DynArray> for Array<$scalar_ty, D> {
+            type Error = anyhow::Error;
+            fn try_from(arr: DynArray) -> Result<Self, Self::Error> {
+                match arr {
+                    DynArray::$ident(x) => Ok(x.into_dimensionality::<D>()?),
+                    v => bail!("Cannot convert {} to {}", v.data_type(), stringify!($scalar_ty)),
                 }
             }
-        )*
+        }
     };
 }
 

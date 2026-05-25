@@ -90,26 +90,27 @@ impl DynCsrNonCanonical {
 
 macro_rules! impl_noncanonicalcsr_traits {
     ($($from_type:ty => $to_type:ident),*) => {
-        $(
-            impl From<CsrNonCanonical<$from_type>> for DynCsrNonCanonical {
-                fn from(data: CsrNonCanonical<$from_type>) -> Self {
-                    DynCsrNonCanonical::$to_type(data)
+        $( impl_noncanonicalcsr_traits!($from_type, $to_type); )*
+    };
+    ($from_type:ty, $to_type:ident) => {
+        impl From<CsrNonCanonical<$from_type>> for DynCsrNonCanonical {
+            fn from(data: CsrNonCanonical<$from_type>) -> Self {
+                DynCsrNonCanonical::$to_type(data)
+            }
+        }
+        impl TryFrom<DynCsrNonCanonical> for CsrNonCanonical<$from_type> {
+            type Error = anyhow::Error;
+            fn try_from(data: DynCsrNonCanonical) -> Result<Self> {
+                match data {
+                    DynCsrNonCanonical::$to_type(data) => Ok(data),
+                    _ => bail!(
+                        "Cannot convert {:?} to {} CsrNonCanonical",
+                        data.data_type(),
+                        stringify!($from_type)
+                    ),
                 }
             }
-            impl TryFrom<DynCsrNonCanonical> for CsrNonCanonical<$from_type> {
-                type Error = anyhow::Error;
-                fn try_from(data: DynCsrNonCanonical) -> Result<Self> {
-                    match data {
-                        DynCsrNonCanonical::$to_type(data) => Ok(data),
-                        _ => bail!(
-                            "Cannot convert {:?} to {} CsrNonCanonical",
-                            data.data_type(),
-                            stringify!($from_type)
-                        ),
-                    }
-                }
-            }
-        )*
+        }
     };
 }
 

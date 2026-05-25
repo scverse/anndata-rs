@@ -170,28 +170,29 @@ where
 /// macro for implementing From trait for Data from a list of types
 macro_rules! impl_arraydata_traits {
     ($($ty:ty),*) => {
-        $(
-            impl<D: RemoveAxis> From<Array<$ty, D>> for ArrayData {
-                fn from(data: Array<$ty, D>) -> Self {
-                    ArrayData::Array(data.into())
-                }
+        $( impl_arraydata_traits!($ty,); )*
+    };
+    ($ty:ty,) => {
+        impl<D: RemoveAxis> From<Array<$ty, D>> for ArrayData {
+            fn from(data: Array<$ty, D>) -> Self {
+                ArrayData::Array(data.into())
             }
-            impl From<CsrMatrix<$ty>> for ArrayData {
-                fn from(data: CsrMatrix<$ty>) -> Self {
-                    ArrayData::CsrMatrix(data.into())
-                }
+        }
+        impl From<CsrMatrix<$ty>> for ArrayData {
+            fn from(data: CsrMatrix<$ty>) -> Self {
+                ArrayData::CsrMatrix(data.into())
             }
-            impl From<CsrNonCanonical<$ty>> for ArrayData {
-                fn from(data: CsrNonCanonical<$ty>) -> Self {
-                    ArrayData::CsrNonCanonical(data.into())
-                }
+        }
+        impl From<CsrNonCanonical<$ty>> for ArrayData {
+            fn from(data: CsrNonCanonical<$ty>) -> Self {
+                ArrayData::CsrNonCanonical(data.into())
             }
-            impl From<CscMatrix<$ty>> for ArrayData {
-                fn from(data: CscMatrix<$ty>) -> Self {
-                    ArrayData::CscMatrix(data.into())
-                }
+        }
+        impl From<CscMatrix<$ty>> for ArrayData {
+            fn from(data: CscMatrix<$ty>) -> Self {
+                ArrayData::CscMatrix(data.into())
             }
-        )*
+        }
     };
 }
 
