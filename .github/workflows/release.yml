@@ -1,0 +1,56 @@
+name: Release-plz
+
+on:
+  push:
+    branches:
+      - main
+
+permissions: {}
+
+jobs:
+  # Release unpublished packages.
+  release-plz-release:
+    if: ${{ github.repository_owner == 'scverse' }}
+    name: Release-plz release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # delete the release PR branch
+      pull-requests: write  # close the release PR
+      id-token: write  # trusted publishing
+    steps:
+    - &checkout
+      name: Checkout repository
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+        persist-credentials: false
+    - &install-rust
+      name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+    - name: Run release-plz
+      uses: release-plz/action@v0.5
+      with:
+        command: release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Create a PR with the new versions and changelog, preparing the next release.
+  release-plz-pr:
+    if: ${{ github.repository_owner == 'scverse' }}
+    name: Release-plz PR
+    runs-on: ubuntu-latest
+    concurrency:
+      group: release-plz-${{ github.ref }}
+      cancel-in-progress: false
+    permissions:
+      contents: write  # create/modify the release PR branch
+      pull-requests: write  # create/edit the release PR
+    steps:
+    - *checkout
+    - *install-rust
+    - name: Run release-plz
+      uses: release-plz/action@v0.5
+      with:
+        command: release-pr
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

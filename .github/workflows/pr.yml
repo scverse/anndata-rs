@@ -1,0 +1,18 @@
+name: PR
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - edited
+      - reopened
+
+jobs:
+  check:
+    name: Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title
+        uses: amannn/action-semantic-pull-request@v6
+        env: # Needs repo options: “Squash and merge” with commit message set to “PR title”
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
