@@ -30,54 +30,57 @@ pub enum DynScalar {
 
 /// macro to implement `From` trait for `DynScalar`
 macro_rules! impl_from_dynscalar {
-    ($($from:ident, $to:ident),*) => {
-        $(
-            impl From<$from> for DynScalar {
-                fn from(val: $from) -> Self {
-                    DynScalar::$to(val)
+    ($($from:ident => $to:ident),*) => {
+        $( impl_from_dynscalar!($from, $to); )*
+    };
+    ($from:ident, $to:ident) => {
+        impl From<$from> for DynScalar {
+            fn from(val: $from) -> Self {
+                DynScalar::$to(val)
+            }
+        }
+
+        impl Readable for $from {
+            fn read<B: Backend>(container: &DataContainer<B>) -> Result<Self> {
+                let dataset = container.as_dataset()?;
+                match dataset.dtype()? {
+                    ScalarType::$to => Ok(dataset.read_scalar()?),
+                    _ => bail!("Cannot read $from"),
                 }
             }
+        }
 
-            impl Readable for $from {
-                fn read<B: Backend>(container: &DataContainer<B>) -> Result<Self> {
-                    let dataset = container.as_dataset()?;
-                    match dataset.dtype()? {
-                        ScalarType::$to => Ok(dataset.read_scalar()?),
-                        _ => bail!("Cannot read $from"),
-                    }
-                }
+        impl Element for $from {
+            fn data_type(&self) -> DataType {
+                DataType::Scalar(ScalarType::$to)
             }
 
-            impl Element for $from {
-                fn data_type(&self) -> DataType {
-                    DataType::Scalar(ScalarType::$to)
-                }
-
-                fn metadata(&self) -> MetaData {
-                    let encoding_type = if $from::DTYPE == ScalarType::String {
-                        "string"
-                    } else {
-                        "numeric-scalar"
-                    };
-                    MetaData::new(encoding_type, "0.2.0", None)
-                }
+            fn metadata(&self) -> MetaData {
+                let encoding_type = if $from::DTYPE == ScalarType::String {
+                    "string"
+                } else {
+                    "numeric-scalar"
+                };
+                MetaData::new(encoding_type, "0.2.0", None)
             }
+        }
 
-            impl Writable for $from {
-                fn write<B: Backend, G: GroupOp<B>>(&self, location: &G, name: &str) -> Result<DataContainer<B>> {
-                    let dataset = location.new_scalar_dataset(name, self)?;
-                    let mut container = DataContainer::Dataset(dataset);
-                    self.metadata().save(&mut container)?;
-                    Ok(container)
-                }
+        impl Writable for $from {
+            fn write<B: Backend, G: GroupOp<B>>(&self, location: &G, name: &str) -> Result<DataContainer<B>> {
+                let dataset = location.new_scalar_dataset(name, self)?;
+                let mut container = DataContainer::Dataset(dataset);
+                self.metadata().save(&mut container)?;
+                Ok(container)
             }
-        )*
+        }
     };
 }
 
 impl_from_dynscalar!(
-    i8, I8, i16, I16, i32, I32, i64, I64, u8, U8, u16, U16, u32, U32, u64, U64, f32, F32, f64, F64,
-    bool, Bool, String, String
+    i8 => I8, i16 => I16, i32 => I32, i64 => I64,
+    u8 => U8, u16 => U16, u32 => U32, u64 => U64,
+    f32 => F32, f64 => F64,
+    bool => Bool, String => String
 );
 
 impl Element for DynScalar {
@@ -132,17 +135,18 @@ pub enum DynArray {
 }
 
 macro_rules! impl_dynarray_into_array{
-    ($($variant:ident, $scalar_ty:ident),*) => {
-        $(
-            paste! {
-                pub fn [<as_ $scalar_ty:lower>](&self) -> Result<&ArrayD<$scalar_ty>> {
-                    match self {
-                        DynArray::$variant(x) => Ok(x),
-                        v => bail!("Cannot convert {} to {}", v.data_type(), stringify!($scalar_ty)),
-                    }
+    ($($variant:ident => $scalar_ty:ident),*) => {
+        $( impl_dynarray_into_array!($variant, $scalar_ty); )*
+    };
+    ($variant:ident, $scalar_ty:ident) => {
+        paste! {
+            pub fn [<as_ $scalar_ty:lower>](&self) -> Result<&ArrayD<$scalar_ty>> {
+                match self {
+                    DynArray::$variant(x) => Ok(x),
+                    v => bail!("Cannot convert {} to {}", v.data_type(), stringify!($scalar_ty)),
                 }
-           }
-        )*
+            }
+        }
     };
 }
 
@@ -167,36 +171,41 @@ impl DynArray {
     }
 
     impl_dynarray_into_array!(
-        I8, i8, I16, i16, I32, i32, I64, i64, U8, u8, U16, u16, U32, u32, U64, u64, F32, f32, F64,
-        f64, Bool, bool, String, String
+        I8 => i8, I16 => i16, I32 => i32, I64 => i64,
+        U8 => u8, U16 => u16, U32 => u32, U64 => u64,
+        F32 => f32, F64 => f64,
+        Bool => bool, String => String
     );
 }
 
 macro_rules! impl_dynarray_traits{
-    ($($scalar_ty:ty, $ident:ident),*) => {
-        $(
-            impl<D: Dimension> From<Array<$scalar_ty, D>> for DynArray {
-                fn from(data: Array<$scalar_ty, D>) -> Self {
-                    DynArray::$ident(data.into_dyn())
-                }
+    ($($scalar_ty:ty => $ident:ident),*) => {
+        $( impl_dynarray_traits!($scalar_ty, $ident); )*
+    };
+    ($scalar_ty:ty, $ident:ident) => {
+        impl<D: Dimension> From<Array<$scalar_ty, D>> for DynArray {
+            fn from(data: Array<$scalar_ty, D>) -> Self {
+                DynArray::$ident(data.into_dyn())
             }
+        }
 
-            impl<D: Dimension> TryFrom<DynArray> for Array<$scalar_ty, D> {
-                type Error = anyhow::Error;
-                fn try_from(arr: DynArray) -> Result<Self, Self::Error> {
-                    match arr {
-                        DynArray::$ident(x) => Ok(x.into_dimensionality::<D>()?),
-                        v => bail!("Cannot convert {} to {}", v.data_type(), stringify!($scalar_ty)),
-                    }
+        impl<D: Dimension> TryFrom<DynArray> for Array<$scalar_ty, D> {
+            type Error = anyhow::Error;
+            fn try_from(arr: DynArray) -> Result<Self, Self::Error> {
+                match arr {
+                    DynArray::$ident(x) => Ok(x.into_dimensionality::<D>()?),
+                    v => bail!("Cannot convert {} to {}", v.data_type(), stringify!($scalar_ty)),
                 }
             }
-        )*
+        }
     };
 }
 
 impl_dynarray_traits!(
-    i8, I8, i16, I16, i32, I32, i64, I64, u8, U8, u16, U16, u32, U32, u64, U64, f32, F32, f64, F64,
-    bool, Bool, String, String
+    i8 => I8, i16 => I16, i32 => I32, i64 => I64,
+    u8 => U8, u16 => U16, u32 => U32, u64 => U64,
+    f32 => F32, f64 => F64,
+    bool => Bool, String => String
 );
 
 impl From<DynArray> for Series {
@@ -385,6 +394,9 @@ impl DynCowArray<'_> {
 }
 
 macro_rules! impl_dyn_cowarray_convert {
+    ($($from_type:ty => $to_type:ident),+) => {
+        $( impl_dyn_cowarray_convert!($from_type, $to_type); )*
+    };
     ($from_type:ty, $to_type:ident) => {
         impl<D: Dimension> From<Array<$from_type, D>> for DynCowArray<'_> {
             fn from(data: Array<$from_type, D>) -> Self {
@@ -425,18 +437,12 @@ macro_rules! impl_dyn_cowarray_convert {
     };
 }
 
-impl_dyn_cowarray_convert!(i8, I8);
-impl_dyn_cowarray_convert!(i16, I16);
-impl_dyn_cowarray_convert!(i32, I32);
-impl_dyn_cowarray_convert!(i64, I64);
-impl_dyn_cowarray_convert!(u8, U8);
-impl_dyn_cowarray_convert!(u16, U16);
-impl_dyn_cowarray_convert!(u32, U32);
-impl_dyn_cowarray_convert!(u64, U64);
-impl_dyn_cowarray_convert!(f32, F32);
-impl_dyn_cowarray_convert!(f64, F64);
-impl_dyn_cowarray_convert!(bool, Bool);
-impl_dyn_cowarray_convert!(String, String);
+impl_dyn_cowarray_convert!(
+    i8 => I8, i16 => I16, i32 => I32, i64 => I64,
+    u8 => U8, u16 => U16, u32 => U32, u64 => U64,
+    f32 => F32, f64 => F64,
+    bool => Bool, String => String
+);
 
 /// `ArrayConvert` trait for converting dynamic arrays to concrete arrays.
 /// The `try_convert` method performs the conversion and returns the result.
