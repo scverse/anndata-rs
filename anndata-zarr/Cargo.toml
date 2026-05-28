@@ -15,7 +15,7 @@ anndata = { workspace = true }
 serde_json = "1.0"
 anyhow = "1.0"
 ndarray = { version = "0.17", features = ["serde"] }
-zarrs = { version = "0.23.8", features = ["ndarray", "sharding", "zstd"] }
+zarrs = { version = "0.23.10", features = ["ndarray", "sharding", "zstd"] }
 zarrs_storage = "0.4.3"
 zarrs_metadata = "0.7.4"
 zarrs_object_store = "0.6.2"
