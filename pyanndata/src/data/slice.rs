@@ -6,8 +6,7 @@ use pyo3::prelude::*;
 pub fn to_select_info(ob: &Bound<'_, PyAny>, shape: &Shape) -> PyResult<SelectInfo> {
     let ndim = shape.ndim();
     if is_none_slice(ob)? {
-        Ok(std::iter::repeat(SelectInfoElem::full())
-            .take(ndim)
+        Ok(std::iter::repeat_n(SelectInfoElem::full(), ndim)
             .collect())
     } else if ob.is_instance_of::<pyo3::types::PyTuple>() {
         ob.try_iter()?
@@ -65,7 +64,7 @@ pub fn to_select_elem(ob: &Bound<'_, PyAny>, length: usize) -> PyResult<SelectIn
     {
         let arr = ob.extract::<numpy::PyReadonlyArray1<bool>>()?;
         if arr.len()? == length {
-            boolean_mask_to_indices(arr.as_array().into_iter().map(|x| *x)).into()
+            boolean_mask_to_indices(arr.as_array().into_iter().copied()).into()
         } else {
             panic!("boolean mask dimension mismatched")
         }
@@ -76,7 +75,7 @@ pub fn to_select_elem(ob: &Bound<'_, PyAny>, length: usize) -> PyResult<SelectIn
             Ok(mask) => {
                 if mask.len() == length {
                     boolean_mask_to_indices(mask.into_iter()).into()
-                } else if mask.len() == 0 {
+                } else if mask.is_empty() {
                     Vec::new().into()
                 } else {
                     panic!("boolean mask dimension mismatched")

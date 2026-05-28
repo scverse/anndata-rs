@@ -19,3 +19,10 @@ __pycache__
 tests/data
 data
 test_zarr/*
+
+t_py
+
+.pi-lens
+
+TODO
+.DS_Store

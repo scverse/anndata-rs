@@ -48,7 +48,7 @@ use super::get_backend;
     filename
         Name of backing file.
     backend
-        The backend to use. "hdf5" or "zarr" are supported.
+        The backend to use. The Python bindings currently support "hdf5".
 
     Note
     ----
@@ -408,7 +408,7 @@ impl AnnData {
     /// inplace: bool
     ///     Whether to modify the AnnData object in place or return a new AnnData object.
     /// backend: str | None
-    ///     The backend to use. "hdf5" or "zarr" are supported.
+    ///     The backend to use. The Python bindings currently support "hdf5".
     ///
     /// Returns
     /// -------
@@ -538,8 +538,8 @@ impl AnnData {
     /// ----------
     /// filename: Path
     ///     File name of the output `.h5ad` file.
-    /// backend: Literal['hdf5', 'zarr']
-    ///     The backend to use. "hdf5" or "zarr" are supported.
+    /// backend: Literal['hdf5']
+    ///     The backend to use. The Python bindings currently support "hdf5".
     /// partial : list[str] | None
     ///     A list of fields to copy. If None, copies all fields. Possible fields are:
     ///     "X", "obs", "var", "obsm", "obsp", "varm", "varp", "uns", "layers".
@@ -578,8 +578,8 @@ impl AnnData {
     /// ----------
     /// filename
     ///     File name of the output `.h5ad` file.
-    /// backend: Literal['hdf5', 'zarr']
-    ///     The backend to use. "hdf5" or "zarr" are supported.
+    /// backend: Literal['hdf5']
+    ///     The backend to use. The Python bindings currently support "hdf5".
     /// partial : list[str] | None
     ///     A list of fields to copy. If None, copies all fields. Possible fields are:
     ///     "X", "obs", "var", "obsm", "obsp", "varm", "varp", "uns", "layers".

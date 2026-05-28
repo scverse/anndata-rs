@@ -81,7 +81,7 @@ impl Index {
             SelectInfoElemBounds::Slice(slice) => self.slice(slice.start, slice.end),
             SelectInfoElemBounds::Index(index) => {
                 let vec = self.clone().into_vec();
-                index.into_iter().map(|i| vec[*i].clone()).collect()
+                index.iter().map(|i| vec[*i].clone()).collect()
             }
         }
     }
@@ -125,7 +125,7 @@ impl Index {
 
     pub fn iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
         match self {
-            Index::List(list) => Box::new(list.items.iter().map(|x| x.clone())),
+            Index::List(list) => Box::new(list.items.iter().cloned()),
             _ => self.clone().into_iter(),
         }
     }
@@ -276,7 +276,7 @@ impl Iterator for Interval {
         } else {
             let end = (self.start + self.size).min(self.end);
             let item = (self.start, end);
-            self.start = self.start + self.step;
+            self.start += self.step;
             Some(item)
         }
     }
@@ -403,11 +403,10 @@ impl VecVecIndex {
         indices: &[usize],
     ) -> (HashMap<usize, SelectInfoElem>, Option<Vec<usize>>) {
         let (new_indices, orders): (HashMap<usize, SelectInfoElem>, Vec<_>) = indices
-            .into_iter()
+            .iter()
             .map(|x| self.ix(x))
             .enumerate()
             .sorted_by_key(|(_, (x, _))| *x)
-            .into_iter()
             .chunk_by(|(_, (x, _))| *x)
             .into_iter()
             .map(|(outer, inner)| {
@@ -448,7 +447,7 @@ impl FromIterator<usize> for VecVecIndex {
     {
         let index: SmallVec<_> = std::iter::once(0)
             .chain(iter.into_iter().scan(0, |state, x| {
-                *state = *state + x;
+                *state += x;
                 Some(*state)
             }))
             .collect();

@@ -24,9 +24,9 @@ impl Shape {
     }
 }
 
-impl Into<Value> for Shape {
-    fn into(self) -> Value {
-        Value::Array(self.0.into_iter().map(|x| x.into()).collect())
+impl From<Shape> for Value {
+    fn from(val: Shape) -> Self {
+        Value::Array(val.0.into_iter().map(|x| x.into()).collect())
     }
 }
 
@@ -126,7 +126,7 @@ impl<'a> FromIterator<&'a Slice> for SelectInfo {
     fn from_iter<T: IntoIterator<Item = &'a Slice>>(iter: T) -> Self {
         Self(
             iter.into_iter()
-                .map(|x| SelectInfoElem::Slice(x.clone()))
+                .map(|x| SelectInfoElem::Slice(*x))
                 .collect(),
         )
     }
@@ -190,7 +190,7 @@ impl From<usize> for SelectInfoElem {
 
 impl From<&[usize]> for SelectInfoElem {
     fn from(x: &[usize]) -> Self {
-        Self::Index(x.into_iter().map(|x| *x).collect())
+        Self::Index(x.to_vec())
     }
 }
 
@@ -473,10 +473,10 @@ impl<'a> SelectInfoBounds<'a> {
         for c in 0..ncols {
             let n_repeat = shape.as_ref()[(c + 1)..].iter().product();
             match self.select[c] {
-                SelectInfoElemBounds::Index(ref x) => {
+                SelectInfoElemBounds::Index(x) => {
                     let mut values = x
                         .iter()
-                        .flat_map(|x| std::iter::repeat(x).take(n_repeat))
+                        .flat_map(|x| std::iter::repeat_n(x, n_repeat))
                         .cycle();
                     for r in 0..nrows {
                         result[[r, c]] = *values.next().unwrap();
@@ -486,16 +486,16 @@ impl<'a> SelectInfoBounds<'a> {
                     if step > 0 {
                         let mut values = (start..end)
                             .step_by(step as usize)
-                            .flat_map(|x| std::iter::repeat(x).take(n_repeat))
+                            .flat_map(|x| std::iter::repeat_n(x, n_repeat))
                             .cycle();
                         for r in 0..nrows {
                             result[[r, c]] = values.next().unwrap();
                         }
                     } else {
                         let mut values = (start..end)
-                            .step_by(step.abs() as usize)
+                            .step_by(step.unsigned_abs())
                             .rev()
-                            .flat_map(|x| std::iter::repeat(x).take(n_repeat))
+                            .flat_map(|x| std::iter::repeat_n(x, n_repeat))
                             .cycle();
                         for r in 0..nrows {
                             result[[r, c]] = values.next().unwrap();
@@ -557,7 +557,7 @@ impl<'a> SelectInfoElemBounds<'a> {
     /// Converts the selection element into a vector of indices.
     pub fn to_vec(&self) -> Vec<usize> {
         match self {
-            Self::Index(idx) => idx.iter().copied().collect(),
+            Self::Index(idx) => idx.to_vec(),
             Self::Slice(slice) => {
                 if slice.step > 0 {
                     (slice.start..slice.end)
@@ -565,7 +565,7 @@ impl<'a> SelectInfoElemBounds<'a> {
                         .collect()
                 } else {
                     (slice.start..slice.end)
-                        .step_by(slice.step.abs() as usize)
+                        .step_by(slice.step.unsigned_abs())
                         .rev()
                         .collect()
                 }
@@ -583,7 +583,7 @@ impl<'a> SelectInfoElemBounds<'a> {
                 } else {
                     Box::new(
                         (slice.start..slice.end)
-                            .step_by(slice.step.abs() as usize)
+                            .step_by(slice.step.unsigned_abs())
                             .rev(),
                     )
                 }
@@ -600,13 +600,13 @@ pub struct SliceBounds {
     pub step: isize,
 }
 
-impl Into<SliceInfoElem> for SliceBounds {
+impl From<SliceBounds> for SliceInfoElem {
     /// Converts `SliceBounds` into a `SliceInfoElem`.
-    fn into(self) -> SliceInfoElem {
+    fn from(val: SliceBounds) -> Self {
         Slice {
-            start: self.start as isize,
-            end: Some(self.end as isize),
-            step: self.step,
+            start: val.start as isize,
+            end: Some(val.end as isize),
+            step: val.step,
         }
         .into()
     }
@@ -633,7 +633,11 @@ impl SliceBounds {
     pub(crate) fn len(&self) -> usize {
         let step = self.step.unsigned_abs();
         let span = self.end - self.start;
-        if span == 0 { 0 } else { (span + step - 1) / step }
+        if span == 0 {
+            0
+        } else {
+            span.div_ceil(step)
+        }
     }
 
     pub(crate) fn index(&self, i: usize) -> usize {
@@ -666,8 +670,7 @@ fn _unique_indices_sorted(indices: &[usize], upper_bound: usize) -> (Vec<usize>,
     }
     let unique = mask
         .iter()
-        .filter(|x| **x != upper_bound)
-        .map(|x| *x)
+        .filter(|x| **x != upper_bound).copied()
         .collect();
 
     // Find the new order

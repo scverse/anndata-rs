@@ -125,7 +125,7 @@ pub trait GroupOp<B: Backend + ?Sized> {
             None
         };
         let new_config = WriteConfig {
-            compression: compression,
+            compression,
             block_size: Some(block_size),
         };
         let dataset = self.new_empty_dataset::<D>(name, &shape.into(), new_config)?;
@@ -246,17 +246,14 @@ pub trait DatasetOp<B: Backend + ?Sized> {
     }
 }
 
+#[derive(Default)]
 pub enum DataContainer<B: Backend> {
     Group(B::Group),
     Dataset(B::Dataset),
+    #[default]
     Null,
 }
 
-impl<B: Backend> Default for DataContainer<B> {
-    fn default() -> Self {
-        DataContainer::Null
-    }
-}
 
 impl<B: Backend> Debug for DataContainer<B> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
@@ -365,14 +362,14 @@ impl<B: Backend> DataContainer<B> {
 
     pub fn as_group(&self) -> Result<&B::Group> {
         match self {
-            Self::Group(x) => Ok(&x),
+            Self::Group(x) => Ok(x),
             _ => bail!("Expecting Group"),
         }
     }
 
     pub fn as_dataset(&self) -> Result<&B::Dataset> {
         match self {
-            Self::Dataset(x) => Ok(&x),
+            Self::Dataset(x) => Ok(x),
             _ => bail!("Expecting Dataset"),
         }
     }

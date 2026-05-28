@@ -103,6 +103,11 @@ fn extract_indptr_as_u64(arr: &Bound<'_, PyAny>) -> PyResult<Vec<u64>> {
         .extract::<Vec<u64>>()
 }
 
+fn extract_indices_as_u64(arr: &Bound<'_, PyAny>) -> PyResult<Vec<u64>> {
+    arr.call_method1("astype", ("uint64",))?
+        .extract::<Vec<u64>>()
+}
+
 pub(super) fn to_csr(ob: &Bound<'_, PyAny>) -> PyResult<DynIndSparseMatrix> {
     if !isinstance_of_csr(ob)? {
         return Err(PyTypeError::new_err("not a csr matrix"));
@@ -161,8 +166,8 @@ pub(super) fn to_csr_noncanonical(ob: &Bound<'_, PyAny>) -> PyResult<DynCsrNonCa
     }
 
     let shape: Vec<usize> = ob.getattr("shape")?.extract()?;
-    let indices = extract_array_as_usize(&ob.getattr("indices")?)?;
-    let indptr = extract_array_as_usize(&ob.getattr("indptr")?)?;
+    let indices = extract_indices_as_u64(&ob.getattr("indices")?)?;
+    let indptr = extract_indptr_as_u64(&ob.getattr("indptr")?)?;
     let ty_ob = ob.getattr("data")?.getattr("dtype")?.getattr("name")?;
     let ty = ty_ob.extract::<&str>()?;
 
@@ -233,11 +238,6 @@ pub(super) fn to_csc(ob: &Bound<'_, PyAny>) -> PyResult<DynIndSparseMatrix> {
         );
         Ok(DynIndSparseMatrix::I64(csc))
     }
-}
-
-fn extract_array_as_usize(arr: &Bound<'_, PyAny>) -> PyResult<Vec<usize>> {
-    arr.call_method1("astype", ("uintp",))?
-        .extract::<Vec<usize>>()
 }
 
 pub(super) fn arr_to_py<'py>(arr: DynArray, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {

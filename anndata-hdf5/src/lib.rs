@@ -3,12 +3,12 @@ use anndata::{
     data::{DynArray, DynCowArray, DynScalar, SelectInfoBounds, SelectInfoElem, Shape},
 };
 
-use anyhow::{bail, Ok, Result};
+use anyhow::{Ok, Result, bail};
 use hdf5::{
+    File, Group, H5Type, Location, Selection,
     dataset::Dataset,
     types::IntSize::*,
     types::{FloatSize, TypeDescriptor, VarLenUnicode},
-    File, Group, H5Type, Location, Selection,
 };
 use ndarray::{Array, ArrayD, ArrayView, CowArray, Dimension, IxDyn, SliceInfo};
 use std::ops::Deref;
@@ -78,7 +78,7 @@ impl Backend for H5 {
 
 impl StoreOp<H5> for H5File {
     fn filename(&self) -> PathBuf {
-        hdf5::Location::filename(&self).into()
+        hdf5::Location::filename(self).into()
     }
 
     fn close(self) -> Result<()> {
@@ -243,7 +243,7 @@ impl DatasetOp<H5> for H5Dataset {
             TypeDescriptor::Boolean => ScalarType::Bool,
             TypeDescriptor::VarLenAscii => ScalarType::String,
             TypeDescriptor::VarLenUnicode => ScalarType::String,
-            ty => bail!("Unsupported type: {:?}", ty),
+            ty => bail!("Unsupported type: {ty:?}"),
         };
         Ok(ty)
     }
@@ -281,14 +281,41 @@ impl DatasetOp<H5> for H5Dataset {
     where
         D: Dimension,
     {
-        if T::DTYPE == ScalarType::String {
-            let arr = self.deref().read::<VarLenUnicode, D>()?;
-            let shape = arr.raw_dim();
-            let vec = arr.into_raw_vec_and_offset().0;
-            let strings: Vec<String> = vec.into_iter().map(|s| s.to_string()).collect();
-            return Ok(Array::from_shape_vec(shape, strings).unwrap());
+        macro_rules! read_typed {
+            ($ty:ty) => {{
+                let arr: DynArray = self.deref().read::<$ty, D>()?.into_dyn().into();
+                T::from_dyn_arr(arr)?
+                    .into_dimensionality::<D>()
+                    .map_err(Into::into)
+            }};
         }
-        Ok(self.deref().read::<T, D>()?)
+
+        match T::DTYPE {
+            ScalarType::I8 => read_typed!(i8),
+            ScalarType::I16 => read_typed!(i16),
+            ScalarType::I32 => read_typed!(i32),
+            ScalarType::I64 => read_typed!(i64),
+            ScalarType::U8 => read_typed!(u8),
+            ScalarType::U16 => read_typed!(u16),
+            ScalarType::U32 => read_typed!(u32),
+            ScalarType::U64 => read_typed!(u64),
+            ScalarType::F32 => read_typed!(f32),
+            ScalarType::F64 => read_typed!(f64),
+            ScalarType::Bool => read_typed!(bool),
+            ScalarType::String => {
+                let arr = self.deref().read::<VarLenUnicode, D>()?;
+                let shape = arr.raw_dim();
+                let vec = arr.into_raw_vec_and_offset().0;
+                let strings: Vec<String> = vec.into_iter().map(|s| s.to_string()).collect();
+                let arr: DynArray = Array::from_shape_vec(shape, strings)
+                    .unwrap()
+                    .into_dyn()
+                    .into();
+                T::from_dyn_arr(arr)?
+                    .into_dimensionality::<D>()
+                    .map_err(Into::into)
+            }
+        }
     }
 
     fn read_dyn_array(&self) -> Result<DynArray> {
@@ -320,30 +347,57 @@ impl DatasetOp<H5> for H5Dataset {
         S: AsRef<SelectInfoElem>,
         D: Dimension,
     {
-        if T::DTYPE == ScalarType::String {
-            let (select, shape) = into_selection(selection, self.shape());
-            let arr = if matches!(select, Selection::Points(_)) {
-                let slice_1d = self.deref().read_slice_1d::<VarLenUnicode, _>(select)?;
-                slice_1d
-                    .into_shape_with_order(shape.as_ref())?
-                    .into_dimensionality::<D>()?
-            } else {
-                self.deref().read_slice::<VarLenUnicode, _, D>(select)?
-            };
-            let shape_d = arr.raw_dim();
-            let vec = arr.into_raw_vec_and_offset().0;
-            let strings: Vec<String> = vec.into_iter().map(|s| s.to_string()).collect();
-            return Ok(Array::from_shape_vec(shape_d, strings).unwrap());
+        let (select, shape) = into_selection(selection, self.shape());
+
+        macro_rules! read_slice_typed {
+            ($ty:ty) => {{
+                let arr = if matches!(select, Selection::Points(_)) {
+                    let slice_1d = hdf5::Container::read_slice_1d::<$ty, _>(self, select)?;
+                    slice_1d
+                        .into_shape_with_order(shape.as_ref())?
+                        .into_dimensionality::<D>()?
+                } else {
+                    hdf5::Container::read_slice::<$ty, _, D>(self, select)?
+                };
+                let arr: DynArray = arr.into_dyn().into();
+                T::from_dyn_arr(arr)?
+                    .into_dimensionality::<D>()
+                    .map_err(Into::into)
+            }};
         }
 
-        let (select, shape) = into_selection(selection, self.shape());
-        if matches!(select, Selection::Points(_)) {
-            let slice_1d = hdf5::Container::read_slice_1d::<T, _>(self, select)?;
-            Ok(slice_1d
-                .into_shape_with_order(shape.as_ref())?
-                .into_dimensionality::<D>()?)
-        } else {
-            Ok(hdf5::Container::read_slice::<T, _, D>(self, select)?)
+        match T::DTYPE {
+            ScalarType::I8 => read_slice_typed!(i8),
+            ScalarType::I16 => read_slice_typed!(i16),
+            ScalarType::I32 => read_slice_typed!(i32),
+            ScalarType::I64 => read_slice_typed!(i64),
+            ScalarType::U8 => read_slice_typed!(u8),
+            ScalarType::U16 => read_slice_typed!(u16),
+            ScalarType::U32 => read_slice_typed!(u32),
+            ScalarType::U64 => read_slice_typed!(u64),
+            ScalarType::F32 => read_slice_typed!(f32),
+            ScalarType::F64 => read_slice_typed!(f64),
+            ScalarType::Bool => read_slice_typed!(bool),
+            ScalarType::String => {
+                let arr = if matches!(select, Selection::Points(_)) {
+                    let slice_1d = self.deref().read_slice_1d::<VarLenUnicode, _>(select)?;
+                    slice_1d
+                        .into_shape_with_order(shape.as_ref())?
+                        .into_dimensionality::<D>()?
+                } else {
+                    self.deref().read_slice::<VarLenUnicode, _, D>(select)?
+                };
+                let shape_d = arr.raw_dim();
+                let vec = arr.into_raw_vec_and_offset().0;
+                let strings: Vec<String> = vec.into_iter().map(|s| s.to_string()).collect();
+                let arr: DynArray = Array::from_shape_vec(shape_d, strings)
+                    .unwrap()
+                    .into_dyn()
+                    .into();
+                T::from_dyn_arr(arr)?
+                    .into_dimensionality::<D>()
+                    .map_err(Into::into)
+            }
         }
     }
 
@@ -593,7 +647,7 @@ fn read_scalar_attr(loc: &Location, name: &str) -> Result<Value> {
         TypeDescriptor::Unsigned(_) => attr.read_scalar::<u64>()?.into(),
         TypeDescriptor::Integer(_) => attr.read_scalar::<i64>()?.into(),
         TypeDescriptor::Float(_) => attr.read_scalar::<f64>()?.into(),
-        v => bail!("Unsupported type {}", v),
+        v => bail!("Unsupported type {v}"),
     };
     Ok(result)
 }
@@ -613,7 +667,7 @@ fn read_array_attr(loc: &Location, name: &str) -> Result<Value> {
         TypeDescriptor::Unsigned(_) => ndarray_to_json(&attr.read::<u64, IxDyn>()?),
         TypeDescriptor::Integer(_) => ndarray_to_json(&attr.read::<i64, IxDyn>()?),
         TypeDescriptor::Float(_) => ndarray_to_json(&attr.read::<f64, IxDyn>()?),
-        v => bail!("Unsupported type {}", v),
+        v => bail!("Unsupported type {v}"),
     };
     Ok(result)
 }
@@ -676,7 +730,7 @@ where
     S: AsRef<[E]>,
     E: AsRef<SelectInfoElem>,
 {
-    if selection.as_ref().into_iter().all(|x| x.as_ref().is_full()) {
+    if selection.as_ref().iter().all(|x| x.as_ref().is_full()) {
         (Selection::All, shape)
     } else {
         let bounded_selection = SelectInfoBounds::new(&selection, &shape);
@@ -768,9 +822,9 @@ fn ndarray_to_json<T: Into<Value> + Clone>(array: &ArrayD<T>) -> Value {
 mod tests {
     use super::*;
     use anndata::s;
-    use ndarray::{concatenate, Array1, Axis, Ix1};
-    use ndarray_rand::rand_distr::Uniform;
+    use ndarray::{Array1, Axis, Ix1, concatenate};
     use ndarray_rand::RandomExt;
+    use ndarray_rand::rand_distr::Uniform;
     use std::path::PathBuf;
     use tempfile::tempdir;
 
@@ -829,9 +883,11 @@ mod tests {
             dataset.write_array_slice(arr.view().into(), s![.., ..].as_ref())?;
 
             // Out-of-bounds writes should fail
-            assert!(dataset
-                .write_array_slice(arr.view().into(), s![20..40, ..].as_ref())
-                .is_err());
+            assert!(
+                dataset
+                    .write_array_slice(arr.view().into(), s![20..40, ..].as_ref())
+                    .is_err()
+            );
 
             // Reshape and write
             dataset.reshape(&[40, 50].as_slice().into())?;

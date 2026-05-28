@@ -137,16 +137,12 @@ impl Selectable for DataFrame {
                 .into_iter()
                 .map(|i| columns[i].as_str()),
         )
-        .expect(&format!(
-            "Failed to select columns: {:?}",
-            select.as_ref()[1]
-        ))
+        .unwrap_or_else(|_| panic!("Failed to select columns: {:?}",
+            select.as_ref()[1]))
         .take(&ChunkedArray::from_vec("idx".into(), ridx))
-        .expect(&format!(
-            "Failed to select rows: {:?}, shape: {:?}",
+        .unwrap_or_else(|_| panic!("Failed to select rows: {:?}, shape: {:?}",
             select.as_ref()[0],
-            self.shape()
-        ))
+            self.shape()))
     }
 }
 
@@ -177,7 +173,7 @@ impl ReadableArray for DataFrame {
     {
         let columns: Vec<String> = container.get_attr("column-order")?;
         let columns: Result<Vec<Column>> =
-            SelectInfoElemBounds::new(&info.as_ref()[1], columns.len())
+            SelectInfoElemBounds::new(&info[1], columns.len())
                 .iter()
                 .map(|i| {
                     let name = &columns[i];

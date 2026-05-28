@@ -7,11 +7,11 @@ use crate::data::{
     slice::{SelectInfoElem, Shape},
 };
 
+use crate::data::DynScalar;
 use anyhow::{Result, bail};
 use ndarray::ArrayD;
 use num::{FromPrimitive, ToPrimitive};
 use sprs::{CsMatI, SpIndex};
-use crate::data::DynScalar;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DynIndSparseMatrix {
@@ -45,7 +45,6 @@ where
 ////////////////////////////////////////////////////////////////////////////////
 // ArrayConvert implementations
 ////////////////////////////////////////////////////////////////////////////////
-
 
 impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> ArrayConvert<CsMatI<u32, T, u64>>
     for DynSparseMatrix<T>
@@ -146,15 +145,13 @@ where
     let indptr = mat.indptr().as_slice().unwrap().to_vec();
     let indices = mat.indices().to_vec();
     let data = mat.data().to_vec();
-    let new_data = data.into_iter().map(|x| f(x)).collect::<Result<Vec<U>>>()?;
+    let new_data = data.into_iter().map(f).collect::<Result<Vec<U>>>()?;
     if is_csr {
         Ok(CsMatI::new(shape, indptr, indices, new_data))
     } else {
         Ok(CsMatI::new_csc(shape, indptr, indices, new_data))
     }
 }
-
-
 
 ///// New DynIndSparseMatrix
 ///
@@ -218,7 +215,9 @@ impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> HasShape for 
     }
 }
 
-impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> Selectable for DynSparseMatrix<T> {
+impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> Selectable
+    for DynSparseMatrix<T>
+{
     fn select<S>(&self, info: &[S]) -> Self
     where
         S: AsRef<SelectInfoElem>,
@@ -227,13 +226,17 @@ impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> Selectable fo
     }
 }
 
-impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> SparseMatrixLayout for DynSparseMatrix<T> {
+impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> SparseMatrixLayout
+    for DynSparseMatrix<T>
+{
     fn get_sparse_layout(&self) -> SparseMatrixLayoutE {
         crate::macros::dyn_map_fun!(self, DynSparseMatrix, get_sparse_layout)
     }
 }
 
-impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> Indexable for DynSparseMatrix<T> {
+impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> Indexable
+    for DynSparseMatrix<T>
+{
     fn get(&self, index: &[usize]) -> Option<DynScalar> {
         if index.len() != 2 {
             panic!("index must have length 2");
@@ -255,7 +258,9 @@ impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> Indexable for
     }
 }
 
-impl<T: BackendData + SpIndex + ToPrimitive + num::Integer + num::FromPrimitive> ArrayArithmetic for DynSparseMatrix<T> {
+impl<T: BackendData + SpIndex + ToPrimitive + num::Integer + num::FromPrimitive> ArrayArithmetic
+    for DynSparseMatrix<T>
+{
     fn sum(&self) -> f64 {
         match self {
             DynSparseMatrix::I8(arr) => ArrayArithmetic::sum(arr),
@@ -325,10 +330,15 @@ impl<T: BackendData + SpIndex + ToPrimitive + num::Integer + num::FromPrimitive>
     }
 }
 
-impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> Stackable for DynSparseMatrix<T> {
+impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> Stackable
+    for DynSparseMatrix<T>
+{
     fn vstack<I: Iterator<Item = Self>>(iter: I) -> Result<Self> {
         let mut iter = iter.peekable();
-        match iter.peek().ok_or(anyhow::anyhow!("Cannot stack empty iterator"))? {
+        match iter
+            .peek()
+            .ok_or(anyhow::anyhow!("Cannot stack empty iterator"))?
+        {
             DynSparseMatrix::I8(_) => Ok(DynSparseMatrix::I8(CsMatI::<i8, T, u64>::vstack(
                 iter.map(|x| x.try_into().unwrap()),
             )?)),
@@ -362,18 +372,21 @@ impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> Stackable for
             DynSparseMatrix::Bool(_) => Ok(DynSparseMatrix::Bool(CsMatI::<bool, T, u64>::vstack(
                 iter.map(|x| x.try_into().unwrap()),
             )?)),
-            DynSparseMatrix::String(_) => {
-                Ok(DynSparseMatrix::String(CsMatI::<String, T, u64>::vstack(
-                    iter.map(|x| x.try_into().unwrap()),
-                )?))
-            }
+            DynSparseMatrix::String(_) => Ok(DynSparseMatrix::String(
+                CsMatI::<String, T, u64>::vstack(iter.map(|x| x.try_into().unwrap()))?,
+            )),
         }
     }
 }
 
-impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> WritableArray for DynSparseMatrix<T> {}
+impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> WritableArray
+    for DynSparseMatrix<T>
+{
+}
 
-impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> ReadableArray for DynSparseMatrix<T> {
+impl<T: BackendData + SpIndex + num::Integer + num::FromPrimitive> ReadableArray
+    for DynSparseMatrix<T>
+{
     fn get_shape<B: Backend>(container: &DataContainer<B>) -> Result<Shape> {
         Ok(container
             .as_group()?
@@ -548,32 +561,31 @@ impl ReadableArray for DynIndSparseMatrix {
 impl Stackable for DynIndSparseMatrix {
     fn vstack<I: Iterator<Item = Self>>(iter: I) -> Result<Self> {
         let mut iter = iter.peekable();
-        match iter.peek().ok_or(anyhow::anyhow!("Cannot stack empty iterator"))? {
-            DynIndSparseMatrix::I16(_) => Ok(DynIndSparseMatrix::I16(DynSparseMatrix::<i16>::vstack(
-                iter.map(|x| x.try_into().unwrap()),
-            )?)),
-            DynIndSparseMatrix::I32(_) => Ok(DynIndSparseMatrix::I32(DynSparseMatrix::<i32>::vstack(
-                iter.map(|x| x.try_into().unwrap()),
-            )?)),
-            DynIndSparseMatrix::I64(_) => Ok(DynIndSparseMatrix::I64(DynSparseMatrix::<i64>::vstack(
-                iter.map(|x| x.try_into().unwrap()),
-            )?)),
-            DynIndSparseMatrix::U16(_) => Ok(DynIndSparseMatrix::U16(DynSparseMatrix::<u16>::vstack(
-                iter.map(|x| x.try_into().unwrap()),
-            )?)),
-            DynIndSparseMatrix::U32(_) => Ok(DynIndSparseMatrix::U32(DynSparseMatrix::<u32>::vstack(
-                iter.map(|x| x.try_into().unwrap()),
-            )?)),
-            DynIndSparseMatrix::U64(_) => Ok(DynIndSparseMatrix::U64(DynSparseMatrix::<u64>::vstack(
-                iter.map(|x| x.try_into().unwrap()),
-            )?)),
+        match iter
+            .peek()
+            .ok_or(anyhow::anyhow!("Cannot stack empty iterator"))?
+        {
+            DynIndSparseMatrix::I16(_) => Ok(DynIndSparseMatrix::I16(
+                DynSparseMatrix::<i16>::vstack(iter.map(|x| x.try_into().unwrap()))?,
+            )),
+            DynIndSparseMatrix::I32(_) => Ok(DynIndSparseMatrix::I32(
+                DynSparseMatrix::<i32>::vstack(iter.map(|x| x.try_into().unwrap()))?,
+            )),
+            DynIndSparseMatrix::I64(_) => Ok(DynIndSparseMatrix::I64(
+                DynSparseMatrix::<i64>::vstack(iter.map(|x| x.try_into().unwrap()))?,
+            )),
+            DynIndSparseMatrix::U16(_) => Ok(DynIndSparseMatrix::U16(
+                DynSparseMatrix::<u16>::vstack(iter.map(|x| x.try_into().unwrap()))?,
+            )),
+            DynIndSparseMatrix::U32(_) => Ok(DynIndSparseMatrix::U32(
+                DynSparseMatrix::<u32>::vstack(iter.map(|x| x.try_into().unwrap()))?,
+            )),
+            DynIndSparseMatrix::U64(_) => Ok(DynIndSparseMatrix::U64(
+                DynSparseMatrix::<u64>::vstack(iter.map(|x| x.try_into().unwrap()))?,
+            )),
         }
     }
 }
-
-
-
-
 
 #[inline]
 pub fn vec_usize_to_u64(v: Vec<usize>) -> Vec<u64> {

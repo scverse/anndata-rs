@@ -68,8 +68,8 @@ impl MMReader {
                         let (r, c, indptr, indices, data) =
                             to_csr_data(x.into_iter().collect::<Vec<_>>(), cols);
                         let cs = CsMatI::try_new((r, c), indptr, indices, data).unwrap();
-                        let dy = DynIndSparseMatrix::from(DynSparseMatrix::from(cs));
-                        dy
+                        
+                        DynIndSparseMatrix::from(DynSparseMatrix::from(cs))
                     }),
             )?;
         } else {
@@ -216,7 +216,7 @@ where
             line.clear();
             let len = reader.read_line(&mut line).unwrap();
             // check for an all whitespace line
-            if len != 0 && line.split_whitespace().next() == None {
+            if len != 0 && line.split_whitespace().next().is_none() {
                 continue 'empty_lines;
             }
             break;
@@ -337,7 +337,7 @@ where
             line.clear();
             let len = reader.read_line(&mut line)?;
             // check for an all whitespace line
-            if len != 0 && line.split_whitespace().next() == None {
+            if len != 0 && line.split_whitespace().next().is_none() {
                 continue 'empty_lines;
             }
             break;

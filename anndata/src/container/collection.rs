@@ -510,9 +510,7 @@ impl<B: Backend> AxisArrays<B> {
             .collect();
 
         // Get shapes of arrays
-        let shapes = data
-            .iter()
-            .map(|(_, v)| v.inner().shape().clone())
+        let shapes = data.values().map(|v| v.inner().shape().clone())
             .collect::<Vec<_>>();
 
         // Check if shapes of arrays conform to axis
@@ -533,15 +531,14 @@ impl<B: Backend> AxisArrays<B> {
             );
         }
 
-        if let Some(s) = shapes.get(0) {
+        if let Some(s) = shapes.first() {
             if let Some(d) = dim1 {
                 d.try_set(s[0])?;
             }
-            if let Axis::RowColumn = axis {
-                if let Some(d) = dim2 {
+            if let Axis::RowColumn = axis
+                && let Some(d) = dim2 {
                     d.try_set(s[1])?;
                 }
-            }
         }
 
         let arrays = InnerAxisArrays {
@@ -655,7 +652,7 @@ impl<B: Backend> StackedAxisArrays<B> {
             );
         }
         Ok(Self {
-            axis: axis,
+            axis,
             data: Arc::new(data),
         })
     }

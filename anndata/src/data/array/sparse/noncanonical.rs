@@ -2,16 +2,16 @@ use std::collections::HashMap;
 
 use crate::backend::*;
 use crate::data::{
-    SelectInfoBounds, SelectInfoElemBounds,
-    array::utils::{cs_major_index, cs_major_minor_index, cs_major_slice},
+    SelectInfoBounds,
+    array::utils::{coo_to_unsorted_cs, cs_major_minor_index},
     data_traits::*,
     slice::{SelectInfoElem, Shape},
 };
 
 use anyhow::{Result, bail};
 use ndarray::{ArrayD, Ix1};
-use sprs::{CsMatI, TriMatI, SpIndex};
-use num::{Integer, ToPrimitive, FromPrimitive};
+use num::ToPrimitive;
+use sprs::{CsMatI, TriMatI};
 
 use super::DynSparseMatrix;
 
@@ -32,7 +32,8 @@ impl Readable for DynIndCsrNonCanonical {
                 let indices_dtype = group.open_dataset("indices")?.dtype()?;
                 macro_rules! fun {
                     ($type:ident, $variant:ident) => {
-                        DynCsrNonCanonical::<$type>::read(container).map(DynIndCsrNonCanonical::$variant)
+                        DynCsrNonCanonical::<$type>::read(container)
+                            .map(DynIndCsrNonCanonical::$variant)
                     };
                 }
                 crate::macros::dyn_index_match!(indices_dtype, ScalarType, fun)
@@ -53,7 +54,7 @@ impl Selectable for DynIndCsrNonCanonical {
     where
         S: AsRef<SelectInfoElem>,
     {
-        crate::macros::dyn_index_map_fun!(self, DynIndCsrNonCanonical, select, info)
+        crate::macros::dyn_index_sparse_map!(self, DynIndCsrNonCanonical, select, info)
     }
 }
 
@@ -68,14 +69,21 @@ impl Element for DynIndCsrNonCanonical {
 }
 
 impl Writable for DynIndCsrNonCanonical {
-    fn write<B: Backend, G: GroupOp<B>>(&self, location: &G, name: &str) -> Result<DataContainer<B>> {
+    fn write<B: Backend, G: GroupOp<B>>(
+        &self,
+        location: &G,
+        name: &str,
+    ) -> Result<DataContainer<B>> {
         crate::macros::dyn_index_map_fun!(self, DynIndCsrNonCanonical, write, location, name)
     }
 }
 
 impl ReadableArray for DynIndCsrNonCanonical {
     fn get_shape<B: Backend>(container: &DataContainer<B>) -> Result<Shape> {
-        Ok(container.as_group()?.get_attr::<Vec<usize>>("shape")?.into())
+        Ok(container
+            .as_group()?
+            .get_attr::<Vec<usize>>("shape")?
+            .into())
     }
 
     fn read_select<B, S>(container: &DataContainer<B>, info: &[S]) -> Result<Self>
@@ -97,7 +105,7 @@ impl ReadableArray for DynIndCsrNonCanonical {
 impl WritableArray for DynIndCsrNonCanonical {}
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum DynCsrNonCanonical<I> {
+pub enum DynCsrNonCanonical<I = u64> {
     I8(CsrNonCanonical<i8, I>),
     I16(CsrNonCanonical<i16, I>),
     I32(CsrNonCanonical<i32, I>),
@@ -112,21 +120,57 @@ pub enum DynCsrNonCanonical<I> {
     String(CsrNonCanonical<String, I>),
 }
 
-impl<I: sprs::SpIndex + BackendData + num::FromPrimitive> DynCsrNonCanonical<I> {
+impl<I: sprs::SpIndex + BackendData + num::FromPrimitive + num::Integer> DynCsrNonCanonical<I> {
     pub fn canonicalize(self) -> Result<DynSparseMatrix<I>, Self> {
         match self {
-            DynCsrNonCanonical::I8(data) => data.canonicalize().map(DynSparseMatrix::I8).map_err(Into::into),
-            DynCsrNonCanonical::I16(data) => data.canonicalize().map(DynSparseMatrix::I16).map_err(Into::into),
-            DynCsrNonCanonical::I32(data) => data.canonicalize().map(DynSparseMatrix::I32).map_err(Into::into),
-            DynCsrNonCanonical::I64(data) => data.canonicalize().map(DynSparseMatrix::I64).map_err(Into::into),
-            DynCsrNonCanonical::U8(data) => data.canonicalize().map(DynSparseMatrix::U8).map_err(Into::into),
-            DynCsrNonCanonical::U16(data) => data.canonicalize().map(DynSparseMatrix::U16).map_err(Into::into),
-            DynCsrNonCanonical::U32(data) => data.canonicalize().map(DynSparseMatrix::U32).map_err(Into::into),
-            DynCsrNonCanonical::U64(data) => data.canonicalize().map(DynSparseMatrix::U64).map_err(Into::into),
-            DynCsrNonCanonical::F32(data) => data.canonicalize().map(DynSparseMatrix::F32).map_err(Into::into),
-            DynCsrNonCanonical::F64(data) => data.canonicalize().map(DynSparseMatrix::F64).map_err(Into::into),
-            DynCsrNonCanonical::Bool(data) => data.canonicalize().map(DynSparseMatrix::Bool).map_err(Into::into),
-            DynCsrNonCanonical::String(data) => data.canonicalize().map(DynSparseMatrix::String).map_err(Into::into),
+            DynCsrNonCanonical::I8(data) => data
+                .canonicalize()
+                .map(DynSparseMatrix::I8)
+                .map_err(Into::into),
+            DynCsrNonCanonical::I16(data) => data
+                .canonicalize()
+                .map(DynSparseMatrix::I16)
+                .map_err(Into::into),
+            DynCsrNonCanonical::I32(data) => data
+                .canonicalize()
+                .map(DynSparseMatrix::I32)
+                .map_err(Into::into),
+            DynCsrNonCanonical::I64(data) => data
+                .canonicalize()
+                .map(DynSparseMatrix::I64)
+                .map_err(Into::into),
+            DynCsrNonCanonical::U8(data) => data
+                .canonicalize()
+                .map(DynSparseMatrix::U8)
+                .map_err(Into::into),
+            DynCsrNonCanonical::U16(data) => data
+                .canonicalize()
+                .map(DynSparseMatrix::U16)
+                .map_err(Into::into),
+            DynCsrNonCanonical::U32(data) => data
+                .canonicalize()
+                .map(DynSparseMatrix::U32)
+                .map_err(Into::into),
+            DynCsrNonCanonical::U64(data) => data
+                .canonicalize()
+                .map(DynSparseMatrix::U64)
+                .map_err(Into::into),
+            DynCsrNonCanonical::F32(data) => data
+                .canonicalize()
+                .map(DynSparseMatrix::F32)
+                .map_err(Into::into),
+            DynCsrNonCanonical::F64(data) => data
+                .canonicalize()
+                .map(DynSparseMatrix::F64)
+                .map_err(Into::into),
+            DynCsrNonCanonical::Bool(data) => data
+                .canonicalize()
+                .map(DynSparseMatrix::Bool)
+                .map_err(Into::into),
+            DynCsrNonCanonical::String(data) => data
+                .canonicalize()
+                .map(DynSparseMatrix::String)
+                .map_err(Into::into),
         }
     }
 }
@@ -195,7 +239,11 @@ impl<I: sprs::SpIndex + BackendData + num::FromPrimitive> Element for DynCsrNonC
 }
 
 impl<I: sprs::SpIndex + BackendData + num::FromPrimitive> Writable for DynCsrNonCanonical<I> {
-    fn write<B: Backend, G: GroupOp<B>>(&self, location: &G, name: &str) -> Result<DataContainer<B>> {
+    fn write<B: Backend, G: GroupOp<B>>(
+        &self,
+        location: &G,
+        name: &str,
+    ) -> Result<DataContainer<B>> {
         match self {
             DynCsrNonCanonical::I8(data) => data.write(location, name),
             DynCsrNonCanonical::I16(data) => data.write(location, name),
@@ -248,7 +296,9 @@ impl<I: sprs::SpIndex + BackendData + num::FromPrimitive> HasShape for DynCsrNon
     }
 }
 
-impl<I: sprs::SpIndex + BackendData + num::FromPrimitive> Selectable for DynCsrNonCanonical<I> {
+impl<I: sprs::SpIndex + BackendData + num::FromPrimitive + num::Integer> Selectable
+    for DynCsrNonCanonical<I>
+{
     fn select<S>(&self, info: &[S]) -> Self
     where
         S: AsRef<SelectInfoElem>,
@@ -274,25 +324,56 @@ impl<I: sprs::SpIndex + BackendData + num::FromPrimitive> Stackable for DynCsrNo
     fn vstack<I2: Iterator<Item = Self>>(iter: I2) -> Result<Self> {
         let mut iter = iter.peekable();
         match iter.peek().unwrap() {
-            DynCsrNonCanonical::I8(_) => Ok(DynCsrNonCanonical::I8(CsrNonCanonical::<i8, I>::vstack(iter.map(|x| x.try_into().unwrap()))?)),
-            DynCsrNonCanonical::I16(_) => Ok(DynCsrNonCanonical::I16(CsrNonCanonical::<i16, I>::vstack(iter.map(|x| x.try_into().unwrap()))?)),
-            DynCsrNonCanonical::I32(_) => Ok(DynCsrNonCanonical::I32(CsrNonCanonical::<i32, I>::vstack(iter.map(|x| x.try_into().unwrap()))?)),
-            DynCsrNonCanonical::I64(_) => Ok(DynCsrNonCanonical::I64(CsrNonCanonical::<i64, I>::vstack(iter.map(|x| x.try_into().unwrap()))?)),
-            DynCsrNonCanonical::U8(_) => Ok(DynCsrNonCanonical::U8(CsrNonCanonical::<u8, I>::vstack(iter.map(|x| x.try_into().unwrap()))?)),
-            DynCsrNonCanonical::U16(_) => Ok(DynCsrNonCanonical::U16(CsrNonCanonical::<u16, I>::vstack(iter.map(|x| x.try_into().unwrap()))?)),
-            DynCsrNonCanonical::U32(_) => Ok(DynCsrNonCanonical::U32(CsrNonCanonical::<u32, I>::vstack(iter.map(|x| x.try_into().unwrap()))?)),
-            DynCsrNonCanonical::U64(_) => Ok(DynCsrNonCanonical::U64(CsrNonCanonical::<u64, I>::vstack(iter.map(|x| x.try_into().unwrap()))?)),
-            DynCsrNonCanonical::F32(_) => Ok(DynCsrNonCanonical::F32(CsrNonCanonical::<f32, I>::vstack(iter.map(|x| x.try_into().unwrap()))?)),
-            DynCsrNonCanonical::F64(_) => Ok(DynCsrNonCanonical::F64(CsrNonCanonical::<f64, I>::vstack(iter.map(|x| x.try_into().unwrap()))?)),
-            DynCsrNonCanonical::Bool(_) => Ok(DynCsrNonCanonical::Bool(CsrNonCanonical::<bool, I>::vstack(iter.map(|x| x.try_into().unwrap()))?)),
-            DynCsrNonCanonical::String(_) => Ok(DynCsrNonCanonical::String(CsrNonCanonical::<String, I>::vstack(iter.map(|x| x.try_into().unwrap()))?)),
+            DynCsrNonCanonical::I8(_) => Ok(DynCsrNonCanonical::I8(
+                CsrNonCanonical::<i8, I>::vstack(iter.map(|x| x.try_into().unwrap()))?,
+            )),
+            DynCsrNonCanonical::I16(_) => Ok(DynCsrNonCanonical::I16(
+                CsrNonCanonical::<i16, I>::vstack(iter.map(|x| x.try_into().unwrap()))?,
+            )),
+            DynCsrNonCanonical::I32(_) => Ok(DynCsrNonCanonical::I32(
+                CsrNonCanonical::<i32, I>::vstack(iter.map(|x| x.try_into().unwrap()))?,
+            )),
+            DynCsrNonCanonical::I64(_) => Ok(DynCsrNonCanonical::I64(
+                CsrNonCanonical::<i64, I>::vstack(iter.map(|x| x.try_into().unwrap()))?,
+            )),
+            DynCsrNonCanonical::U8(_) => Ok(DynCsrNonCanonical::U8(
+                CsrNonCanonical::<u8, I>::vstack(iter.map(|x| x.try_into().unwrap()))?,
+            )),
+            DynCsrNonCanonical::U16(_) => Ok(DynCsrNonCanonical::U16(
+                CsrNonCanonical::<u16, I>::vstack(iter.map(|x| x.try_into().unwrap()))?,
+            )),
+            DynCsrNonCanonical::U32(_) => Ok(DynCsrNonCanonical::U32(
+                CsrNonCanonical::<u32, I>::vstack(iter.map(|x| x.try_into().unwrap()))?,
+            )),
+            DynCsrNonCanonical::U64(_) => Ok(DynCsrNonCanonical::U64(
+                CsrNonCanonical::<u64, I>::vstack(iter.map(|x| x.try_into().unwrap()))?,
+            )),
+            DynCsrNonCanonical::F32(_) => Ok(DynCsrNonCanonical::F32(
+                CsrNonCanonical::<f32, I>::vstack(iter.map(|x| x.try_into().unwrap()))?,
+            )),
+            DynCsrNonCanonical::F64(_) => Ok(DynCsrNonCanonical::F64(
+                CsrNonCanonical::<f64, I>::vstack(iter.map(|x| x.try_into().unwrap()))?,
+            )),
+            DynCsrNonCanonical::Bool(_) => Ok(DynCsrNonCanonical::Bool(
+                CsrNonCanonical::<bool, I>::vstack(iter.map(|x| x.try_into().unwrap()))?,
+            )),
+            DynCsrNonCanonical::String(_) => {
+                Ok(DynCsrNonCanonical::String(
+                    CsrNonCanonical::<String, I>::vstack(iter.map(|x| x.try_into().unwrap()))?,
+                ))
+            }
         }
     }
 }
 
-impl<I: sprs::SpIndex + BackendData + num::FromPrimitive> ReadableArray for DynCsrNonCanonical<I> {
+impl<I: sprs::SpIndex + BackendData + num::FromPrimitive + num::Integer> ReadableArray
+    for DynCsrNonCanonical<I>
+{
     fn get_shape<B: Backend>(container: &DataContainer<B>) -> Result<Shape> {
-        Ok(container.as_group()?.get_attr::<Vec<usize>>("shape")?.into())
+        Ok(container
+            .as_group()?
+            .get_attr::<Vec<usize>>("shape")?
+            .into())
     }
 
     fn read_select<B, S>(container: &DataContainer<B>, info: &[S]) -> Result<Self>
@@ -314,6 +395,78 @@ impl<I: sprs::SpIndex + BackendData + num::FromPrimitive> ReadableArray for DynC
 }
 
 impl<I: sprs::SpIndex + BackendData + num::FromPrimitive> WritableArray for DynCsrNonCanonical<I> {}
+
+impl<I: sprs::SpIndex + BackendData + num::FromPrimitive + num::Integer> ArrayArithmetic
+    for DynCsrNonCanonical<I>
+{
+    fn sum(&self) -> f64 {
+        match self {
+            DynCsrNonCanonical::I8(data) => data.sum(),
+            DynCsrNonCanonical::I16(data) => data.sum(),
+            DynCsrNonCanonical::I32(data) => data.sum(),
+            DynCsrNonCanonical::I64(data) => data.sum(),
+            DynCsrNonCanonical::U8(data) => data.sum(),
+            DynCsrNonCanonical::U16(data) => data.sum(),
+            DynCsrNonCanonical::U32(data) => data.sum(),
+            DynCsrNonCanonical::U64(data) => data.sum(),
+            DynCsrNonCanonical::F32(data) => data.sum(),
+            DynCsrNonCanonical::F64(data) => data.sum(),
+            DynCsrNonCanonical::Bool(_) => panic!("Cannot compute sum for Bool sparse matrix"),
+            DynCsrNonCanonical::String(_) => panic!("Cannot compute sum for String sparse matrix"),
+        }
+    }
+
+    fn sum_axis(&self, axis: usize) -> Result<ArrayD<f64>> {
+        match self {
+            DynCsrNonCanonical::I8(data) => data.sum_axis(axis),
+            DynCsrNonCanonical::I16(data) => data.sum_axis(axis),
+            DynCsrNonCanonical::I32(data) => data.sum_axis(axis),
+            DynCsrNonCanonical::I64(data) => data.sum_axis(axis),
+            DynCsrNonCanonical::U8(data) => data.sum_axis(axis),
+            DynCsrNonCanonical::U16(data) => data.sum_axis(axis),
+            DynCsrNonCanonical::U32(data) => data.sum_axis(axis),
+            DynCsrNonCanonical::U64(data) => data.sum_axis(axis),
+            DynCsrNonCanonical::F32(data) => data.sum_axis(axis),
+            DynCsrNonCanonical::F64(data) => data.sum_axis(axis),
+            DynCsrNonCanonical::Bool(_) => bail!("Cannot compute sum for Bool sparse matrix"),
+            DynCsrNonCanonical::String(_) => bail!("Cannot compute sum for String sparse matrix"),
+        }
+    }
+
+    fn min(&self) -> f64 {
+        match self {
+            DynCsrNonCanonical::I8(data) => data.min(),
+            DynCsrNonCanonical::I16(data) => data.min(),
+            DynCsrNonCanonical::I32(data) => data.min(),
+            DynCsrNonCanonical::I64(data) => data.min(),
+            DynCsrNonCanonical::U8(data) => data.min(),
+            DynCsrNonCanonical::U16(data) => data.min(),
+            DynCsrNonCanonical::U32(data) => data.min(),
+            DynCsrNonCanonical::U64(data) => data.min(),
+            DynCsrNonCanonical::F32(data) => data.min(),
+            DynCsrNonCanonical::F64(data) => data.min(),
+            DynCsrNonCanonical::Bool(_) => panic!("Cannot compute min for Bool sparse matrix"),
+            DynCsrNonCanonical::String(_) => panic!("Cannot compute min for String sparse matrix"),
+        }
+    }
+
+    fn max(&self) -> f64 {
+        match self {
+            DynCsrNonCanonical::I8(data) => data.max(),
+            DynCsrNonCanonical::I16(data) => data.max(),
+            DynCsrNonCanonical::I32(data) => data.max(),
+            DynCsrNonCanonical::I64(data) => data.max(),
+            DynCsrNonCanonical::U8(data) => data.max(),
+            DynCsrNonCanonical::U16(data) => data.max(),
+            DynCsrNonCanonical::U32(data) => data.max(),
+            DynCsrNonCanonical::U64(data) => data.max(),
+            DynCsrNonCanonical::F32(data) => data.max(),
+            DynCsrNonCanonical::F64(data) => data.max(),
+            DynCsrNonCanonical::Bool(_) => panic!("Cannot compute max for Bool sparse matrix"),
+            DynCsrNonCanonical::String(_) => panic!("Cannot compute max for String sparse matrix"),
+        }
+    }
+}
 
 /// Compressed sparse row matrix with potentially duplicate column indices.
 #[derive(Debug, Clone, PartialEq)]
@@ -374,7 +527,10 @@ impl<N, I: sprs::SpIndex> CsrNonCanonical<N, I> {
         }
     }
 
-    pub fn canonicalize(self) -> Result<CsMatI<N, I, u64>, Self> {
+    pub fn canonicalize(self) -> Result<CsMatI<N, I, u64>, Self>
+    where
+        I: num::Integer,
+    {
         let nrows = self.nrows();
         let ncols = self.ncols();
         if crate::data::utils::check_format(nrows, ncols, self.row_offsets(), self.col_indices())
@@ -402,6 +558,26 @@ impl<N: Clone, Ix: sprs::SpIndex> From<CsMatI<N, Ix, u64>> for CsrNonCanonical<N
     }
 }
 
+impl<N: Clone, Ix: sprs::SpIndex> From<&TriMatI<N, Ix>> for CsrNonCanonical<N, Ix> {
+    fn from(coo: &TriMatI<N, Ix>) -> Self {
+        let nnz = coo.nnz();
+        let mut offsets = vec![0_u64; coo.rows() + 1];
+        let mut indices = vec![Ix::from_usize(0); nnz];
+        let mut data = coo.data().to_vec();
+        let rows: Vec<usize> = coo.row_inds().iter().map(|x| x.index()).collect();
+        coo_to_unsorted_cs(
+            &mut offsets,
+            &mut indices,
+            &mut data,
+            coo.rows(),
+            &rows,
+            coo.col_inds(),
+            coo.data(),
+        );
+        Self::from_csr_data(coo.rows(), coo.cols(), offsets, indices, data)
+    }
+}
+
 impl<N: BackendData, I: sprs::SpIndex + BackendData> Element for CsrNonCanonical<N, I> {
     fn data_type(&self) -> DataType {
         DataType::CsrMatrix(N::DTYPE, I::DTYPE)
@@ -409,23 +585,36 @@ impl<N: BackendData, I: sprs::SpIndex + BackendData> Element for CsrNonCanonical
 
     fn metadata(&self) -> MetaData {
         let mut metadata = HashMap::new();
-        metadata.insert("shape".to_string(), vec![self.num_rows, self.num_cols].into());
+        metadata.insert(
+            "shape".to_string(),
+            vec![self.num_rows, self.num_cols].into(),
+        );
         MetaData::new("csr_matrix", "0.1.0", Some(metadata))
     }
 }
 
 impl<N: BackendData, I: sprs::SpIndex + BackendData> Writable for CsrNonCanonical<N, I> {
-    fn write<B: Backend, G: GroupOp<B>>(&self, location: &G, name: &str) -> Result<DataContainer<B>> {
+    fn write<B: Backend, G: GroupOp<B>>(
+        &self,
+        location: &G,
+        name: &str,
+    ) -> Result<DataContainer<B>> {
         let mut group = location.new_group(name)?;
         self.metadata().save(&mut group)?;
         group.new_array_dataset("data", self.values.as_slice().into(), Default::default())?;
         group.new_array_dataset("indptr", self.offsets.as_slice().into(), Default::default())?;
-        group.new_array_dataset("indices", self.indices.as_slice().into(), Default::default())?;
+        group.new_array_dataset(
+            "indices",
+            self.indices.as_slice().into(),
+            Default::default(),
+        )?;
         Ok(DataContainer::Group(group))
     }
 }
 
-impl<N: BackendData, I: sprs::SpIndex + BackendData + num::FromPrimitive> Readable for CsrNonCanonical<N, I> {
+impl<N: BackendData, I: sprs::SpIndex + BackendData + num::FromPrimitive> Readable
+    for CsrNonCanonical<N, I>
+{
     fn read<B: Backend>(container: &DataContainer<B>) -> Result<Self> {
         let group = container.as_group()?;
         let shape: Vec<u64> = group.get_attr("shape")?;
@@ -464,9 +653,14 @@ impl<N: BackendData, I: sprs::SpIndex + BackendData + num::FromPrimitive> Readab
     }
 }
 
-impl<N: BackendData, I: sprs::SpIndex + BackendData + num::FromPrimitive> ReadableArray for CsrNonCanonical<N, I> {
+impl<N: BackendData, I: sprs::SpIndex + BackendData + num::FromPrimitive + num::Integer>
+    ReadableArray for CsrNonCanonical<N, I>
+{
     fn get_shape<B: Backend>(container: &DataContainer<B>) -> Result<Shape> {
-        Ok(container.as_group()?.get_attr::<Vec<usize>>("shape")?.into())
+        Ok(container
+            .as_group()?
+            .get_attr::<Vec<usize>>("shape")?
+            .into())
     }
 
     fn read_select<B, S>(container: &DataContainer<B>, info: &[S]) -> Result<Self>
@@ -535,7 +729,60 @@ impl<N: Clone, I: sprs::SpIndex> HasShape for CsrNonCanonical<N, I> {
     }
 }
 
-impl<N: Clone, I: sprs::SpIndex> Selectable for CsrNonCanonical<N, I> {
+impl<N: ToPrimitive + Clone, I: sprs::SpIndex> ArrayArithmetic for CsrNonCanonical<N, I> {
+    fn sum(&self) -> f64 {
+        self.values.iter().map(|x| x.to_f64().unwrap()).sum()
+    }
+
+    fn sum_axis(&self, axis: usize) -> Result<ArrayD<f64>> {
+        if axis == 0 {
+            let mut col_sums = vec![0.0; self.num_cols];
+            for row in 0..self.num_rows {
+                let start = self.offsets[row] as usize;
+                let end = self.offsets[row + 1] as usize;
+                for (&col, val) in self.indices[start..end]
+                    .iter()
+                    .zip(&self.values[start..end])
+                {
+                    col_sums[col.to_usize().unwrap()] += val.to_f64().unwrap();
+                }
+            }
+            Ok(ndarray::Array1::from_vec(col_sums).into_dyn())
+        } else if axis == 1 {
+            let row_sums: Vec<f64> = (0..self.num_rows)
+                .map(|row| {
+                    let start = self.offsets[row] as usize;
+                    let end = self.offsets[row + 1] as usize;
+                    self.values[start..end]
+                        .iter()
+                        .map(|x| x.to_f64().unwrap())
+                        .sum()
+                })
+                .collect();
+            Ok(ndarray::Array1::from_vec(row_sums).into_dyn())
+        } else {
+            bail!("Axis {} out of bounds for 2D matrix", axis)
+        }
+    }
+
+    fn min(&self) -> f64 {
+        self.values
+            .iter()
+            .map(|x| x.to_f64().unwrap())
+            .fold(f64::INFINITY, f64::min)
+    }
+
+    fn max(&self) -> f64 {
+        self.values
+            .iter()
+            .map(|x| x.to_f64().unwrap())
+            .fold(f64::NEG_INFINITY, f64::max)
+    }
+}
+
+impl<N: Clone, I: sprs::SpIndex + num::Integer + num::FromPrimitive> Selectable
+    for CsrNonCanonical<N, I>
+{
     fn select<S>(&self, info: &[S]) -> Self
     where
         S: AsRef<SelectInfoElem>,
@@ -544,9 +791,11 @@ impl<N: Clone, I: sprs::SpIndex> Selectable for CsrNonCanonical<N, I> {
             panic!("DataFrame only support 2D selection");
         }
         let select = SelectInfoBounds::new(&info, &self.shape());
+        let major = select.as_ref()[0].to_vec();
+        let minor = select.as_ref()[1].to_vec();
         let (indptr, indices, data) = cs_major_minor_index(
-            select.as_ref()[0].iter(),
-            select.as_ref()[1].iter(),
+            major.iter().copied(),
+            minor.iter().copied(),
             self.num_cols,
             &self.offsets,
             &self.indices,
@@ -607,7 +856,7 @@ impl<N: Clone, I: sprs::SpIndex> Stackable for CsrNonCanonical<N, I> {
     }
 }
 
-impl<N, I: sprs::SpIndex> From<&CsrNonCanonical<N, I>> for TriMatI<N, I>
+impl<N, I: sprs::SpIndex + ToPrimitive> From<&CsrNonCanonical<N, I>> for TriMatI<N, I>
 where
     N: Clone,
 {
@@ -617,7 +866,11 @@ where
             let start = csr.offsets[row] as usize;
             let end = csr.offsets[row + 1] as usize;
             for i in start..end {
-                coo.add_triplet(row, csr.indices[i], csr.values[i].clone());
+                coo.add_triplet(
+                    row,
+                    csr.indices[i].to_usize().unwrap(),
+                    csr.values[i].clone(),
+                );
             }
         }
         coo

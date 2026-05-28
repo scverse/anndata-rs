@@ -11,9 +11,9 @@ use super::{Element, MetaData};
 #[derive(Debug, Clone, PartialEq)]
 pub struct Mapping(HashMap<String, Data>);
 
-impl Into<HashMap<String, Data>> for Mapping {
-    fn into(self) -> HashMap<String, Data> {
-        self.0
+impl From<Mapping> for HashMap<String, Data> {
+    fn from(val: Mapping) -> Self {
+        val.0
     }
 }
 

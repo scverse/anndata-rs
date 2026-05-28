@@ -98,10 +98,10 @@ impl<B: Backend> CsrMatrixBuilder<B> {
                 }
 
                 indptr[..indptr.len() - 1].iter().for_each(|x| {
-                    builder.indptr.push(*x as u64 + builder.nnz);
+                    builder.indptr.push(*x + builder.nnz);
                 });
 
-                builder.nnz += *indptr.last().unwrap_or(&0) as u64;
+                builder.nnz += *indptr.last().unwrap_or(&0);
 
                 builder.data.add(Array::from_vec(data.to_vec()).into())?;
 
@@ -768,14 +768,14 @@ impl<N: BackendData + std::fmt::Debug, T: BackendData + SpIndex + num::Integer +
                 indptr_workspace.extend(
                     indptr_[..indptr_.len() - 1]
                         .iter()
-                        .map(|&x| (x as u64) + nnz),
+                        .map(|&x| x + nnz),
                 );
                 indptr.extend(
                     0,
                     ArrayView1::from_shape(indptr_workspace.len(), &indptr_workspace)?,
                 )?;
 
-                nnz += *indptr_.last().unwrap_or(&0) as u64;
+                nnz += *indptr_.last().unwrap_or(&0);
 
                 data.extend(0, ArrayView1::from_shape(data_.len(), data_)?)?;
 
@@ -795,14 +795,14 @@ impl<N: BackendData + std::fmt::Debug, T: BackendData + SpIndex + num::Integer +
                     indptr_workspace.extend(
                         indptr_[..indptr_.len() - 1]
                             .iter()
-                            .map(|&x| (x as u64) + nnz),
+                            .map(|&x| x + nnz),
                     );
                     indptr.extend(
                         0,
                         ArrayView1::from_shape(indptr_workspace.len(), &indptr_workspace)?,
                     )?;
 
-                    nnz += *indptr_.last().unwrap_or(&0) as u64;
+                    nnz += *indptr_.last().unwrap_or(&0);
 
                     data.extend(0, ArrayView1::from_shape(data_.len(), data_)?)?;
 

@@ -15,8 +15,8 @@ use sprs::{CsMatI, SpIndex};
 use crate::backend::*;
 use crate::data::{DataType, data_traits::*};
 
-use ::ndarray::{Array, ArrayD, RemoveAxis};
 use anyhow::{Result, bail};
+use ndarray::{Array, ArrayD, RemoveAxis};
 use polars::prelude::DataFrame;
 
 #[derive(Debug, Clone, PartialEq)]

@@ -168,7 +168,7 @@ where
             {
                 out.uns().add(
                     &key,
-                    uns.iter().next().unwrap().get_item::<Data>(&key)?.unwrap(),
+                    uns.first().unwrap().get_item::<Data>(&key)?.unwrap(),
                 )?;
             }
         }
@@ -264,7 +264,7 @@ fn align_series(
                     }
                 })
                 .collect();
-            Series::from_any_values_and_dtype(name.clone(), &values?, &dtype, false)?
+            Series::from_any_values_and_dtype(name.clone(), &values?, dtype, false)?
         }
     };
     Ok(new_series.into())
@@ -333,7 +333,7 @@ fn concat_x<A: AnnDataOp>(
             arr,
             &(0..adata.n_obs())
                 .into_iter()
-                .map(|x| Some(x))
+                .map(Some)
                 .collect::<Vec<_>>(),
             &common_vars
                 .iter()

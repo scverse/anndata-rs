@@ -45,7 +45,7 @@ impl<B: Backend, T: BackendData> ExtendableDataset<B, T> {
         )?;
         Ok(Self {
             dataset,
-            size: std::iter::repeat(0).take(capacity.ndim()).collect(),
+            size: std::iter::repeat_n(0, capacity.ndim()).collect(),
             capacity,
             elem_type: std::marker::PhantomData,
         })
@@ -397,7 +397,10 @@ where
         }
         Err(e) => match e {
             FormatError::DuplicateEntry => {
-                let csr = CsrNonCanonical::from_csr_data(nrows, ncols, indptr, indices, data);
+                let indptr_u64 = super::sparse::vec_usize_to_u64(indptr);
+                let indices_u64 = super::sparse::vec_usize_to_u64(indices);
+                let csr =
+                    CsrNonCanonical::from_csr_data(nrows, ncols, indptr_u64, indices_u64, data);
                 Ok(csr.into())
             }
             _ => Err(anyhow!("cannot read csr matrix: {:?}", e)),

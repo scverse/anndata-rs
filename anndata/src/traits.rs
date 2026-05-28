@@ -1204,7 +1204,7 @@ impl<B: Backend> ArrayElemOp for ArrayElem<B> {
     }
 
     fn is_cached(&self) -> bool {
-        self.lock().as_ref().map_or(false, |x| x.is_cached())
+        self.lock().as_ref().is_some_and(|x| x.is_cached())
     }
 
     fn enable_cache(&self) {

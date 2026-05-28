@@ -1,13 +1,13 @@
 mod common;
 pub use common::*;
 
-use anndata::concat::{concat, JoinType};
+use anndata::concat::{JoinType, concat};
 use anndata::data::SelectInfoElem;
 use anndata::{data::CsrNonCanonical, *};
 use data::ArrayConvert;
 use ndarray::{Array, Array2};
-use ndarray_rand::rand_distr::Uniform;
 use ndarray_rand::RandomExt;
+use ndarray_rand::rand_distr::Uniform;
 use proptest::prelude::*;
 use sprs::{CsMatI, TriMatI};
 use std::collections::HashMap;
@@ -17,12 +17,13 @@ pub fn test_basic<B: Backend>() {
         let ann1 = AnnData::<B>::new(dir.join("test1")).unwrap();
         let csc = rand_csc::<i32>(10, 5, 3, 1, 100);
         ann1.obsm().add("csc", &csc).unwrap();
-        assert!(ann1
-            .obsm()
-            .get_item::<CsMatI<i32, i64, u64>>("csc")
-            .unwrap()
-            .unwrap()
-            .is_csc());
+        assert!(
+            ann1.obsm()
+                .get_item::<CsMatI<i32, i64, u64>>("csc")
+                .unwrap()
+                .unwrap()
+                .is_csc()
+        );
 
         let ann2 = AnnData::<B>::new(dir.join("test2")).unwrap();
         AnnDataSet::<B>::new(
@@ -39,7 +40,7 @@ pub fn test_save<B: Backend>() {
     with_tmp_dir(|dir| {
         let input = dir.join("input");
         let output = dir.join("output");
-        let anndatas = ((0 as usize..100), (0 as usize..100)).prop_flat_map(|(n_obs, n_vars)| {
+        let anndatas = ((0_usize..100), (0_usize..100)).prop_flat_map(|(n_obs, n_vars)| {
             (
                 anndata_strat::<B, _>(&input, n_obs, n_vars),
                 select_strat(n_obs),
@@ -96,13 +97,13 @@ where
 {
     let adata = adata_gen();
     // Construct a non-canonical matrix with duplicate entries
-    let coo: TriMatI<i32, usize> = TriMatI::from_triplets(
+    let coo: TriMatI<i32, u64> = TriMatI::from_triplets(
         (5, 4),
         vec![0, 0, 1, 1, 1, 2, 3, 4], // Duplicate (0,0) and (1,0)
         vec![0, 0, 0, 0, 2, 3, 1, 3],
         vec![1, 10, 2, 20, 4, 5, 6, 7],
     );
-    adata.set_x(&CsrNonCanonical::from(&coo)).unwrap();
+    adata.set_x(CsrNonCanonical::from(&coo)).unwrap();
 
     // Attempting to get as CsMatI should fail because it's non-canonical on disk (duplicates)
     assert!(adata.x().get::<CsMatI<i32, i64, u64>>().is_err());
@@ -132,18 +133,22 @@ pub fn test_mixed_layers<B: Backend>() {
         adata.layers().add("dense_layer", &dense).unwrap();
 
         // Verify layouts are preserved
-        assert!(adata
-            .x()
-            .get::<CsMatI<f64, i64, u64>>()
-            .unwrap()
-            .unwrap()
-            .is_csr());
-        assert!(adata
-            .layers()
-            .get_item::<CsMatI<i32, i64, u64>>("csc_layer")
-            .unwrap()
-            .unwrap()
-            .is_csc());
+        assert!(
+            adata
+                .x()
+                .get::<CsMatI<f64, i64, u64>>()
+                .unwrap()
+                .unwrap()
+                .is_csr()
+        );
+        assert!(
+            adata
+                .layers()
+                .get_item::<CsMatI<i32, i64, u64>>("csc_layer")
+                .unwrap()
+                .unwrap()
+                .is_csc()
+        );
         assert_eq!(
             adata
                 .layers()
@@ -158,12 +163,14 @@ pub fn test_mixed_layers<B: Backend>() {
         adata.subset(&select).unwrap();
 
         assert_eq!(adata.n_obs(), 10);
-        assert!(adata
-            .x()
-            .get::<CsMatI<f64, i64, u64>>()
-            .unwrap()
-            .unwrap()
-            .is_csr());
+        assert!(
+            adata
+                .x()
+                .get::<CsMatI<f64, i64, u64>>()
+                .unwrap()
+                .unwrap()
+                .is_csr()
+        );
         assert_eq!(
             adata
                 .x()
@@ -173,12 +180,14 @@ pub fn test_mixed_layers<B: Backend>() {
                 .rows(),
             10
         );
-        assert!(adata
-            .layers()
-            .get_item::<CsMatI<i32, i64, u64>>("csc_layer")
-            .unwrap()
-            .unwrap()
-            .is_csc());
+        assert!(
+            adata
+                .layers()
+                .get_item::<CsMatI<i32, i64, u64>>("csc_layer")
+                .unwrap()
+                .unwrap()
+                .is_csc()
+        );
         assert_eq!(
             adata
                 .layers()
@@ -242,8 +251,8 @@ pub fn test_sparse_edge_cases<B: Backend>() {
 
         // Case 2: Sparse matrix with an entirely empty row in the middle
         let adata2 = AnnData::<B>::new(dir.join("empty_row")).unwrap();
-        let indptr = vec![0, 1, 1, 2]; // row 1 is empty
-        let indices = vec![0, 1];
+        let indptr = [0, 1, 1, 2]; // row 1 is empty
+        let indices = [0, 1];
         let data = vec![1.0, 2.0];
         let sparse = CsMatI::<f64, i64, u64>::new(
             (3, 3),
@@ -320,12 +329,8 @@ pub fn test_sparse_extraction_select<B: Backend>() {
             .slice::<CsMatI<i32, i64, u64>, _>(&select)
             .unwrap()
             .unwrap();
-        let expected = CsMatI::<i32, i64, u64>::new(
-            (3, 3),
-            vec![0, 1, 2, 3],
-            vec![2, 1, 0],
-            vec![5, 6, 7],
-        );
+        let expected =
+            CsMatI::<i32, i64, u64>::new((3, 3), vec![0, 1, 2, 3], vec![2, 1, 0], vec![5, 6, 7]);
         assert_eq!(sliced, expected);
 
         // Arbitrary/repeated major extraction must preserve output order and
@@ -357,10 +362,10 @@ pub fn test_parallel_reading_stress<B: Backend>() {
         let mut adatas = Vec::new();
 
         for i in 0..n_adatas {
-            let adata = AnnData::<B>::new(dir.join(format!("adata_{}", i))).unwrap();
+            let adata = AnnData::<B>::new(dir.join(format!("adata_{i}"))).unwrap();
             let csr = rand_csr::<f64>(n_obs_per_adata, n_vars, 5, 0.0, 1.0);
             adata.set_x(&csr).unwrap();
-            adatas.push((format!("ann_{}", i), adata));
+            adatas.push((format!("ann_{i}"), adata));
         }
 
         let dataset =
@@ -392,7 +397,7 @@ where
     T: AnnDataOp,
 {
     let arrays =
-        proptest::collection::vec(0 as usize..50, 2..4).prop_flat_map(|shape| array_strat(&shape));
+        proptest::collection::vec(0_usize..50, 2..4).prop_flat_map(|shape| array_strat(&shape));
     proptest!(ProptestConfig::with_cases(256), |(x in arrays)| {
         let adata = adata_gen();
         adata.set_x(&x).unwrap();
@@ -405,7 +410,7 @@ where
     F: Fn() -> T,
     T: AnnDataOp,
 {
-    let arrays = proptest::collection::vec(0 as usize..50, 2..4)
+    let arrays = proptest::collection::vec(0_usize..50, 2..4)
         .prop_flat_map(|shape| array_slice_strat(&shape));
     proptest!(ProptestConfig::with_cases(256), |((x, select) in arrays)| {
         let adata = adata_gen();
@@ -429,7 +434,7 @@ where
     T: AnnDataOp,
 {
     let arrays =
-        proptest::collection::vec(20 as usize..50, 2..3).prop_flat_map(|shape| array_strat(&shape));
+        proptest::collection::vec(20_usize..50, 2..3).prop_flat_map(|shape| array_strat(&shape));
     proptest!(ProptestConfig::with_cases(10), |(x in arrays)| {
         if let ArrayData::CscMatrix(_) = x {
         } else {
@@ -449,10 +454,10 @@ pub fn test_concat<B: Backend>() {
         let input2 = dir.join("input2");
         let output = dir.join("output");
         let anndatas = (
-            (0 as usize..100),
-            (0 as usize..100),
-            (0 as usize..100),
-            (0 as usize..100),
+            (0_usize..100),
+            (0_usize..100),
+            (0_usize..100),
+            (0_usize..100),
         )
             .prop_flat_map(|(n_obs1, n_vars1, n_obs2, n_vars2)| {
                 (
