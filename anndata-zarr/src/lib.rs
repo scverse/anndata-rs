@@ -3,7 +3,7 @@ use anndata::{
     data::{DynArray, DynCowArray, SelectInfoBounds, SelectInfoElem, SelectInfoElemBounds, Shape},
 };
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use ndarray::{Array, ArrayD, ArrayView, CowArray, Dimension, IxDyn, SliceInfoElem};
 use object_store::ObjectStore;
 use once_cell::sync::Lazy;
@@ -16,8 +16,8 @@ use std::{
 use std::{sync::Arc, vec};
 use url::Url;
 use zarrs::array::{
-    data_type, ArrayShardedReadableExt, ArraySubset, ChunkShape, CodecOptions, Element,
-    ElementOwned, FillValue,
+    ArrayShardedReadableExt, ArraySubset, ChunkShape, CodecOptions, Element, ElementOwned,
+    FillValue, data_type,
 };
 use zarrs::filesystem::FilesystemStore;
 use zarrs::group::Group;
@@ -682,9 +682,9 @@ fn new_empty_dataset_helper<T: BackendData, S: ?Sized + ReadableWritableListable
 mod tests {
     use super::*;
     use anndata::s;
-    use ndarray::{array, concatenate, Array2, Axis, Ix2};
-    use ndarray_rand::rand_distr::Uniform;
+    use ndarray::{Array2, Axis, Ix2, array, concatenate};
     use ndarray_rand::RandomExt;
+    use ndarray_rand::rand_distr::Uniform;
     use std::path::PathBuf;
     use tempfile::tempdir;
 

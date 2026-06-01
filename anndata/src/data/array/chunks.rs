@@ -765,11 +765,7 @@ impl<N: BackendData + std::fmt::Debug, T: BackendData + SpIndex + num::Integer +
                     (in_ptr_raw.raw_storage(), mat.indices(), mat.data());
 
                 indptr_workspace.clear();
-                indptr_workspace.extend(
-                    indptr_[..indptr_.len() - 1]
-                        .iter()
-                        .map(|&x| x + nnz),
-                );
+                indptr_workspace.extend(indptr_[..indptr_.len() - 1].iter().map(|&x| x + nnz));
                 indptr.extend(
                     0,
                     ArrayView1::from_shape(indptr_workspace.len(), &indptr_workspace)?,
@@ -792,11 +788,7 @@ impl<N: BackendData + std::fmt::Debug, T: BackendData + SpIndex + num::Integer +
                         (in_ptr_raw.raw_storage(), mat.indices(), mat.data());
 
                     indptr_workspace.clear();
-                    indptr_workspace.extend(
-                        indptr_[..indptr_.len() - 1]
-                            .iter()
-                            .map(|&x| x + nnz),
-                    );
+                    indptr_workspace.extend(indptr_[..indptr_.len() - 1].iter().map(|&x| x + nnz));
                     indptr.extend(
                         0,
                         ArrayView1::from_shape(indptr_workspace.len(), &indptr_workspace)?,

@@ -45,6 +45,12 @@ fn test_sparse_edge_cases() {
 }
 
 #[test]
+fn test_corrupt_sparse_full_read() {
+    utils::test_corrupt_sparse_full_read::<H5>();
+    utils::test_corrupt_sparse_full_read::<Zarr>();
+}
+
+#[test]
 fn test_anndataset_mixed_layouts() {
     utils::test_anndataset_mixed_layouts::<H5>();
     utils::test_anndataset_mixed_layouts::<Zarr>();

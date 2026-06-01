@@ -6,8 +6,7 @@ use pyo3::prelude::*;
 pub fn to_select_info(ob: &Bound<'_, PyAny>, shape: &Shape) -> PyResult<SelectInfo> {
     let ndim = shape.ndim();
     if is_none_slice(ob)? {
-        Ok(std::iter::repeat_n(SelectInfoElem::full(), ndim)
-            .collect())
+        Ok(std::iter::repeat_n(SelectInfoElem::full(), ndim).collect())
     } else if ob.is_instance_of::<pyo3::types::PyTuple>() {
         ob.try_iter()?
             .zip(shape.as_ref())

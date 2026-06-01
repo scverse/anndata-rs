@@ -1,7 +1,7 @@
 use std::hint::black_box;
 use std::time::Instant;
 
-use anndata::{AnnData, AnnDataOp, Backend};
+use anndata::{AnnData, AnnDataOp, ArrayElemOp, Backend};
 use anndata_zarr::Zarr;
 use sprs::CsMatI;
 use tempfile::tempdir;

@@ -166,10 +166,8 @@ where
                 .map(|x| x.get_item::<Data>(&key).unwrap().unwrap())
                 .all_equal()
             {
-                out.uns().add(
-                    &key,
-                    uns.first().unwrap().get_item::<Data>(&key)?.unwrap(),
-                )?;
+                out.uns()
+                    .add(&key, uns.first().unwrap().get_item::<Data>(&key)?.unwrap())?;
             }
         }
     }
@@ -331,10 +329,7 @@ fn concat_x<A: AnnDataOp>(
         let arr = adata.x().get().unwrap().unwrap();
         index_array(
             arr,
-            &(0..adata.n_obs())
-                .into_iter()
-                .map(Some)
-                .collect::<Vec<_>>(),
+            &(0..adata.n_obs()).into_iter().map(Some).collect::<Vec<_>>(),
             &common_vars
                 .iter()
                 .map(|x| var_names.get_index(x))

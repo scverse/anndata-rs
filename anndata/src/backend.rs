@@ -254,7 +254,6 @@ pub enum DataContainer<B: Backend> {
     Null,
 }
 
-
 impl<B: Backend> Debug for DataContainer<B> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {

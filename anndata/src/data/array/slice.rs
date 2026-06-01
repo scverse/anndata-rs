@@ -633,11 +633,7 @@ impl SliceBounds {
     pub(crate) fn len(&self) -> usize {
         let step = self.step.unsigned_abs();
         let span = self.end - self.start;
-        if span == 0 {
-            0
-        } else {
-            span.div_ceil(step)
-        }
+        if span == 0 { 0 } else { span.div_ceil(step) }
     }
 
     pub(crate) fn index(&self, i: usize) -> usize {
@@ -670,7 +666,8 @@ fn _unique_indices_sorted(indices: &[usize], upper_bound: usize) -> (Vec<usize>,
     }
     let unique = mask
         .iter()
-        .filter(|x| **x != upper_bound).copied()
+        .filter(|x| **x != upper_bound)
+        .copied()
         .collect();
 
     // Find the new order

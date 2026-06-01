@@ -1,6 +1,7 @@
 mod common;
 pub use common::*;
 
+use anndata::backend::{AttributeOp, GroupOp, StoreOp};
 use anndata::concat::{JoinType, concat};
 use anndata::data::SelectInfoElem;
 use anndata::{data::CsrNonCanonical, *};
@@ -11,6 +12,7 @@ use ndarray_rand::rand_distr::Uniform;
 use proptest::prelude::*;
 use sprs::{CsMatI, TriMatI};
 use std::collections::HashMap;
+use std::path::Path;
 
 pub fn test_basic<B: Backend>() {
     with_tmp_dir(|dir| {
@@ -303,6 +305,118 @@ pub fn test_anndataset_mixed_layouts<B: Backend>() {
         assert_eq!(dataset.n_obs(), 30);
         let x = dataset.x().get::<CsMatI<f64, i64, u64>>().unwrap().unwrap();
         assert!(x.is_csr());
+    });
+}
+
+#[derive(Clone)]
+struct SparseFixture {
+    encoding_type: &'static str,
+    shape: Vec<u64>,
+    indptr: Vec<u64>,
+    indices: Vec<i32>,
+    data: Vec<i64>,
+}
+
+fn write_sparse_x<B: Backend>(path: &Path, fixture: &SparseFixture) {
+    let file = B::new(path).unwrap();
+    {
+        let mut group = file.new_group("X").unwrap();
+        group
+            .new_attr("encoding-type", fixture.encoding_type)
+            .unwrap();
+        group.new_attr("encoding-version", "0.1.0").unwrap();
+        group.new_attr("shape", fixture.shape.clone()).unwrap();
+        group
+            .new_array_dataset(
+                "indptr",
+                fixture.indptr.as_slice().into(),
+                Default::default(),
+            )
+            .unwrap();
+        group
+            .new_array_dataset(
+                "indices",
+                fixture.indices.as_slice().into(),
+                Default::default(),
+            )
+            .unwrap();
+        group
+            .new_array_dataset("data", fixture.data.as_slice().into(), Default::default())
+            .unwrap();
+    }
+    file.close().unwrap();
+}
+
+fn append_corrupt_sparse_cases(
+    cases: &mut Vec<(String, SparseFixture)>,
+    prefix: &str,
+    valid: SparseFixture,
+) {
+    let mut bad = valid.clone();
+    bad.indices = vec![2, 0, 1];
+    cases.push((format!("{prefix}_unsorted_indices"), bad));
+
+    let mut bad = valid.clone();
+    bad.indices = vec![0, 3, 1];
+    cases.push((format!("{prefix}_out_of_bounds_indices"), bad));
+
+    let mut bad = valid.clone();
+    bad.indptr = vec![0, 2, 1];
+    cases.push((format!("{prefix}_non_monotonic_indptr"), bad));
+
+    let mut bad = valid.clone();
+    bad.indptr = vec![0, 2];
+    bad.indices = vec![0, 2];
+    bad.data = vec![1, 2];
+    cases.push((format!("{prefix}_bad_indptr_length"), bad));
+
+    let mut bad = valid.clone();
+    bad.data = vec![1, 2];
+    cases.push((format!("{prefix}_mismatched_data_indices_lengths"), bad));
+
+    let mut bad = valid.clone();
+    bad.indptr = vec![0, 2, 4];
+    cases.push((format!("{prefix}_indptr_nnz_mismatch"), bad));
+}
+
+pub fn test_corrupt_sparse_full_read<B: Backend>() {
+    let mut cases = Vec::new();
+
+    append_corrupt_sparse_cases(
+        &mut cases,
+        "csr",
+        SparseFixture {
+            encoding_type: "csr_matrix",
+            shape: vec![2, 3],
+            indptr: vec![0, 2, 3],
+            indices: vec![0, 2, 1],
+            data: vec![1, 2, 3],
+        },
+    );
+    append_corrupt_sparse_cases(
+        &mut cases,
+        "csc",
+        SparseFixture {
+            encoding_type: "csc_matrix",
+            shape: vec![3, 2],
+            indptr: vec![0, 2, 3],
+            indices: vec![0, 2, 1],
+            data: vec![1, 2, 3],
+        },
+    );
+
+    with_tmp_dir(|dir| {
+        for (name, fixture) in &cases {
+            let path = dir.join(name);
+            write_sparse_x::<B>(&path, fixture);
+
+            let result = AnnData::<B>::open(B::open(&path).unwrap())
+                .and_then(|adata| adata.x().get::<CsMatI<i64, i32, u64>>().map(|_| ()));
+            assert!(
+                result.is_err(),
+                "corrupt sparse fixture should fail: {name}"
+            );
+        }
     });
 }
 

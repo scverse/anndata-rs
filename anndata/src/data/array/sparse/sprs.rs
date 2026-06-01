@@ -496,15 +496,16 @@ impl<N: BackendData, T: BackendData + SpIndex + ToPrimitive + num::Integer + num
 
         fn contiguous_runs(bounds: &SelectInfoElemBounds<'_>) -> (usize, Vec<(usize, usize)>) {
             if let SelectInfoElemBounds::Slice(slice) = bounds
-                && slice.step == 1 {
-                    let len = slice.end - slice.start;
-                    let runs = if len == 0 {
-                        Vec::new()
-                    } else {
-                        vec![(slice.start, slice.end)]
-                    };
-                    return (len, runs);
-                }
+                && slice.step == 1
+            {
+                let len = slice.end - slice.start;
+                let runs = if len == 0 {
+                    Vec::new()
+                } else {
+                    vec![(slice.start, slice.end)]
+                };
+                return (len, runs);
+            }
 
             let mut indices = bounds.iter();
             let len = indices.len();

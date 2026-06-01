@@ -68,7 +68,7 @@ impl MMReader {
                         let (r, c, indptr, indices, data) =
                             to_csr_data(x.into_iter().collect::<Vec<_>>(), cols);
                         let cs = CsMatI::try_new((r, c), indptr, indices, data).unwrap();
-                        
+
                         DynIndSparseMatrix::from(DynSparseMatrix::from(cs))
                     }),
             )?;
