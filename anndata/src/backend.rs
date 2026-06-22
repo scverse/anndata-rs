@@ -164,7 +164,7 @@ pub trait AttributeOp<B: Backend + ?Sized> {
 }
 
 pub trait DatasetOp<B: Backend + ?Sized> {
-    // Required methods
+    /// Required methods
 
     fn dtype(&self) -> Result<ScalarType>;
     fn shape(&self) -> Shape;
@@ -181,7 +181,7 @@ pub trait DatasetOp<B: Backend + ?Sized> {
         S: AsRef<SelectInfoElem>,
         D: Dimension;
 
-    // Optional methods
+    /// Optional methods
 
     fn read_dyn_array_slice<S>(&self, selection: &[S]) -> Result<DynArray>
     where
@@ -306,12 +306,13 @@ impl<B: Backend> DataContainer<B> {
                     .map(DataContainer::Group)
                     .map_err(|e2| {
                         e2.context(e1).context(format!(
-                            "Error opening group or dataset named '{name}' in group"
+                            "Error opening group or dataset named '{}' in group",
+                            name
                         ))
                     }),
             }
         } else {
-            bail!("No group or dataset named '{name}' in group");
+            bail!("No group or dataset named '{}' in group", name);
         }
     }
 
@@ -339,16 +340,21 @@ impl<B: Backend> DataContainer<B> {
             "array" => DataType::Array(self.as_dataset()?.dtype()?),
             "csc_matrix" => {
                 let ty = self.as_group()?.open_dataset("data")?.dtype()?;
-                DataType::CscMatrix(ty)
+                let tp = self.as_group()?.open_dataset("indices")?.dtype()?;
+                DataType::CscMatrix(ty, tp)
             }
             "csr_matrix" => {
                 let ty = self.as_group()?.open_dataset("data")?.dtype()?;
-                DataType::CsrMatrix(ty)
+                let tp = self.as_group()?.open_dataset("indices")?.dtype()?;
+                DataType::CsrMatrix(ty, tp)
             }
             "dataframe" => DataType::DataFrame,
             "mapping" | "dict" => DataType::Mapping,
             "nullable-integer" | "nullable-boolean" => DataType::NullableArray,
-            ty => bail!("the anndata file contains an unsupported encoding type: '{ty}'"),
+            ty => bail!(
+                "the anndata file contains an unsupported encoding type: '{}'",
+                ty
+            ),
         };
         Ok(ty)
     }
@@ -366,13 +372,4 @@ impl<B: Backend> DataContainer<B> {
             _ => bail!("Expecting Dataset"),
         }
     }
-}
-
-pub fn iter_containers<B: Backend>(
-    group: &B::Group,
-) -> impl Iterator<Item = (String, DataContainer<B>)> + '_ {
-    group.list().unwrap().into_iter().map(|x| {
-        let container = DataContainer::open(group, &x).unwrap();
-        (x, container)
-    })
 }

@@ -93,18 +93,20 @@ impl Writable for DataFrame {
 
 impl Readable for DataFrame {
     fn read<B: Backend>(container: &DataContainer<B>) -> Result<Self> {
+        use rayon::prelude::*;
         let shape = DataFrame::get_shape(container)?;
         let columns: Vec<String> = container.get_attr("column-order")?;
+        let group = container.as_group()?;
         Ok(DataFrame::new(
             shape[0],
             columns
-                .into_iter()
+                .into_par_iter()
                 .map(|name| {
-                    let name = name.as_str();
-                    let series_container = DataContainer::<B>::open(container.as_group()?, name)?;
+                    let name_str = name.as_str();
+                    let series_container = DataContainer::<B>::open(group, name_str)?;
                     let mut series = read_series::<B>(&series_container)
-                        .with_context(|| format!("Failed to read series: {name}"))?;
-                    series.rename(name.into());
+                        .with_context(|| format!("Failed to read series: {}", name_str))?;
+                    series.rename(name_str.into());
                     Ok(series.into())
                 })
                 .collect::<Result<Vec<_>>>()?,
@@ -182,7 +184,7 @@ impl ReadableArray for DataFrame {
                     .open_dataset(name)
                     .map(DataContainer::Dataset)
                     .and_then(|x| read_series::<B>(&x))
-                    .with_context(|| format!("Failed to read series: {name}"))?;
+                    .with_context(|| format!("Failed to read series: {}", name))?;
 
                 let indices: Vec<u32> = SelectInfoElemBounds::new(&info[0], series.len())
                     .iter()
@@ -275,7 +277,7 @@ impl DataFrameIndex {
                 let end: u64 = dataset.get_attr("end")?;
                 Ok((start as usize..end as usize).into())
             }
-            x => bail!("Unknown index type: {x}"),
+            x => bail!("Unknown index type: {}", x),
         }
     }
 
@@ -354,9 +356,9 @@ where
     }
 }
 
-//-----------------------------------------------------------------------------
-// Helper functions
-//-----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// Helper functions
+////////////////////////////////////////////////////////////////////////////////
 
 fn write_column<B: Backend, G: GroupOp<B>>(
     series: &Column,
@@ -375,13 +377,13 @@ fn write_column<B: Backend, G: GroupOp<B>>(
         DataType::Float32 => series
             .f32()?
             .into_iter()
-            .map(|x| x.unwrap_or(f32::NAN))
+            .map(|x| x.unwrap_or(std::f32::NAN))
             .collect::<Array1<f32>>()
             .write(location, name),
         DataType::Float64 => series
             .f64()?
             .into_iter()
-            .map(|x| x.unwrap_or(f64::NAN))
+            .map(|x| x.unwrap_or(std::f64::NAN))
             .collect::<Array1<f64>>()
             .write(location, name),
         DataType::Boolean => write_series_helper(series.bool()?, location, name),
@@ -405,7 +407,7 @@ fn write_column<B: Backend, G: GroupOp<B>>(
             .iter_str()
             .collect::<CategoricalArray>()
             .write(location, name),
-        other => bail!("Unsupported series data type: {other:?}"),
+        other => bail!("Unsupported series data type: {:?}", other),
     }
 }
 
@@ -422,7 +424,7 @@ fn read_series<B: Backend>(container: &DataContainer<B>) -> Result<Series> {
         }
         crate::backend::DataType::Array(_) => Ok(DynArray::read(container)?.into()),
         crate::backend::DataType::NullableArray => read_nullable(container),
-        _ => bail!("Unsupported data type: {ty:?}"),
+        _ => bail!("Unsupported data type: {:?}", ty),
     }
 }
 

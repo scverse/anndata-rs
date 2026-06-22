@@ -290,14 +290,14 @@ impl SelectInfoElem {
         match self {
             SelectInfoElem::Index(index) => index.iter().try_for_each(|i| {
                 if *i >= bound {
-                    bail!("index out of bounds: {i} >= {bound}")
+                    bail!("index out of bounds: {} >= {}", i, bound)
                 } else {
                     Ok(())
                 }
             }),
             SelectInfoElem::Slice(slice) => slice.end.map_or(Ok(()), |end| {
                 if end > bound as isize {
-                    bail!("slice end out of bounds: {end} >= {bound}")
+                    bail!("slice end out of bounds: {} >= {}", end, bound)
                 } else {
                     Ok(())
                 }
@@ -434,9 +434,9 @@ impl<'a> SelectInfoBounds<'a> {
         self.select.len()
     }
 
-    /*
     /// Convert to a new slice that contain only the unique indices. A mapping for
     /// getting back the original indices is also returned.
+    /*
     pub fn to_unique(&self) -> (Self, Self) {
         let out_shape = self.out_shape();
         let (unique, mapping): (Vec<_>, Vec<_>) = self.select.iter().zip(out_shape.as_ref())
@@ -536,12 +536,6 @@ impl<'a> SelectInfoElemBounds<'a> {
         }
     }
 
-    /// Checks if the selection element is empty.
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
     /// Retrieves the index at the specified position.
     pub fn index(&self, i: usize) -> usize {
         match self {
@@ -637,9 +631,9 @@ impl SliceBounds {
     }
 
     pub(crate) fn len(&self) -> usize {
-        (self.end - self.start)
-            .checked_div(self.step.unsigned_abs())
-            .unwrap()
+        let step = self.step.unsigned_abs();
+        let span = self.end - self.start;
+        if span == 0 { 0 } else { span.div_ceil(step) }
     }
 
     pub(crate) fn index(&self, i: usize) -> usize {
@@ -727,11 +721,11 @@ fn _unique_indices_sorted(indices: &[usize], upper_bound: usize) -> (Vec<usize>,
 macro_rules! s{
     ( $( $x:expr ),* ) => {
         {
-            $crate::data::SelectInfo(vec![
-                $(
-                    $crate::data::SelectInfoElem::from($x),
-                )*
-            ])
+            let mut temp_vec = Vec::new();
+            $(
+                temp_vec.push($crate::data::SelectInfoElem::from($x));
+            )*
+            $crate::data::SelectInfo(temp_vec)
         }
 
     };
@@ -747,7 +741,7 @@ mod tests {
         fn test_indices(input: Vec<u16>) {
             let max = (*input.iter().max().unwrap_or(&0) as usize) + 1;
             let indices = input.into_iter().map(|x| x as usize).collect::<Vec<_>>();
-            let sorted_expected = indices.iter().copied().unique().sorted().collect::<Vec<_>>();
+            let sorted_expected = indices.iter().map(|x| *x).unique().sorted().collect::<Vec<_>>();
             let (sorted, mapping) = _unique_indices_sorted(indices.as_slice(), max);
             assert_eq!(sorted, sorted_expected);
             assert_eq!(indices, mapping.iter().map(|x| sorted[*x]).collect::<Vec<_>>());

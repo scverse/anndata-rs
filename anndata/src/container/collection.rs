@@ -1,6 +1,6 @@
 use crate::{
     ElemCollectionOp,
-    backend::{AttributeOp, Backend, GroupOp, iter_containers},
+    backend::{AttributeOp, Backend, GroupOp},
     container::base::*,
     data::*,
 };
@@ -49,7 +49,7 @@ impl<B: Backend> std::fmt::Display for InnerElemCollection<B> {
             .map(|x| x.to_string())
             .collect::<Vec<_>>()
             .join(", ");
-        write!(f, "Dict with keys: {keys}")
+        write!(f, "Dict with keys: {}", keys)
     }
 }
 
@@ -141,8 +141,14 @@ impl<B: Backend> ElemCollection<B> {
     }
 
     pub fn new(container: B::Group) -> Result<Self> {
-        let data: Result<HashMap<_, _>> = iter_containers(&container)
-            .map(|(k, v)| Ok((k, Elem::try_from(v)?)))
+        use rayon::prelude::*;
+        let keys = container.list()?;
+        let data: Result<HashMap<_, _>> = keys
+            .into_par_iter()
+            .map(|k| {
+                let v = crate::backend::DataContainer::open(&container, &k)?;
+                Ok((k, Elem::try_from(v)?))
+            })
             .collect();
         let collection = InnerElemCollection {
             container,
@@ -288,7 +294,7 @@ impl<B: Backend> std::fmt::Display for InnerAxisArrays<B> {
             .map(|x| x.to_string())
             .collect::<Vec<_>>()
             .join(", ");
-        write!(f, "AxisArrays ({ty}) with keys: {keys}")
+        write!(f, "AxisArrays ({}) with keys: {}", ty, keys)
     }
 }
 
@@ -328,7 +334,8 @@ impl<B: Backend> InnerAxisArrays<B> {
             Axis::Pairwise => {
                 ensure!(
                     shape[0] == shape[1],
-                    "expecting a square array, but receive a {shape:?} array"
+                    "expecting a square array, but receive a {:?} array",
+                    shape
                 );
                 self.dim1().try_set(shape[0])?;
             }
@@ -353,8 +360,8 @@ impl<B: Backend> InnerAxisArrays<B> {
         if let Some(elem) = self.get(key) {
             elem.clear()?;
         }
-        let elem = ArrayChunk::write_by_chunk(data, &self.container, key)
-            .with_context(|| format!("failed to write data to AxisArrays with key: '{key}'"))?;
+        let elem = ArrayChunk::write_by_chunk(data, &self.container, key, None)
+            .with_context(|| format!("failed to write data to AxisArrays with key: '{}'", key))?;
         let elem = ArrayElem::try_from(elem)?;
 
         let shape = { elem.inner().shape().clone() };
@@ -384,7 +391,7 @@ impl<B: Backend> InnerAxisArrays<B> {
             Axis::Pairwise => {
                 if shape[0] != shape[1] {
                     elem.clear()?;
-                    bail!("expecting a square array, but receive a {shape:?} array")
+                    bail!("expecting a square array, but receive a {:?} array", shape)
                 } else if let Err(e) = self.dim1().try_set(shape[0]) {
                     elem.clear()?;
                     bail!(e)
@@ -492,8 +499,14 @@ impl<B: Backend> AxisArrays<B> {
         dim1: Option<&Dim>,
         dim2: Option<&Dim>,
     ) -> Result<Self> {
-        let data: HashMap<_, _> = iter_containers::<B>(&group)
-            .map(|(k, v)| (k, ArrayElem::try_from(v).unwrap()))
+        use rayon::prelude::*;
+        let keys = group.list()?;
+        let data: HashMap<_, _> = keys
+            .into_par_iter()
+            .map(|k| {
+                let v = crate::backend::DataContainer::open(&group, &k).unwrap();
+                (k, ArrayElem::try_from(v).unwrap())
+            })
             .collect();
 
         // Get shapes of arrays
@@ -591,7 +604,7 @@ impl<B: Backend> std::fmt::Display for StackedAxisArrays<B> {
             .map(|x| x.to_string())
             .collect::<Vec<_>>()
             .join(", ");
-        write!(f, "Stacked AxisArrays ({ty}) with keys: {keys}")
+        write!(f, "Stacked AxisArrays ({}) with keys: {}", ty, keys)
     }
 }
 
