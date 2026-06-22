@@ -1,5 +1,10 @@
 # https://release-plz.dev/docs/config
 
+
+[[package]]
+name = "anndata_rs"
+publish = false
+
 [[package]]
 name = "pyanndata"
 publish = false
