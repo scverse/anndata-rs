@@ -10,6 +10,7 @@ _autosummary
 
 *.h5ad
 *.h5
+!**/tests/data/*.h5ad
 
 .vscode
 
