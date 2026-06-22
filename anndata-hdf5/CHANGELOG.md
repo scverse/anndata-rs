@@ -16,11 +16,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - fix slicing for multi-dimensional arrays
-
-### Other
-
-- fix deps for release
-- release-plz ([#26](https://github.com/scverse/anndata-rs/pull/26))
-- format and clippy ([#23](https://github.com/scverse/anndata-rs/pull/23))
-- Merge branch 'pyo3-0.27' into main
-- drop support for zarr backend

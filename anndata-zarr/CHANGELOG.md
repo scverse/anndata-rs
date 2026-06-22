@@ -12,19 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - 1GB zarr shard defaults ([#22](https://github.com/scverse/anndata-rs/pull/22))
+- contiguous 1d chunks in shards ([#25](https://github.com/scverse/anndata-rs/pull/25))
 
 ### Fixed
 
 - bring back zarr ([#21](https://github.com/scverse/anndata-rs/pull/21))
 - fix tests
-
-### Other
-
-- fix deps for release
-- release-plz ([#26](https://github.com/scverse/anndata-rs/pull/26))
-- contiguous 1d chunks in shards ([#25](https://github.com/scverse/anndata-rs/pull/25))
-- format and clippy ([#23](https://github.com/scverse/anndata-rs/pull/23))
-- drop support for zarr backend
-- modify ci
-- upgrade pyo3 and polars
-- minor
