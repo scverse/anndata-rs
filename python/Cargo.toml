@@ -10,7 +10,7 @@ homepage = "https://github.com/"
 keywords = ["data"]
 
 [dependencies]
-pyanndata = { version = "0.7.0", path = "../pyanndata" }
+pyanndata = { version = "0.7.1", path = "../pyanndata" }
 pyo3-log = "0.13"
 
 [dependencies.pyo3]
