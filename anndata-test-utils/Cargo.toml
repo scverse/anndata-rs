@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 ndarray = "0.17"
-anndata = { version = "0.7.0", path = "../anndata" }
+anndata = { version = "0.7.1", path = "../anndata" }
 num = "0.4"
 tempfile = "3.2"
 proptest = "1"
@@ -18,7 +18,7 @@ itertools = "0.14"
 
 [dev-dependencies]
 anndata-hdf5 = { version = "0.5.3", path = "../anndata-hdf5" }
-anndata-zarr = { version = "0.2.0", path = "../anndata-zarr" }
+anndata-zarr = { version = "0.2.1", path = "../anndata-zarr" }
 tempfile = "3.2"
 proptest = "1"
 bincode = { version = "2", features = ["serde"] }

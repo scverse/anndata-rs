@@ -12,7 +12,7 @@ homepage = "https://github.com/kaizhang/anndata-rs"
 keywords = ["data"]
 
 [dependencies]
-anndata = { version = "0.7.0", path = "../anndata" }
+anndata = { version = "0.7.1", path = "../anndata" }
 anndata-hdf5 = { version = "0.5.3", path = "../anndata-hdf5" }
 anyhow = "1.0"
 downcast-rs = "2"
