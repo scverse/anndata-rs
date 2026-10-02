@@ -1,6 +1,6 @@
 [package]
 name = "pyanndata"
-version = "0.7.1"
+version = "0.8.0"
 edition = "2024"
 rust-version = "1.88"
 authors = ["Kai Zhang <kai@kzhang.org>"]
@@ -12,8 +12,8 @@ homepage = "https://github.com/kaizhang/anndata-rs"
 keywords = ["data"]
 
 [dependencies]
-anndata = { version = "0.7.0", path = "../anndata" }
-anndata-hdf5 = { version = "0.5.3", path = "../anndata-hdf5" }
+anndata = { version = "0.7.1", path = "../anndata" }
+anndata-hdf5 = { version = "0.5.4", path = "../anndata-hdf5" }
 anyhow = "1.0"
 downcast-rs = "2"
 numpy = "0.27"
