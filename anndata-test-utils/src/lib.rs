@@ -162,7 +162,7 @@ where
 
 /// Dataframes stored in obsm/varm must be indexed by the obs/var names, as
 /// polars dataframes carry no index of their own.
-pub fn test_dataframe_index_set_before<B: Backend>() {
+pub fn test_dataframe_index<B: Backend>() {
     fn index_on_disk<B: Backend>(path: &std::path::Path, key: &str) -> DataFrameIndex {
         let store = B::open(path).unwrap();
         let container = DataContainer::<B>::open(&store.open_group("obsm").unwrap(), key).unwrap();
