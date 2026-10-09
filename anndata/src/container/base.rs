@@ -246,7 +246,8 @@ impl<B: Backend> InnerDataFrameElem<B> {
         S: AsRef<SelectInfoElem>,
     {
         // Select before touching the index: reading the dataframe takes its
-        // height from the index stored in the container.
+        // first dimension shape from the index stored in the container,
+        // so we need to select the dataframe before we change the index so the selection is valid.
         let df = self.select(selection)?;
         self.index = self.index.select(selection[0].as_ref());
         self.index.overwrite(&mut self.container)?;
@@ -455,7 +456,7 @@ impl<B: Backend> InnerArrayElem<B> {
 
     /// Set the index of a dataframe element. Other data types are left untouched,
     /// as they do not carry an index.
-    pub(crate) fn set_index(&mut self, index: &DataFrameIndex) -> Result<()> {
+    pub fn set_index(&mut self, index: &DataFrameIndex) -> Result<()> {
         if let DataType::DataFrame = self.dtype {
             ensure!(
                 index.len() == self.shape[0],
