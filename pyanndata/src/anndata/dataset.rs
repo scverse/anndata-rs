@@ -51,7 +51,7 @@ use super::get_backend;
     read_dataset
     concat
 */
-#[pyclass]
+#[pyclass(from_py_object)]
 #[repr(transparent)]
 pub struct AnnDataSet(Box<dyn AnnDataSetTrait>);
 
@@ -814,7 +814,7 @@ impl<B: Backend> AnnDataSetTrait for Slot<anndata::AnnDataSet<B>> {
             let obs = inner.read_obs()?;
             obs.column(&key)?
                 .str()?
-                .into_iter()
+                .iter()
                 .map(|x| x.map(|s| s.to_string()))
                 .collect()
         } else {

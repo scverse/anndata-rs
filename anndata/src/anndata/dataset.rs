@@ -476,9 +476,7 @@ impl<B: Backend> StackedAnnData<B> {
 
 fn as_str_vec(series: &Column) -> Vec<String> {
     if let Ok(s) = series.str() {
-        s.into_iter()
-            .map(|x| x.unwrap().to_string())
-            .collect::<Vec<_>>()
+        s.iter().map(|x| x.unwrap().to_string()).collect::<Vec<_>>()
     } else {
         series
             .cat32()
