@@ -670,7 +670,7 @@ where
     D: BackendData,
     Dim: Dimension,
 {
-    del_attr(loc, name);
+    let _ = loc.delete_attr(name);
     let value = value.into().into_dyn().into();
     match BackendData::into_dyn_arr(value) {
         DynCowArray::U8(x) => loc.new_attr_builder().with_data(x.view()).create(name)?,
@@ -694,7 +694,7 @@ where
 }
 
 fn write_scalar_attr<D: BackendData>(loc: &Location, name: &str, value: D) -> Result<()> {
-    del_attr(loc, name);
+    let _ = loc.delete_attr(name);
     match value.as_dyn() {
         DynScalar::U8(x) => loc.new_attr::<u8>().create(name)?.write_scalar(&x)?,
         DynScalar::U16(x) => loc.new_attr::<u16>().create(name)?.write_scalar(&x)?,
@@ -734,10 +734,6 @@ where
             (Selection::try_from(slice).unwrap(), out_shape)
         }
     }
-}
-
-fn del_attr(loc: &Location, name: &str) {
-    let _e = loc.delete_attr(name);
 }
 
 fn json_to_ndarray<F, T>(json: &Value, f: F) -> Result<Option<ArrayD<T>>>
