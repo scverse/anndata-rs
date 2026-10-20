@@ -1,7 +1,7 @@
 use crate::{
     DataFrameElem,
     backend::{Backend, DataContainer, GroupOp},
-    container::{Axis, AxisArrays, Dim, Slot},
+    container::{Axis, AxisArrays, Dim, Slot, collection::IndexedAxis},
     data::MAPPING_ENCODING,
 };
 
@@ -19,7 +19,7 @@ pub(crate) fn open_df<B: Backend>(root: &B::Store, name: &str) -> Result<DataFra
 // Helper function to create a new observation matrix (obsm)
 // Dataframes stored in obsm are indexed by the obs names.
 pub(crate) fn open_obsm<B: Backend>(group: B::Group, n_obs: Option<&Dim>) -> Result<AxisArrays<B>> {
-    AxisArrays::new(group, Axis::Row, n_obs, None, Some("obs"))
+    AxisArrays::new(group, Axis::Row, n_obs, None, Some(IndexedAxis::Obs))
 }
 
 // Helper function to create a new pairwise observation matrix (obsp)
@@ -32,7 +32,7 @@ pub(crate) fn open_varm<B: Backend>(
     group: B::Group,
     n_vars: Option<&Dim>,
 ) -> Result<AxisArrays<B>> {
-    AxisArrays::new(group, Axis::Row, n_vars, None, Some("var"))
+    AxisArrays::new(group, Axis::Row, n_vars, None, Some(IndexedAxis::Var))
 }
 
 // Helper function to create a new pairwise variable matrix (varp)

@@ -248,12 +248,26 @@ impl DimLock<'_> {
     }
 }
 
+pub enum IndexedAxis {
+    Obs,
+    Var,
+}
+
+impl IndexedAxis {
+    fn as_str(&self) -> &'static str {
+        match self {
+            IndexedAxis::Obs => "obs",
+            IndexedAxis::Var => "var",
+        }
+    }
+}
+
 pub struct InnerAxisArrays<B: Backend> {
     axis: Axis,
     container: B::Group,
     dim1: Option<Dim>, // If dim1 is None, mutating AxisArrays is not allowed.
     dim2: Option<Dim>, // If dim2 is None, mutating RowColumn AxisArrays is not allowed.
-    names: Option<&'static str>, // Root dataframe ("obs"/"var") holding the names of the first axis.
+    indexed_axis: Option<IndexedAxis>, // Root dataframe ("obs"/"var") holding the names of the first axis, if needed (obsm/varm, but not obsp/varp)
     data: HashMap<String, ArrayElem<B>>,
 }
 
@@ -316,14 +330,15 @@ impl<B: Backend> InnerAxisArrays<B> {
 
     /// Names along the first axis, i.e. the index dataframes stored here must have.
     fn axis_names(&self) -> Result<Option<DataFrameIndex>> {
-        let Some(names) = self.names else {
+        let Some(indexed_axis) = &self.indexed_axis else {
             return Ok(None);
         };
         let store = self.container.store()?;
-        if !store.exists(names)? {
+        let obs_or_var = indexed_axis.as_str();
+        if !store.exists(obs_or_var)? {
             return Ok(None);
         }
-        let index = DataFrameIndex::read(&DataContainer::<B>::open(&store, names)?)?;
+        let index = DataFrameIndex::read(&DataContainer::<B>::open(&store, obs_or_var)?)?;
         Ok((!index.is_empty()).then_some(index))
     }
 
@@ -522,7 +537,7 @@ impl<B: Backend> AxisArrays<B> {
         axis: Axis,
         dim1: Option<&Dim>,
         dim2: Option<&Dim>,
-        names: Option<&'static str>,
+        indexed_axis: Option<IndexedAxis>,
     ) -> Result<Self> {
         let data: HashMap<_, _> = iter_containers::<B>(&group)
             .map(|(k, v)| (k, ArrayElem::try_from(v).unwrap()))
@@ -567,7 +582,7 @@ impl<B: Backend> AxisArrays<B> {
             container: group,
             dim1: dim1.cloned(),
             dim2: dim2.cloned(),
-            names,
+            indexed_axis,
             axis,
             data,
         };
