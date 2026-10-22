@@ -424,7 +424,7 @@ impl VecVecIndex {
             })
             .unzip();
         let order: Vec<_> = orders.into_iter().flatten().collect();
-        if order.as_slice().windows(2).all(|w| w[1] - w[0] == 1) {
+        if order.as_slice().windows(2).all(|w| w[1] == w[0] + 1) {
             (new_indices, None)
         } else {
             (new_indices, Some(order))
