@@ -55,6 +55,9 @@ jobs:
     - *install-rust
     - *cache-rust
     - name: Build and test package
+      env:
+        # pip builds in release mode, which silently wraps integer overflows
+        CARGO_PROFILE_RELEASE_OVERFLOW_CHECKS: true
       run: |
         pip install --user --upgrade pip
         cd ${GITHUB_WORKSPACE}/python
