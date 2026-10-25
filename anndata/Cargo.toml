@@ -23,7 +23,7 @@ num = "0.4"
 # scalar dtypes listed below. Avoid Polars's defaults and `dtype-full`: those
 # also enable formatting, temporal/decimal/array types, and other code that the
 # core Rust API never constructs.
-polars = { version = "0.53", default-features = false, features = [
+polars = { version = "0.55.2", default-features = false, features = [
   "csv",
   "dtype-categorical",
   "dtype-i8",

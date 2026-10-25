@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - &checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         fetch-depth: 0
         persist-credentials: false
@@ -55,6 +55,9 @@ jobs:
     - *install-rust
     - *cache-rust
     - name: Build and test package
+      env:
+        # pip builds in release mode, which silently wraps integer overflows
+        CARGO_PROFILE_RELEASE_OVERFLOW_CHECKS: true
       run: |
         pip install --user --upgrade pip
         cd ${GITHUB_WORKSPACE}/python
