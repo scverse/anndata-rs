@@ -28,7 +28,7 @@ rayon = "1.11"
 
 [dependencies.pyo3]
 version = "0.29"
-features = ["multiple-pymethods", "anyhow"]
+features = ["multiple-pymethods", "anyhow", "experimental-inspect"]
 
 [features]
 extension-module = ["pyo3/extension-module"]

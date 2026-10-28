@@ -38,7 +38,7 @@ jobs:
         target: ${{ matrix.target }}
         manylinux: ${{ matrix.manylinux }}
         container: ${{ matrix.container }}
-        args: --release --out dist
+        args: --release --generate-stubs --out dist
     - name: Upload wheels
       uses: actions/upload-artifact@v7
       with:
