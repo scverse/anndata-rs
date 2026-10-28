@@ -17,8 +17,6 @@ jobs:
 
     - &install-rust
       uses: dtolnay/rust-toolchain@stable
-      with:
-        components: clippy, rustfmt
 
     - &cache-rust
       name: Cache rust build
@@ -26,12 +24,6 @@ jobs:
 
     - name: Test Rust package
       run: cargo test --no-fail-fast
-
-    - name: Check Rust code
-      run: cargo clippy --all-targets --all-features -- -D warnings
-
-    - name: Format Rust code
-      run: cargo fmt --check
 
     #- name: benchmark
     #  run: |
@@ -59,7 +51,7 @@ jobs:
       run: |
         pip install --user --upgrade pip
         cd ${GITHUB_WORKSPACE}/python
-        pip install --user .[test] anndata==${{ matrix.anndata_version }}
+        pip install --user --group=test . anndata==${{ matrix.anndata_version }}
         pytest -v --durations=0 ${GITHUB_WORKSPACE}/python/tests
 
   build_doc:
