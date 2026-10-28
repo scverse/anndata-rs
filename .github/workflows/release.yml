@@ -31,7 +31,7 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
     - name: Run release-plz
       id: release-plz
-      uses: release-plz/action@v0.5.142
+      uses: release-plz/action@v0.5.144
       with:
         command: release
       env:
@@ -78,7 +78,7 @@ jobs:
     - *checkout
     - *install-rust
     - name: Run release-plz
-      uses: release-plz/action@v0.5.142
+      uses: release-plz/action@v0.5.144
       with:
         command: release-pr
       env:
