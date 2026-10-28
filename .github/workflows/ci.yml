@@ -113,10 +113,16 @@ jobs:
         publish_branch: gh-pages
         force_orphan: true
 
+  build:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/build.yml
+
   check:
     if: always()
     needs:
     - test_rust_code
+    - build
     - upload_gh-page  # depends on the rest
     runs-on: ubuntu-latest
     steps:
