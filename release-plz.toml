@@ -4,6 +4,8 @@
 [[package]]
 name = "anndata_rs"
 publish = false
+# release the Python package when the crates it bundles change (bumps at most a patch version)
+changelog_include = ["pyanndata", "anndata", "anndata-hdf5"]
 
 [[package]]
 name = "pyanndata"

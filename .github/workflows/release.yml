@@ -17,6 +17,8 @@ jobs:
       contents: write  # delete the release PR branch
       pull-requests: write  # close the release PR
       id-token: write  # trusted publishing
+    outputs:
+      releases: ${{ steps.release-plz.outputs.releases }}
     steps:
     - &checkout
       name: Checkout repository
@@ -28,11 +30,85 @@ jobs:
       name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
     - name: Run release-plz
+      id: release-plz
       uses: release-plz/action@v0.5.142
       with:
         command: release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Build and publish the Python package if release-plz just released it.
+  # Lives in this workflow because tags pushed with GITHUB_TOKEN don’t trigger other workflows.
+  build-wheels:
+    needs: release-plz-release
+    if: &python-released contains(fromJSON(needs.release-plz-release.outputs.releases || '[]').*.package_name, 'anndata_rs')
+    name: Build wheels (${{ matrix.runner }}, ${{ matrix.manylinux || matrix.target }})
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        include:
+        # Linux builds run in manylinux/musllinux containers, so the runner image doesn’t affect compatibility.
+        - { runner: ubuntu-latest, target: x86_64, manylinux: auto }
+        - { runner: ubuntu-26.04-arm, target: aarch64, manylinux: auto }
+        - { runner: ubuntu-latest, target: x86_64, manylinux: musllinux_1_2 }
+        - { runner: ubuntu-26.04-arm, target: aarch64, manylinux: musllinux_1_2 }
+        - { runner: windows-latest, target: x64 }
+        - { runner: macos-15-intel, target: x86_64 }  # last Intel macOS image
+        - { runner: macos-latest, target: aarch64 }
+    steps:
+    - *checkout
+    - name: Build abi3 wheel
+      uses: PyO3/maturin-action@v1
+      with:
+        working-directory: python
+        target: ${{ matrix.target }}
+        manylinux: ${{ matrix.manylinux }}
+        args: --release --out dist
+    - name: Upload wheels
+      uses: actions/upload-artifact@v7
+      with:
+        name: dist-${{ matrix.runner }}-${{ matrix.target }}-${{ matrix.manylinux }}
+        path: python/dist
+
+  build-sdist:
+    needs: release-plz-release
+    if: *python-released
+    name: Build sdist
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - *checkout
+    - name: Build sdist
+      uses: PyO3/maturin-action@v1
+      with:
+        working-directory: python
+        command: sdist
+        args: --out dist
+    - name: Upload sdist
+      uses: actions/upload-artifact@v7
+      with:
+        name: dist-sdist
+        path: python/dist
+
+  publish-pypi:
+    needs: [build-wheels, build-sdist]
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    environment: pypi  # must match the trusted publisher on PyPI
+    permissions:
+      id-token: write  # trusted publishing + PEP 740 attestations
+    steps:
+    - name: Download distributions
+      uses: actions/download-artifact@v8
+      with:
+        pattern: dist-*
+        path: dist
+        merge-multiple: true
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
 
   # Create a PR with the new versions and changelog, preparing the next release.
   release-plz-pr:
