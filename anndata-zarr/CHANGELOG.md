@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2](https://github.com/scverse/anndata-rs/compare/anndata-zarr-v0.2.1...anndata-zarr-v0.2.2) - 2026-10-28
+
+### Other
+
+- updated the following local packages: anndata
+
 ## [0.2.1](https://github.com/scverse/anndata-rs/compare/anndata-zarr-v0.2.0...anndata-zarr-v0.2.1) - 2026-10-28
 
 ### Other
