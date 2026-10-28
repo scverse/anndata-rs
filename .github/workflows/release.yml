@@ -17,6 +17,8 @@ jobs:
       contents: write  # delete the release PR branch
       pull-requests: write  # close the release PR
       id-token: write  # trusted publishing
+    outputs:
+      releases: ${{ steps.release-plz.outputs.releases }}
     steps:
     - &checkout
       name: Checkout repository
@@ -28,11 +30,38 @@ jobs:
       name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
     - name: Run release-plz
-      uses: release-plz/action@v0.5.142
+      id: release-plz
+      uses: release-plz/action@v0.5.144
       with:
         command: release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Build and publish the Python package if release-plz just released it.
+  # Lives in this workflow because tags pushed with GITHUB_TOKEN don’t trigger other workflows.
+  build:
+    needs: release-plz-release
+    if: contains(fromJSON(needs.release-plz-release.outputs.releases || '[]').*.package_name, 'anndata_rs')
+    permissions:
+      contents: read
+    uses: ./.github/workflows/build.yml
+
+  publish-pypi:
+    needs: build
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    environment: pypi  # must match the trusted publisher on PyPI
+    permissions:
+      id-token: write  # trusted publishing + PEP 740 attestations
+    steps:
+    - name: Download distributions
+      uses: actions/download-artifact@v8
+      with:
+        pattern: dist-*
+        path: dist
+        merge-multiple: true
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
 
   # Create a PR with the new versions and changelog, preparing the next release.
   release-plz-pr:
@@ -49,7 +78,7 @@ jobs:
     - *checkout
     - *install-rust
     - name: Run release-plz
-      uses: release-plz/action@v0.5.142
+      uses: release-plz/action@v0.5.144
       with:
         command: release-pr
       env:

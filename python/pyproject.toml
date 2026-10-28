@@ -1,38 +1,39 @@
 [build-system]
-requires = ["maturin>=1.4,<2.0"]
 build-backend = "maturin"
-
-[tool.maturin]
-features = ["extension-module"]
-module-name = "anndata_rs"
+requires = [ "maturin>=1.15,<2" ]
 
 [project]
-name = "anndata_rs"
-authors = [
-    {name = "Kai Zhang", email = "zhangkai33@westlake.edu.cn"}
-]
-maintainers = [
-    {name = "Kai Zhang", email = "zhangkai33@westlake.edu.cn"}
-]
-license = {file = "LICENSE"}
+name = "anndata-rs"
+license = "MIT"
+maintainers = [ { name = "Kai Zhang", email = "zhangkai33@westlake.edu.cn" } ]
+authors = [ { name = "Kai Zhang", email = "zhangkai33@westlake.edu.cn" } ]
+requires-python = ">=3.10"
 classifiers = [
-    "Programming Language :: Rust",
-    "Programming Language :: Python :: Implementation :: CPython",
-    "Programming Language :: Python :: Implementation :: PyPy",
-    "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+  "Programming Language :: Rust",
 ]
-requires-python = ">=3.8, <3.14"
-dynamic = ["version"]
-
+dynamic = [ "version" ]
 dependencies = [
-    'anndata >= 0.8.0, < 0.13.0',
-    'hdf5plugin >= 5.0.0',
-    "numpy>=2, <3",
-    "pandas>=2.2, <3",
-    "pyarrow",
-    "scipy>=1.4",
-    "polars>=1.9, <1.32",
+  "anndata>=0.8,<0.13",
+  "hdf5plugin>=5",
+  "numpy>=2,<3",
+  "pandas>=2.2,<3",
+  "polars>=1.9,<1.32",
+  "pyarrow",
+  "scipy>=1.4",
 ]
 
-[project.optional-dependencies]
-test = ["pytest", "hypothesis==6.72.4"]
+[dependency-groups]
+test = [ "hypothesis==6.72.4", "pytest" ]
+
+[tool.maturin]
+module-name = "anndata_rs"
+features = [ "extension-module" ]

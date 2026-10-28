@@ -16,11 +16,7 @@ jobs:
         persist-credentials: false
 
     - &install-rust
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        override: true
+      uses: dtolnay/rust-toolchain@stable
 
     - &cache-rust
       name: Cache rust build
@@ -28,12 +24,6 @@ jobs:
 
     - name: Test Rust package
       run: cargo test --no-fail-fast
-
-    - name: Check Rust code
-      run: cargo clippy --all-targets --all-features -- -D warnings
-
-    - name: Format Rust code
-      run: cargo fmt --check
 
     #- name: benchmark
     #  run: |
@@ -61,7 +51,7 @@ jobs:
       run: |
         pip install --user --upgrade pip
         cd ${GITHUB_WORKSPACE}/python
-        pip install --user .[test] anndata==${{ matrix.anndata_version }}
+        pip install --user --group=test . anndata==${{ matrix.anndata_version }}
         pytest -v --durations=0 ${GITHUB_WORKSPACE}/python/tests
 
   build_doc:
@@ -113,10 +103,16 @@ jobs:
         publish_branch: gh-pages
         force_orphan: true
 
+  build:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/build.yml
+
   check:
     if: always()
     needs:
     - test_rust_code
+    - build
     - upload_gh-page  # depends on the rest
     runs-on: ubuntu-latest
     steps:

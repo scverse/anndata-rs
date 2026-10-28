@@ -1,6 +1,6 @@
 [package]
 name = "anndata_rs"
-version = "0.6.0"
+version = "0.6.1"
 edition = "2021"
 authors = ["Kai Zhang <kai@kzhang.org>"]
 description = "Rust APIs"
@@ -15,7 +15,7 @@ pyo3-log = "0.13.4"
 
 [dependencies.pyo3]
 version = "0.29"
-features = ["multiple-pymethods"]
+features = ["multiple-pymethods", "abi3-py310", "experimental-inspect"]
 
 [features]
 extension-module = ["pyo3/extension-module", "pyanndata/extension-module"]

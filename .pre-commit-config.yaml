@@ -1,0 +1,20 @@
+repos:
+- repo: https://github.com/tox-dev/pyproject-fmt
+  rev: v2.30.3
+  hooks:
+  - id: pyproject-fmt
+- repo: local
+  hooks:
+  - id: cargo-fmt
+    name: cargo fmt
+    entry: cargo fmt --all
+    language: system
+    types: [rust]
+    pass_filenames: false  # rustfmt on single files ignores the crate’s edition
+  - id: cargo-clippy
+    name: cargo clippy
+    # fix what can be fixed, then fail on remaining warnings
+    entry: bash -c 'cargo clippy --all-targets --all-features --fix --allow-dirty --allow-staged && cargo clippy --all-targets --all-features -- -D warnings'
+    language: system
+    types: [rust]
+    pass_filenames: false

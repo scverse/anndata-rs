@@ -3,7 +3,10 @@
 
 [[package]]
 name = "anndata_rs"
-publish = false
+# not on crates.io, so take the last released version from the git tags
+git_only = true
+# release the Python package when the crates it bundles change (bumps at most a patch version)
+changelog_include = ["pyanndata", "anndata", "anndata-hdf5"]
 
 [[package]]
 name = "pyanndata"
