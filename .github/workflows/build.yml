@@ -13,13 +13,15 @@ jobs:
     permissions:
       contents: read
     strategy:
+      fail-fast: false
       matrix:
         include:
         # Linux builds run in manylinux/musllinux containers, so the runner image doesn’t affect compatibility.
         - { runner: ubuntu-latest, target: x86_64, manylinux: auto }
         - { runner: ubuntu-26.04-arm, target: aarch64, manylinux: auto }
-        - { runner: ubuntu-latest, target: x86_64, manylinux: musllinux_1_2 }
-        - { runner: ubuntu-26.04-arm, target: aarch64, manylinux: musllinux_1_2 }
+        # maturin-action defaults to rust-musl-cross images for musllinux, whose CMake is too old for HDF5
+        - { runner: ubuntu-latest, target: x86_64, manylinux: musllinux_1_2, container: quay.io/pypa/musllinux_1_2_x86_64 }
+        - { runner: ubuntu-26.04-arm, target: aarch64, manylinux: musllinux_1_2, container: quay.io/pypa/musllinux_1_2_aarch64 }
         - { runner: windows-latest, target: x64 }
         - { runner: macos-15-intel, target: x86_64 }  # last Intel macOS image
         - { runner: macos-latest, target: aarch64 }
@@ -35,6 +37,7 @@ jobs:
         working-directory: python
         target: ${{ matrix.target }}
         manylinux: ${{ matrix.manylinux }}
+        container: ${{ matrix.container }}
         args: --release --out dist
     - name: Upload wheels
       uses: actions/upload-artifact@v7
