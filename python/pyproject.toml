@@ -7,7 +7,7 @@ features = ["extension-module"]
 module-name = "anndata_rs"
 
 [project]
-name = "anndata_rs"
+name = "anndata-rs"
 authors = [
     {name = "Kai Zhang", email = "zhangkai33@westlake.edu.cn"}
 ]
@@ -21,7 +21,7 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: PyPy",
     "License :: OSI Approved :: MIT License",
 ]
-requires-python = ">=3.8, <3.14"
+requires-python = ">=3.10"
 dynamic = ["version"]
 
 dependencies = [
