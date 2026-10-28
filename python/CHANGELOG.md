@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2](https://github.com/scverse/anndata-rs/compare/anndata_rs-v0.6.1...anndata_rs-v0.6.2) - 2026-10-28
+
+### Added
+
+- bump polars 0.53 -> 0.55.2 ([#41](https://github.com/scverse/anndata-rs/pull/41))
+
+### Fixed
+
+- `obsm` `data frame` have correct indices for python ([#44](https://github.com/scverse/anndata-rs/pull/44))
+
+### Other
+
+- add types to Python wheels ([#56](https://github.com/scverse/anndata-rs/pull/56))
+- release ([#53](https://github.com/scverse/anndata-rs/pull/53))
+- narrow core Polars feature set ([#43](https://github.com/scverse/anndata-rs/pull/43))
+
 ## [0.6.1](https://github.com/scverse/anndata-rs/compare/anndata_rs-v0.6.0...anndata_rs-v0.6.1) - 2026-10-28
 
 ### Added
