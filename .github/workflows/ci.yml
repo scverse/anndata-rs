@@ -55,50 +55,6 @@ jobs:
         pip install --user --group=test . anndata==${{ matrix.anndata_version }}
         pytest -v --durations=0 ${GITHUB_WORKSPACE}/python/tests
 
-  build_doc:
-    runs-on: ubuntu-latest
-    needs: [test_python_code]
-    steps:
-    - *checkout
-    - *install-rust
-    - *cache-rust
-
-    - name: Build package
-      run: |
-        pip install --user --upgrade pip
-        cd ${GITHUB_WORKSPACE}/python && pip install --user --group=docs .
-
-    - name: Build doc
-      run: |
-        cd ${GITHUB_WORKSPACE}
-        sphinx-build ${GITHUB_WORKSPACE}/python/docs _build/html
-
-    - name: Upload doc
-      uses: actions/upload-artifact@v7.0.2
-      with:
-        name: documentation
-        path: ./_build/html
-
-  upload_gh-page:
-    name: Publish
-    runs-on: ubuntu-latest
-    needs: [build_doc]
-    steps:
-    - name: Download
-      uses: actions/download-artifact@v8.0.2
-      with:
-        name: documentation
-        path: ./documentation
-
-    - name: Upload doc
-      uses: peaceiris/actions-gh-pages@v4.1.0
-      if: ${{ github.ref == 'refs/heads/main' }}
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./documentation
-        publish_branch: gh-pages
-        force_orphan: true
-
   build:
     permissions:
       contents: read
@@ -108,8 +64,8 @@ jobs:
     if: always()
     needs:
     - test_rust_code
+    - test_python_code
     - build
-    - upload_gh-page  # depends on the rest
     runs-on: ubuntu-latest
     steps:
     - name: Decide whether the needed jobs succeeded or failed
