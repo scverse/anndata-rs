@@ -13,5 +13,6 @@ build:
     build:
       html:
         - uv venv
-        - uv pip install ./python --group python/pyproject.toml:docs
+        # a release build exceeds RTD’s 15 min timeout, and autodoc only needs an importable module
+        - MATURIN_PEP517_ARGS="--profile dev" CARGO_PROFILE_DEV_DEBUG=0 uv pip install ./python --group python/pyproject.toml:docs
         - uv run sphinx-build -M html python/docs $READTHEDOCS_OUTPUT
