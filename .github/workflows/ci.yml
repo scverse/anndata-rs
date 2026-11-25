@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        anndata_version: ['0.9.*', '0.10.*', '0.11.*', '0.12.*']
+        anndata_version: ['0.9.*', '0.10.*', '0.11.*', '0.12.*', '0.13.*']
     steps:
     - *checkout
     - *install-rust
@@ -63,15 +63,10 @@ jobs:
     - *install-rust
     - *cache-rust
 
-    - name: Install dependency
+    - name: Build package
       run: |
         pip install --user --upgrade pip
-        pip install --user Pygments sphinx==8.* pandoc nbsphinx \
-          sphinx-autodoc-typehints sphinx_rtd_theme \
-          markupsafe
-
-    - name: Build package
-      run: cd ${GITHUB_WORKSPACE}/python && pip install --user .
+        cd ${GITHUB_WORKSPACE}/python && pip install --user --group=docs .
 
     - name: Build doc
       run: |

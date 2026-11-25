@@ -61,7 +61,6 @@ use super::get_backend;
     --------
     read
     read_mtx
-    read_csv
 */
 #[pyclass(from_py_object)]
 #[repr(transparent)]

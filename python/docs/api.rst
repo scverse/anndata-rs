@@ -25,3 +25,4 @@ IO
     read
     read_mtx
     read_dataset
+    concat
