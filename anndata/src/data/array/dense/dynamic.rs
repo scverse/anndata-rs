@@ -435,11 +435,16 @@ macro_rules! int_cast {
     (String, $data:expr) => {
         unreachable!()
     };
-    ($variant:ident, $data:expr) => {
-        Ok($data
-            .mapv(|x| x.try_into().unwrap())
-            .into_dimensionality()?)
-    };
+    ($variant:ident, $data:expr) => {{
+        let data = $data;
+        let shape = data.raw_dim();
+        // logical iteration order == standard layout, so `from_shape_vec` restores the array
+        let vec = data
+            .into_iter()
+            .map(|x| x.try_into())
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Array::from_shape_vec(shape, vec)?.into_dimensionality()?)
+    }};
 }
 
 macro_rules! impl_int_array_convert {
@@ -593,5 +598,34 @@ impl ArrayArithmetic for DynArray {
             DynArray::Bool(_) => panic!("Cannot compute max for Bool array"),
             DynArray::String(_) => panic!("Cannot compute max for String array"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ndarray::{Array1, Array2, array};
+
+    #[test]
+    fn int_convert_out_of_range_errors() {
+        let arr = DynArray::I64(array![[1i64, -1]].into_dyn());
+        let res: Result<Array2<u8>> = arr.try_convert();
+        let err = res.unwrap_err();
+        assert!(
+            err.downcast_ref::<std::num::TryFromIntError>().is_some(),
+            "expected out-of-range error, got: {err:?}"
+        );
+    }
+
+    #[test]
+    fn int_convert_keeps_values_and_shape() {
+        let src = array![[1i8, 2, 3], [4, 5, 6]];
+        // transposed: non-standard layout must still come out in logical order
+        let arr = DynArray::I8(src.t().to_owned().into_dyn());
+        let res: Array2<u64> = arr.try_convert().unwrap();
+        assert_eq!(res, src.t().mapv(|x| x as u64));
+        let arr = DynArray::Bool(array![true, false].into_dyn());
+        let res: Array1<usize> = arr.try_convert().unwrap();
+        assert_eq!(res, array![1, 0]);
     }
 }
