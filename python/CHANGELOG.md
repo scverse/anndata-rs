@@ -20,8 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Other
 
 - PyPI release ([#52](https://github.com/scverse/anndata-rs/pull/52))
-- release ([#31](https://github.com/scverse/anndata-rs/pull/31))
-- release ([#53](https://github.com/scverse/anndata-rs/pull/53))
 
 ## [0.6.0](https://github.com/scverse/anndata-rs/releases/tag/anndata_rs-v0.6.0) - 2026-06-22
 

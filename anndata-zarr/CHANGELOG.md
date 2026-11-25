@@ -11,4 +11,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Other
 
-- release ([#31](https://github.com/scverse/anndata-rs/pull/31))
+- updated the following local packages: anndata

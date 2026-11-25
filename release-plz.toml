@@ -1,5 +1,16 @@
 # https://release-plz.dev/docs/config
 
+[changelog]
+# release-plz’s default parsers, plus skipping its own release PRs
+commit_parsers = [
+  { message = "^chore: release", skip = true },
+  { message = "^feat", group = "added" },
+  { message = "^changed", group = "changed" },
+  { message = "^deprecated", group = "deprecated" },
+  { message = "^fix", group = "fixed" },
+  { message = "^security", group = "security" },
+  { message = "^.*", group = "other" },
+]
 
 [[package]]
 name = "anndata_rs"
@@ -10,8 +21,10 @@ changelog_include = ["pyanndata", "anndata", "anndata-hdf5"]
 
 [[package]]
 name = "pyanndata"
-publish = false
+# not on crates.io either.
+# Needs tags so old commits don’t end up in the anndata_rs changelog via `changelog_include`
+git_only = true
 
 [[package]]
 name = "anndata-test-utils"
-publish = false
+release = false
