@@ -13,10 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - bump polars 0.53 -> 0.55.2 ([#41](https://github.com/scverse/anndata-rs/pull/41))
 
-### Other
-
-- remove dependency on hdf5-sys ([#42](https://github.com/scverse/anndata-rs/pull/42))
-
 ## [0.5.3](https://github.com/scverse/anndata-rs/compare/anndata-hdf5-v0.5.2...anndata-hdf5-v0.5.3) - 2026-06-22
 
 ### Added
@@ -29,8 +25,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Other
 
-- fix deps for release
-- release-plz ([#26](https://github.com/scverse/anndata-rs/pull/26))
-- format and clippy ([#23](https://github.com/scverse/anndata-rs/pull/23))
-- Merge branch 'pyo3-0.27' into main
 - drop support for zarr backend

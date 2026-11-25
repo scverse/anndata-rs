@@ -1,9 +1,10 @@
 # https://release-plz.dev/docs/config
 
 [changelog]
-# release-plz’s default parsers, plus skipping its own release PRs
+# release-plz’s default parsers, plus skipping types without user-facing changes (incl. release PRs)
 commit_parsers = [
-  { message = "^chore: release", skip = true },
+  { message = "^(chore|ci|refactor|style|test)(\\(.*\\))?:", skip = true },
+  { message = "^Merge ", skip = true },
   { message = "^feat", group = "added" },
   { message = "^changed", group = "changed" },
   { message = "^deprecated", group = "deprecated" },
