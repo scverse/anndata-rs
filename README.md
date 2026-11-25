@@ -32,7 +32,8 @@ We do not provide installation instructions here.
 Right now this package is bundled with the [SnapATAC2](https://github.com/scverse/SnapATAC2) package.
 Please install [SnapATAC2](https://github.com/scverse/SnapATAC2) to get these features.
 
-Tutorials
----------
+Documentation
+-------------
 
+The Python API is documented at <https://anndata-rs.readthedocs.io/>.
 Click [here](https://kzhang.org/epigenomics-analysis/anndata.html) to read tutorials.

@@ -31,6 +31,8 @@ dependencies = [
   "pyarrow",
   "scipy>=1.4",
 ]
+urls.Documentation = "https://anndata-rs.readthedocs.io/"
+urls.Source = "https://github.com/scverse/anndata-rs"
 
 [dependency-groups]
 test = [ "hypothesis==6.72.4", "pytest" ]
