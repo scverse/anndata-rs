@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2](https://github.com/scverse/anndata-rs/compare/anndata_rs-v0.6.1...anndata_rs-v0.6.2) - 2026-11-25
+
+### Other
+
+- narrow core Polars feature set ([#43](https://github.com/scverse/anndata-rs/pull/43))
+
 ## [0.6.1](https://github.com/scverse/anndata-rs/compare/anndata_rs-v0.6.0...anndata_rs-v0.6.1) - 2026-10-28
 
 ### Added
