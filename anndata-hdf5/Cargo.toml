@@ -7,8 +7,7 @@ authors = ["Kai Zhang <kai@kzhang.org>"]
 description = "HDF5 backend for the anndata package"
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/kaizhang/anndata-rs"
-homepage = "https://github.com/kaizhang/anndata-rs"
+repository = "https://github.com/scverse/anndata-rs"
 
 [dependencies]
 anndata = { version = "0.8.1", path = "../anndata" }

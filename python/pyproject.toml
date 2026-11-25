@@ -4,6 +4,7 @@ requires = [ "maturin>=1.15,<2" ]
 
 [project]
 name = "anndata-rs"
+readme = "../README.md"
 license = "MIT"
 maintainers = [ { name = "Kai Zhang", email = "zhangkai33@westlake.edu.cn" } ]
 authors = [ { name = "Kai Zhang", email = "zhangkai33@westlake.edu.cn" } ]
@@ -22,7 +23,7 @@ classifiers = [
 ]
 dynamic = [ "version" ]
 dependencies = [
-  "anndata>=0.8,<0.13",
+  "anndata>=0.8,<0.14",
   "hdf5plugin>=5",
   "numpy>=2,<3",
   "pandas>=2.2,<3",
@@ -30,10 +31,16 @@ dependencies = [
   "pyarrow",
   "scipy>=1.4",
 ]
+urls.Documentation = "https://anndata-rs.readthedocs.io/"
+urls.Source = "https://github.com/scverse/anndata-rs"
 
 [dependency-groups]
 test = [ "hypothesis==6.72.4", "pytest" ]
+docs = [ "scverse-doc[full]>=0.6" ]
 
 [tool.maturin]
 module-name = "anndata_rs"
 features = [ "extension-module" ]
+
+[tool.ruff]
+extend-ignore = [ "C408" ]

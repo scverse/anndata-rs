@@ -14,6 +14,6 @@ use `pip install . --use-feature=in-tree-build` or
 
 ::
 
-    git clone https://github.com/kaizhang/anndata_rs.git
+    git clone https://github.com/scverse/anndata_rs.git
     cd python
     pip install . --use-feature=in-tree-build

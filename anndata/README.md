@@ -29,8 +29,8 @@ Installation
 ------------
 
 We do not provide installation instructions here.
-Right now this package is bundled with the [SnapATAC2](https://github.com/kaizhang/SnapATAC2) package.
-Please install [SnapATAC2](https://github.com/kaizhang/SnapATAC2) to get these features.
+Right now this package is bundled with the [SnapATAC2](https://github.com/scverse/SnapATAC2) package.
+Please install [SnapATAC2](https://github.com/scverse/SnapATAC2) to get these features.
 
 Tutorials
 ---------
