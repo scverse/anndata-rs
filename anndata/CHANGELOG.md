@@ -17,7 +17,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - prevent underflow in `split_indices` ([#50](https://github.com/scverse/anndata-rs/pull/50))
 - `obsm` `data frame` have correct indices for python ([#44](https://github.com/scverse/anndata-rs/pull/44))
-
-### Other
-
-- release ([#31](https://github.com/scverse/anndata-rs/pull/31))
