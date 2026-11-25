@@ -1,5 +1,5 @@
 use crate::backend::{AttributeOp, Backend, BackendData, DataContainer, GroupOp, ScalarType};
-use crate::data::{ArrayData, array::DynArray, array::utils::ExtendableDataset};
+use crate::data::{ArrayData, Element, array::DynArray, array::utils::ExtendableDataset};
 use crate::{ArrayElem, Selectable};
 
 use super::{CsrNonCanonical, DynCscMatrix, DynCsrMatrix, DynCsrNonCanonical};
@@ -103,21 +103,15 @@ impl<B: Backend> CsrMatrixBuilder<B> {
                 bail!("All matrices must have the same number of columns");
             }
         }
-        match csr {
-            ArrayData::CsrMatrix(DynCsrMatrix::U8(mat)) => helper(self, mat),
-            ArrayData::CsrMatrix(DynCsrMatrix::U16(mat)) => helper(self, mat),
-            ArrayData::CsrMatrix(DynCsrMatrix::U32(mat)) => helper(self, mat),
-            ArrayData::CsrMatrix(DynCsrMatrix::U64(mat)) => helper(self, mat),
-            ArrayData::CsrMatrix(DynCsrMatrix::I8(mat)) => helper(self, mat),
-            ArrayData::CsrMatrix(DynCsrMatrix::I16(mat)) => helper(self, mat),
-            ArrayData::CsrMatrix(DynCsrMatrix::I32(mat)) => helper(self, mat),
-            ArrayData::CsrMatrix(DynCsrMatrix::I64(mat)) => helper(self, mat),
-            ArrayData::CsrMatrix(DynCsrMatrix::F32(mat)) => helper(self, mat),
-            ArrayData::CsrMatrix(DynCsrMatrix::F64(mat)) => helper(self, mat),
-            ArrayData::CsrMatrix(DynCsrMatrix::Bool(mat)) => helper(self, mat),
-            ArrayData::CsrMatrix(DynCsrMatrix::String(mat)) => helper(self, mat),
-            _ => bail!("Expected CsrMatrix"),
-        }?;
+        let ArrayData::CsrMatrix(csr) = csr else {
+            bail!("Expected CsrMatrix");
+        };
+        macro_rules! fun {
+            ($variant:ident, $mat:expr) => {
+                helper(self, $mat)
+            };
+        }
+        crate::macros::dyn_map!(csr, DynCsrMatrix, fun)?;
         Ok(())
     }
 
@@ -198,20 +192,12 @@ impl<B: Backend> ArrayBuilder<B> {
     }
 
     fn add(&mut self, array: ArrayData) -> Result<()> {
-        match self {
-            Self::U8(data) => data.extend(0, ArrayD::<u8>::try_from(array)?.view()),
-            Self::U16(data) => data.extend(0, ArrayD::<u16>::try_from(array)?.view()),
-            Self::U32(data) => data.extend(0, ArrayD::<u32>::try_from(array)?.view()),
-            Self::U64(data) => data.extend(0, ArrayD::<u64>::try_from(array)?.view()),
-            Self::I8(data) => data.extend(0, ArrayD::<i8>::try_from(array)?.view()),
-            Self::I16(data) => data.extend(0, ArrayD::<i16>::try_from(array)?.view()),
-            Self::I32(data) => data.extend(0, ArrayD::<i32>::try_from(array)?.view()),
-            Self::I64(data) => data.extend(0, ArrayD::<i64>::try_from(array)?.view()),
-            Self::F32(data) => data.extend(0, ArrayD::<f32>::try_from(array)?.view()),
-            Self::F64(data) => data.extend(0, ArrayD::<f64>::try_from(array)?.view()),
-            Self::Bool(data) => data.extend(0, ArrayD::<bool>::try_from(array)?.view()),
-            Self::String(data) => data.extend(0, ArrayD::<String>::try_from(array)?.view()),
+        macro_rules! fun {
+            ($variant:ident, $data:expr) => {
+                $data.extend(0, ArrayD::try_from(array)?.view())
+            };
         }
+        crate::macros::dyn_map!(self, Self, fun)
     }
 
     fn finish(self) -> Result<DataContainer<B>> {
@@ -279,46 +265,18 @@ impl ArrayChunk for DynArray {
         G: GroupOp<B>,
     {
         let mut iter = iter.peekable();
-        match iter.peek().context("input iterator is empty")? {
-            DynArray::U8(_) => {
-                ArrayD::<u8>::write_by_chunk(iter.map(|x| x.try_into().unwrap()), location, name)
-            }
-            DynArray::U16(_) => {
-                ArrayD::<u16>::write_by_chunk(iter.map(|x| x.try_into().unwrap()), location, name)
-            }
-            DynArray::U32(_) => {
-                ArrayD::<u32>::write_by_chunk(iter.map(|x| x.try_into().unwrap()), location, name)
-            }
-            DynArray::U64(_) => {
-                ArrayD::<u64>::write_by_chunk(iter.map(|x| x.try_into().unwrap()), location, name)
-            }
-            DynArray::I8(_) => {
-                ArrayD::<i8>::write_by_chunk(iter.map(|x| x.try_into().unwrap()), location, name)
-            }
-            DynArray::I16(_) => {
-                ArrayD::<i16>::write_by_chunk(iter.map(|x| x.try_into().unwrap()), location, name)
-            }
-            DynArray::I32(_) => {
-                ArrayD::<i32>::write_by_chunk(iter.map(|x| x.try_into().unwrap()), location, name)
-            }
-            DynArray::I64(_) => {
-                ArrayD::<i64>::write_by_chunk(iter.map(|x| x.try_into().unwrap()), location, name)
-            }
-            DynArray::F32(_) => {
-                ArrayD::<f32>::write_by_chunk(iter.map(|x| x.try_into().unwrap()), location, name)
-            }
-            DynArray::F64(_) => {
-                ArrayD::<f64>::write_by_chunk(iter.map(|x| x.try_into().unwrap()), location, name)
-            }
-            DynArray::Bool(_) => {
-                ArrayD::<bool>::write_by_chunk(iter.map(|x| x.try_into().unwrap()), location, name)
-            }
-            DynArray::String(_) => ArrayD::<String>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
+        let dtype = iter
+            .peek()
+            .context("input iterator is empty")?
+            .data_type()
+            .scalar_type()
+            .expect("Dyn* types always have a scalar type");
+        macro_rules! fun {
+            ($ty:ty) => {
+                ArrayD::<$ty>::write_by_chunk(iter.map(|x| x.try_into().unwrap()), location, name)
+            };
         }
+        crate::macros::dyn_match!(dtype, ScalarType, fun)
     }
 }
 
@@ -362,64 +320,22 @@ impl ArrayChunk for DynCsrMatrix {
         G: GroupOp<B>,
     {
         let mut iter = iter.peekable();
-        match iter.peek().context("input iterator is empty")? {
-            DynCsrMatrix::U8(_) => {
-                CsrMatrix::<u8>::write_by_chunk(iter.map(|x| x.try_into().unwrap()), location, name)
-            }
-            DynCsrMatrix::U16(_) => CsrMatrix::<u16>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCsrMatrix::U32(_) => CsrMatrix::<u32>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCsrMatrix::U64(_) => CsrMatrix::<u64>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCsrMatrix::I8(_) => {
-                CsrMatrix::<i8>::write_by_chunk(iter.map(|x| x.try_into().unwrap()), location, name)
-            }
-            DynCsrMatrix::I16(_) => CsrMatrix::<i16>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCsrMatrix::I32(_) => CsrMatrix::<i32>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCsrMatrix::I64(_) => CsrMatrix::<i64>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCsrMatrix::F32(_) => CsrMatrix::<f32>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCsrMatrix::F64(_) => CsrMatrix::<f64>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCsrMatrix::Bool(_) => CsrMatrix::<bool>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCsrMatrix::String(_) => CsrMatrix::<String>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
+        let dtype = iter
+            .peek()
+            .context("input iterator is empty")?
+            .data_type()
+            .scalar_type()
+            .expect("Dyn* types always have a scalar type");
+        macro_rules! fun {
+            ($ty:ty) => {
+                CsrMatrix::<$ty>::write_by_chunk(
+                    iter.map(|x| x.try_into().unwrap()),
+                    location,
+                    name,
+                )
+            };
         }
+        crate::macros::dyn_match!(dtype, ScalarType, fun)
     }
 }
 
@@ -488,68 +404,22 @@ impl ArrayChunk for DynCsrNonCanonical {
         G: GroupOp<B>,
     {
         let mut iter = iter.peekable();
-        match iter.peek().context("input iterator is empty")? {
-            DynCsrNonCanonical::U8(_) => CsrNonCanonical::<u8>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCsrNonCanonical::U16(_) => CsrNonCanonical::<u16>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCsrNonCanonical::U32(_) => CsrNonCanonical::<u32>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCsrNonCanonical::U64(_) => CsrNonCanonical::<u64>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCsrNonCanonical::I8(_) => CsrNonCanonical::<i8>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCsrNonCanonical::I16(_) => CsrNonCanonical::<i16>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCsrNonCanonical::I32(_) => CsrNonCanonical::<i32>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCsrNonCanonical::I64(_) => CsrNonCanonical::<i64>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCsrNonCanonical::F32(_) => CsrNonCanonical::<f32>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCsrNonCanonical::F64(_) => CsrNonCanonical::<f64>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCsrNonCanonical::Bool(_) => CsrNonCanonical::<bool>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCsrNonCanonical::String(_) => CsrNonCanonical::<String>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
+        let dtype = iter
+            .peek()
+            .context("input iterator is empty")?
+            .data_type()
+            .scalar_type()
+            .expect("Dyn* types always have a scalar type");
+        macro_rules! fun {
+            ($ty:ty) => {
+                CsrNonCanonical::<$ty>::write_by_chunk(
+                    iter.map(|x| x.try_into().unwrap()),
+                    location,
+                    name,
+                )
+            };
         }
+        crate::macros::dyn_match!(dtype, ScalarType, fun)
     }
 }
 
@@ -618,64 +488,22 @@ impl ArrayChunk for DynCscMatrix {
         G: GroupOp<B>,
     {
         let mut iter = iter.peekable();
-        match iter.peek().context("input iterator is empty")? {
-            DynCscMatrix::U8(_) => {
-                CscMatrix::<u8>::write_by_chunk(iter.map(|x| x.try_into().unwrap()), location, name)
-            }
-            DynCscMatrix::U16(_) => CscMatrix::<u16>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCscMatrix::U32(_) => CscMatrix::<u32>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCscMatrix::U64(_) => CscMatrix::<u64>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCscMatrix::I8(_) => {
-                CscMatrix::<i8>::write_by_chunk(iter.map(|x| x.try_into().unwrap()), location, name)
-            }
-            DynCscMatrix::I16(_) => CscMatrix::<i16>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCscMatrix::I32(_) => CscMatrix::<i32>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCscMatrix::I64(_) => CscMatrix::<i64>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCscMatrix::F32(_) => CscMatrix::<f32>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCscMatrix::F64(_) => CscMatrix::<f64>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCscMatrix::Bool(_) => CscMatrix::<bool>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
-            DynCscMatrix::String(_) => CscMatrix::<String>::write_by_chunk(
-                iter.map(|x| x.try_into().unwrap()),
-                location,
-                name,
-            ),
+        let dtype = iter
+            .peek()
+            .context("input iterator is empty")?
+            .data_type()
+            .scalar_type()
+            .expect("Dyn* types always have a scalar type");
+        macro_rules! fun {
+            ($ty:ty) => {
+                CscMatrix::<$ty>::write_by_chunk(
+                    iter.map(|x| x.try_into().unwrap()),
+                    location,
+                    name,
+                )
+            };
         }
+        crate::macros::dyn_match!(dtype, ScalarType, fun)
     }
 }
 

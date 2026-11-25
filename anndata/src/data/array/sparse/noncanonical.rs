@@ -35,56 +35,15 @@ pub enum DynCsrNonCanonical {
 
 impl DynCsrNonCanonical {
     pub fn canonicalize(self) -> Result<DynCsrMatrix, Self> {
-        match self {
-            DynCsrNonCanonical::I8(data) => data
-                .canonicalize()
-                .map(DynCsrMatrix::I8)
-                .map_err(Into::into),
-            DynCsrNonCanonical::I16(data) => data
-                .canonicalize()
-                .map(DynCsrMatrix::I16)
-                .map_err(Into::into),
-            DynCsrNonCanonical::I32(data) => data
-                .canonicalize()
-                .map(DynCsrMatrix::I32)
-                .map_err(Into::into),
-            DynCsrNonCanonical::I64(data) => data
-                .canonicalize()
-                .map(DynCsrMatrix::I64)
-                .map_err(Into::into),
-            DynCsrNonCanonical::U8(data) => data
-                .canonicalize()
-                .map(DynCsrMatrix::U8)
-                .map_err(Into::into),
-            DynCsrNonCanonical::U16(data) => data
-                .canonicalize()
-                .map(DynCsrMatrix::U16)
-                .map_err(Into::into),
-            DynCsrNonCanonical::U32(data) => data
-                .canonicalize()
-                .map(DynCsrMatrix::U32)
-                .map_err(Into::into),
-            DynCsrNonCanonical::U64(data) => data
-                .canonicalize()
-                .map(DynCsrMatrix::U64)
-                .map_err(Into::into),
-            DynCsrNonCanonical::F32(data) => data
-                .canonicalize()
-                .map(DynCsrMatrix::F32)
-                .map_err(Into::into),
-            DynCsrNonCanonical::F64(data) => data
-                .canonicalize()
-                .map(DynCsrMatrix::F64)
-                .map_err(Into::into),
-            DynCsrNonCanonical::Bool(data) => data
-                .canonicalize()
-                .map(DynCsrMatrix::Bool)
-                .map_err(Into::into),
-            DynCsrNonCanonical::String(data) => data
-                .canonicalize()
-                .map(DynCsrMatrix::String)
-                .map_err(Into::into),
+        macro_rules! fun {
+            ($variant:ident, $data:expr) => {
+                $data
+                    .canonicalize()
+                    .map(DynCsrMatrix::$variant)
+                    .map_err(Into::into)
+            };
         }
+        crate::macros::dyn_map!(self, DynCsrNonCanonical, fun)
     }
 }
 
@@ -191,46 +150,18 @@ impl Selectable for DynCsrNonCanonical {
 impl Stackable for DynCsrNonCanonical {
     fn vstack<I: Iterator<Item = Self>>(iter: I) -> Result<Self> {
         let mut iter = iter.peekable();
-        match iter.peek().unwrap() {
-            DynCsrNonCanonical::U8(_) => Ok(DynCsrNonCanonical::U8(CsrNonCanonical::<u8>::vstack(
-                iter.map(|x| x.try_into().unwrap()),
-            )?)),
-            DynCsrNonCanonical::U16(_) => Ok(DynCsrNonCanonical::U16(
-                CsrNonCanonical::<u16>::vstack(iter.map(|x| x.try_into().unwrap()))?,
-            )),
-            DynCsrNonCanonical::U32(_) => Ok(DynCsrNonCanonical::U32(
-                CsrNonCanonical::<u32>::vstack(iter.map(|x| x.try_into().unwrap()))?,
-            )),
-            DynCsrNonCanonical::U64(_) => Ok(DynCsrNonCanonical::U64(
-                CsrNonCanonical::<u64>::vstack(iter.map(|x| x.try_into().unwrap()))?,
-            )),
-            DynCsrNonCanonical::I8(_) => Ok(DynCsrNonCanonical::I8(CsrNonCanonical::<i8>::vstack(
-                iter.map(|x| x.try_into().unwrap()),
-            )?)),
-            DynCsrNonCanonical::I16(_) => Ok(DynCsrNonCanonical::I16(
-                CsrNonCanonical::<i16>::vstack(iter.map(|x| x.try_into().unwrap()))?,
-            )),
-            DynCsrNonCanonical::I32(_) => Ok(DynCsrNonCanonical::I32(
-                CsrNonCanonical::<i32>::vstack(iter.map(|x| x.try_into().unwrap()))?,
-            )),
-            DynCsrNonCanonical::I64(_) => Ok(DynCsrNonCanonical::I64(
-                CsrNonCanonical::<i64>::vstack(iter.map(|x| x.try_into().unwrap()))?,
-            )),
-            DynCsrNonCanonical::F32(_) => Ok(DynCsrNonCanonical::F32(
-                CsrNonCanonical::<f32>::vstack(iter.map(|x| x.try_into().unwrap()))?,
-            )),
-            DynCsrNonCanonical::F64(_) => Ok(DynCsrNonCanonical::F64(
-                CsrNonCanonical::<f64>::vstack(iter.map(|x| x.try_into().unwrap()))?,
-            )),
-            DynCsrNonCanonical::Bool(_) => Ok(DynCsrNonCanonical::Bool(
-                CsrNonCanonical::<bool>::vstack(iter.map(|x| x.try_into().unwrap()))?,
-            )),
-            DynCsrNonCanonical::String(_) => {
-                Ok(DynCsrNonCanonical::String(
-                    CsrNonCanonical::<String>::vstack(iter.map(|x| x.try_into().unwrap()))?,
-                ))
-            }
+        let dtype = iter
+            .peek()
+            .unwrap()
+            .data_type()
+            .scalar_type()
+            .expect("Dyn* types always have a scalar type");
+        macro_rules! fun {
+            ($ty:ty) => {
+                CsrNonCanonical::<$ty>::vstack(iter.map(|x| x.try_into().unwrap())).map(Into::into)
+            };
         }
+        crate::macros::dyn_match!(dtype, ScalarType, fun)
     }
 }
 

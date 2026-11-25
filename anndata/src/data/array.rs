@@ -423,20 +423,14 @@ fn read_csr<B: Backend>(container: &DataContainer<B>) -> Result<ArrayData> {
     }
 
     match container {
-        DataContainer::Group(group) => match group.open_dataset("data")?.dtype()? {
-            ScalarType::I8 => _read_csr::<B, i8>(container),
-            ScalarType::I16 => _read_csr::<B, i16>(container),
-            ScalarType::I32 => _read_csr::<B, i32>(container),
-            ScalarType::I64 => _read_csr::<B, i64>(container),
-            ScalarType::U8 => _read_csr::<B, u8>(container),
-            ScalarType::U16 => _read_csr::<B, u16>(container),
-            ScalarType::U32 => _read_csr::<B, u32>(container),
-            ScalarType::U64 => _read_csr::<B, u64>(container),
-            ScalarType::F32 => _read_csr::<B, f32>(container),
-            ScalarType::F64 => _read_csr::<B, f64>(container),
-            ScalarType::Bool => _read_csr::<B, bool>(container),
-            ScalarType::String => _read_csr::<B, String>(container),
-        },
+        DataContainer::Group(group) => {
+            macro_rules! fun {
+                ($ty:ty) => {
+                    _read_csr::<B, $ty>(container)
+                };
+            }
+            crate::macros::dyn_match!(group.open_dataset("data")?.dtype()?, ScalarType, fun)
+        }
         _ => bail!("cannot read csr matrix from non-group container"),
     }
 }
@@ -497,20 +491,14 @@ where
     }
 
     match container {
-        DataContainer::Group(group) => match group.open_dataset("data")?.dtype()? {
-            ScalarType::I8 => _read_csr::<B, i8, _>(container, info),
-            ScalarType::I16 => _read_csr::<B, i16, _>(container, info),
-            ScalarType::I32 => _read_csr::<B, i32, _>(container, info),
-            ScalarType::I64 => _read_csr::<B, i64, _>(container, info),
-            ScalarType::U8 => _read_csr::<B, u8, _>(container, info),
-            ScalarType::U16 => _read_csr::<B, u16, _>(container, info),
-            ScalarType::U32 => _read_csr::<B, u32, _>(container, info),
-            ScalarType::U64 => _read_csr::<B, u64, _>(container, info),
-            ScalarType::F32 => _read_csr::<B, f32, _>(container, info),
-            ScalarType::F64 => _read_csr::<B, f64, _>(container, info),
-            ScalarType::Bool => _read_csr::<B, bool, _>(container, info),
-            ScalarType::String => _read_csr::<B, String, _>(container, info),
-        },
+        DataContainer::Group(group) => {
+            macro_rules! fun {
+                ($ty:ty) => {
+                    _read_csr::<B, $ty, _>(container, info)
+                };
+            }
+            crate::macros::dyn_match!(group.open_dataset("data")?.dtype()?, ScalarType, fun)
+        }
         _ => bail!("cannot read csr matrix from non-group container"),
     }
 }
