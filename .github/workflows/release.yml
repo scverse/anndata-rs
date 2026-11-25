@@ -28,7 +28,7 @@ jobs:
         persist-credentials: false
     - &install-rust
       name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@stable
+      run: rustup toolchain install stable --profile minimal
     - name: Run release-plz
       id: release-plz
       uses: release-plz/action@v0.5.148
@@ -61,7 +61,7 @@ jobs:
         path: dist
         merge-multiple: true
     - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
+      uses: pypa/gh-action-pypi-publish@v1.14.3
 
   # Create a PR with the new versions and changelog, preparing the next release.
   release-plz-pr:

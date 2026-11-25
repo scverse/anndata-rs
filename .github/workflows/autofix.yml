@@ -16,9 +16,7 @@ jobs:
       with:
         persist-credentials: false
 
-    - uses: dtolnay/rust-toolchain@stable
-      with:
-        components: clippy, rustfmt
+    - run: rustup toolchain install stable --profile minimal --component clippy,rustfmt
 
     - uses: Swatinem/rust-cache@v2.9.3
 

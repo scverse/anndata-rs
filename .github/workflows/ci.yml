@@ -16,7 +16,8 @@ jobs:
         persist-credentials: false
 
     - &install-rust
-      uses: dtolnay/rust-toolchain@stable
+      name: Install Rust toolchain
+      run: rustup toolchain install stable --profile minimal
 
     - &cache-rust
       name: Cache rust build
@@ -117,6 +118,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Decide whether the needed jobs succeeded or failed
-      uses: re-actors/alls-green@release/v1
+      uses: re-actors/alls-green@v1.3.0
       with:
         jobs: ${{ toJSON(needs) }}
