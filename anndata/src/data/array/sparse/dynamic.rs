@@ -121,44 +121,18 @@ impl Selectable for DynCsrMatrix {
 impl Stackable for DynCsrMatrix {
     fn vstack<I: Iterator<Item = Self>>(iter: I) -> Result<Self> {
         let mut iter = iter.peekable();
-        match iter.peek().unwrap() {
-            DynCsrMatrix::U8(_) => Ok(DynCsrMatrix::U8(CsrMatrix::<u8>::vstack(
-                iter.map(|x| x.try_into().unwrap()),
-            )?)),
-            DynCsrMatrix::U16(_) => Ok(DynCsrMatrix::U16(CsrMatrix::<u16>::vstack(
-                iter.map(|x| x.try_into().unwrap()),
-            )?)),
-            DynCsrMatrix::U32(_) => Ok(DynCsrMatrix::U32(CsrMatrix::<u32>::vstack(
-                iter.map(|x| x.try_into().unwrap()),
-            )?)),
-            DynCsrMatrix::U64(_) => Ok(DynCsrMatrix::U64(CsrMatrix::<u64>::vstack(
-                iter.map(|x| x.try_into().unwrap()),
-            )?)),
-            DynCsrMatrix::I8(_) => Ok(DynCsrMatrix::I8(CsrMatrix::<i8>::vstack(
-                iter.map(|x| x.try_into().unwrap()),
-            )?)),
-            DynCsrMatrix::I16(_) => Ok(DynCsrMatrix::I16(CsrMatrix::<i16>::vstack(
-                iter.map(|x| x.try_into().unwrap()),
-            )?)),
-            DynCsrMatrix::I32(_) => Ok(DynCsrMatrix::I32(CsrMatrix::<i32>::vstack(
-                iter.map(|x| x.try_into().unwrap()),
-            )?)),
-            DynCsrMatrix::I64(_) => Ok(DynCsrMatrix::I64(CsrMatrix::<i64>::vstack(
-                iter.map(|x| x.try_into().unwrap()),
-            )?)),
-            DynCsrMatrix::F32(_) => Ok(DynCsrMatrix::F32(CsrMatrix::<f32>::vstack(
-                iter.map(|x| x.try_into().unwrap()),
-            )?)),
-            DynCsrMatrix::F64(_) => Ok(DynCsrMatrix::F64(CsrMatrix::<f64>::vstack(
-                iter.map(|x| x.try_into().unwrap()),
-            )?)),
-            DynCsrMatrix::Bool(_) => Ok(DynCsrMatrix::Bool(CsrMatrix::<bool>::vstack(
-                iter.map(|x| x.try_into().unwrap()),
-            )?)),
-            DynCsrMatrix::String(_) => Ok(DynCsrMatrix::String(CsrMatrix::<String>::vstack(
-                iter.map(|x| x.try_into().unwrap()),
-            )?)),
+        let dtype = iter
+            .peek()
+            .unwrap()
+            .data_type()
+            .scalar_type()
+            .expect("Dyn* types always have a scalar type");
+        macro_rules! fun {
+            ($ty:ty) => {
+                CsrMatrix::<$ty>::vstack(iter.map(|x| x.try_into().unwrap())).map(Into::into)
+            };
         }
+        crate::macros::dyn_match!(dtype, ScalarType, fun)
     }
 }
 

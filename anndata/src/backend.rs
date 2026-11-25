@@ -187,21 +187,12 @@ pub trait DatasetOp<B: Backend + ?Sized> {
     where
         S: AsRef<SelectInfoElem>,
     {
-        let arr = match self.dtype()? {
-            ScalarType::I8 => self.read_array_slice::<i8, _, IxDyn>(selection)?.into(),
-            ScalarType::I16 => self.read_array_slice::<i16, _, IxDyn>(selection)?.into(),
-            ScalarType::I32 => self.read_array_slice::<i32, _, IxDyn>(selection)?.into(),
-            ScalarType::I64 => self.read_array_slice::<i64, _, IxDyn>(selection)?.into(),
-            ScalarType::U8 => self.read_array_slice::<u8, _, IxDyn>(selection)?.into(),
-            ScalarType::U16 => self.read_array_slice::<u16, _, IxDyn>(selection)?.into(),
-            ScalarType::U32 => self.read_array_slice::<u32, _, IxDyn>(selection)?.into(),
-            ScalarType::U64 => self.read_array_slice::<u64, _, IxDyn>(selection)?.into(),
-            ScalarType::F32 => self.read_array_slice::<f32, _, IxDyn>(selection)?.into(),
-            ScalarType::F64 => self.read_array_slice::<f64, _, IxDyn>(selection)?.into(),
-            ScalarType::Bool => self.read_array_slice::<bool, _, IxDyn>(selection)?.into(),
-            ScalarType::String => self.read_array_slice::<String, _, IxDyn>(selection)?.into(),
-        };
-        Ok(arr)
+        macro_rules! fun {
+            ($ty:ty) => {
+                self.read_array_slice::<$ty, _, IxDyn>(selection)?.into()
+            };
+        }
+        Ok(crate::macros::dyn_match!(self.dtype()?, ScalarType, fun))
     }
 
     fn read_array_slice_cast<T, D, S>(&self, selection: &[S]) -> Result<Array<T, D>>
