@@ -150,45 +150,14 @@ impl<B: Backend> ArrayBuilder<B> {
         G: GroupOp<B>,
     {
         let chunk_size = vec![1000; ndim].into();
-        let data = match dtype {
-            ScalarType::U8 => Self::U8(ExtendableDataset::with_capacity(
-                location, name, chunk_size,
-            )?),
-            ScalarType::U16 => Self::U16(ExtendableDataset::with_capacity(
-                location, name, chunk_size,
-            )?),
-            ScalarType::U32 => Self::U32(ExtendableDataset::with_capacity(
-                location, name, chunk_size,
-            )?),
-            ScalarType::U64 => Self::U64(ExtendableDataset::with_capacity(
-                location, name, chunk_size,
-            )?),
-            ScalarType::I8 => Self::I8(ExtendableDataset::with_capacity(
-                location, name, chunk_size,
-            )?),
-            ScalarType::I16 => Self::I16(ExtendableDataset::with_capacity(
-                location, name, chunk_size,
-            )?),
-            ScalarType::I32 => Self::I32(ExtendableDataset::with_capacity(
-                location, name, chunk_size,
-            )?),
-            ScalarType::I64 => Self::I64(ExtendableDataset::with_capacity(
-                location, name, chunk_size,
-            )?),
-            ScalarType::F32 => Self::F32(ExtendableDataset::with_capacity(
-                location, name, chunk_size,
-            )?),
-            ScalarType::F64 => Self::F64(ExtendableDataset::with_capacity(
-                location, name, chunk_size,
-            )?),
-            ScalarType::Bool => Self::Bool(ExtendableDataset::with_capacity(
-                location, name, chunk_size,
-            )?),
-            ScalarType::String => Self::String(ExtendableDataset::with_capacity(
-                location, name, chunk_size,
-            )?),
-        };
-        Ok(data)
+        macro_rules! fun {
+            ($ty:ident) => {
+                paste::paste! {
+                    Self::[<$ty:camel>](ExtendableDataset::with_capacity(location, name, chunk_size)?)
+                }
+            };
+        }
+        Ok(crate::macros::dyn_match!(dtype, ScalarType, fun))
     }
 
     fn add(&mut self, array: ArrayData) -> Result<()> {
@@ -201,20 +170,15 @@ impl<B: Backend> ArrayBuilder<B> {
     }
 
     fn finish(self) -> Result<DataContainer<B>> {
-        let (dataset, encoding_type) = match self {
-            Self::U8(data) => (data.finish()?, "array"),
-            Self::U16(data) => (data.finish()?, "array"),
-            Self::U32(data) => (data.finish()?, "array"),
-            Self::U64(data) => (data.finish()?, "array"),
-            Self::I8(data) => (data.finish()?, "array"),
-            Self::I16(data) => (data.finish()?, "array"),
-            Self::I32(data) => (data.finish()?, "array"),
-            Self::I64(data) => (data.finish()?, "array"),
-            Self::F32(data) => (data.finish()?, "array"),
-            Self::F64(data) => (data.finish()?, "array"),
-            Self::Bool(data) => (data.finish()?, "array"),
-            Self::String(data) => (data.finish()?, "string-array"),
-        };
+        macro_rules! fun {
+            (String, $data:expr) => {
+                ($data.finish()?, "string-array")
+            };
+            ($variant:ident, $data:expr) => {
+                ($data.finish()?, "array")
+            };
+        }
+        let (dataset, encoding_type) = crate::macros::dyn_map!(self, Self, fun);
         let mut container = DataContainer::<B>::Dataset(dataset);
         container.new_attr("encoding-type", encoding_type)?;
         container.new_attr("encoding-version", "0.2.0")?;
