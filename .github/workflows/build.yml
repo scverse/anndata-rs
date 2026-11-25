@@ -28,11 +28,11 @@ jobs:
     steps:
     - &checkout
       name: Checkout repository
-      uses: actions/checkout@v7
+      uses: actions/checkout@v7.0.1
       with:
         persist-credentials: false
     - name: Build abi3 wheel
-      uses: PyO3/maturin-action@v1
+      uses: PyO3/maturin-action@v1.51.0
       with:
         working-directory: python
         target: ${{ matrix.target }}
@@ -40,7 +40,7 @@ jobs:
         container: ${{ matrix.container }}
         args: --release --generate-stubs --out dist
     - name: Upload wheels
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@v7.0.2
       with:
         name: dist-${{ matrix.runner }}-${{ matrix.target }}-${{ matrix.manylinux }}
         path: python/dist
@@ -53,13 +53,13 @@ jobs:
     steps:
     - *checkout
     - name: Build sdist
-      uses: PyO3/maturin-action@v1
+      uses: PyO3/maturin-action@v1.51.0
       with:
         working-directory: python
         command: sdist
         args: --out dist
     - name: Upload sdist
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@v7.0.2
       with:
         name: dist-sdist
         path: python/dist

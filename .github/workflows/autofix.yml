@@ -12,17 +12,15 @@ jobs:
   autofix:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v7
+    - uses: actions/checkout@v7.0.1
       with:
         persist-credentials: false
 
-    - uses: dtolnay/rust-toolchain@stable
-      with:
-        components: clippy, rustfmt
+    - run: rustup toolchain install stable --profile minimal --component clippy,rustfmt
 
-    - uses: Swatinem/rust-cache@v2
+    - uses: Swatinem/rust-cache@v2.9.3
 
-    - uses: j178/prek-action@7b101f8338a08d2bd6fdb3625e4e7692428763a3  # v3.1.1
+    - uses: j178/prek-action@v3.1.1
 
     - if: always()
-      uses: autofix-ci/action@c5b2d67aa2274e7b5a18224e8171550871fc7e4a  # v1.3.4
+      uses: autofix-ci/action@v1.3.4
