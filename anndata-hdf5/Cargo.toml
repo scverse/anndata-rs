@@ -1,6 +1,6 @@
 [package]
 name = "anndata-hdf5"
-version = "0.5.5"
+version = "0.5.6"
 edition = "2021"
 rust-version = "1.65"
 authors = ["Kai Zhang <kai@kzhang.org>"]
@@ -10,7 +10,7 @@ readme = "README.md"
 repository = "https://github.com/scverse/anndata-rs"
 
 [dependencies]
-anndata = { version = "0.8.1", path = "../anndata" }
+anndata = { version = "0.8.2", path = "../anndata" }
 anyhow = "1.0"
 itertools = "0.14"
 hdf5 = { package = "hdf5-metno", version = "0.15.3", features = ["blosc", "blosc-zstd", "static", "zlib"] }

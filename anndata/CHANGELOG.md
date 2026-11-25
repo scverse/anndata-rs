@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.2](https://github.com/scverse/anndata-rs/compare/anndata-v0.8.1...anndata-v0.8.2) - 2026-11-25
+
+### Added
+
+- anndata 0.13 compat ([#69](https://github.com/scverse/anndata-rs/pull/69))
+
+### Fixed
+
+- don’t panic when trying to convert out-of-range integers ([#65](https://github.com/scverse/anndata-rs/pull/65))
+
 ## [0.8.1](https://github.com/scverse/anndata-rs/compare/anndata-v0.8.0...anndata-v0.8.1) - 2026-11-25
 
 ### Other

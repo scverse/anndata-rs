@@ -1,6 +1,6 @@
 [package]
 name = "anndata_rs"
-version = "0.6.2"
+version = "0.6.3"
 edition = "2021"
 authors = ["Kai Zhang <kai@kzhang.org>"]
 description = "Rust APIs"
@@ -9,7 +9,7 @@ repository = "https://github.com/scverse/anndata-rs"
 keywords = ["data"]
 
 [dependencies]
-pyanndata = { version = "0.7.2", path = "../pyanndata" }
+pyanndata = { version = "0.7.3", path = "../pyanndata" }
 pyo3-log = "0.13.4"
 
 [dependencies.pyo3]

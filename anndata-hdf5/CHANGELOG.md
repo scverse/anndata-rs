@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.6](https://github.com/scverse/anndata-rs/compare/anndata-hdf5-v0.5.5...anndata-hdf5-v0.5.6) - 2026-11-25
+
+### Added
+
+- anndata 0.13 compat ([#69](https://github.com/scverse/anndata-rs/pull/69))
+
 ## [0.5.4](https://github.com/scverse/anndata-rs/compare/anndata-hdf5-v0.5.3...anndata-hdf5-v0.5.4) - 2026-10-28
 
 ### Added

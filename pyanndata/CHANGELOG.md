@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.3](https://github.com/scverse/anndata-rs/compare/pyanndata-v0.7.2...pyanndata-v0.7.3) - 2026-11-25
+
+### Added
+
+- anndata 0.13 compat ([#69](https://github.com/scverse/anndata-rs/pull/69))
+
 ## [0.7.2](https://github.com/scverse/anndata-rs/compare/pyanndata-v0.7.1...pyanndata-v0.7.2) - 2026-11-25
 
 ### Added
