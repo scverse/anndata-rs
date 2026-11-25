@@ -4,11 +4,11 @@ use crate::{
         data_traits::*,
         slice::{SelectInfoElem, Shape},
     },
+    macros::arith,
 };
 
 use anyhow::{Result, bail, ensure};
 use ndarray::{Array, ArrayD, ArrayView, CowArray, Dimension, IxDyn, arr0};
-use num::NumCast;
 use paste::paste;
 use polars::series::Series;
 
@@ -210,20 +210,15 @@ impl_dynarray_traits!(
 
 impl From<DynArray> for Series {
     fn from(val: DynArray) -> Self {
-        match val {
-            DynArray::I8(x) => x.iter().collect(),
-            DynArray::I16(x) => x.iter().collect(),
-            DynArray::I32(x) => x.iter().collect(),
-            DynArray::I64(x) => x.iter().collect(),
-            DynArray::U8(x) => x.iter().collect(),
-            DynArray::U16(x) => x.iter().collect(),
-            DynArray::U32(x) => x.iter().collect(),
-            DynArray::U64(x) => x.iter().collect(),
-            DynArray::F32(x) => x.iter().collect(),
-            DynArray::F64(x) => x.iter().collect(),
-            DynArray::Bool(x) => x.iter().collect(),
-            DynArray::String(x) => x.iter().map(|x| x.as_str()).collect(),
+        macro_rules! fun {
+            (String, $x:expr) => {
+                $x.iter().map(|x| x.as_str()).collect()
+            };
+            ($variant:ident, $x:expr) => {
+                $x.iter().collect()
+            };
         }
+        crate::macros::dyn_map!(val, DynArray, fun)
     }
 }
 
@@ -485,24 +480,25 @@ impl<D: Dimension> ArrayConvert<Array<f32, D>> for DynArray {
 
 impl<D: Dimension> ArrayConvert<Array<f64, D>> for DynArray {
     fn try_convert(self) -> Result<Array<f64, D>> {
-        match self {
-            DynArray::F64(data) => Ok(data.into_dimensionality()?),
-            DynArray::I8(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
-            DynArray::I16(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
-            DynArray::I32(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
-            DynArray::I64(data) => Ok(data
-                .mapv(|x| NumCast::from(x).unwrap())
-                .into_dimensionality()?),
-            DynArray::U8(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
-            DynArray::U16(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
-            DynArray::U32(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
-            DynArray::U64(data) => Ok(data
-                .mapv(|x| NumCast::from(x).unwrap())
-                .into_dimensionality()?),
-            DynArray::F32(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
-            DynArray::Bool(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
-            _ => bail!("Cannot convert {self:?} to f64 Array"),
+        macro_rules! fun {
+            (F64, $data:expr) => {
+                Ok($data.into_dimensionality()?)
+            };
+            (String, $data:expr) => {
+                bail!("Cannot convert {} to f64 Array", $data.data_type())
+            };
+            // i64 and u64 have no lossless conversion to f64
+            (I64, $data:expr) => {
+                Ok($data.mapv(|x| x as f64).into_dimensionality()?)
+            };
+            (U64, $data:expr) => {
+                Ok($data.mapv(|x| x as f64).into_dimensionality()?)
+            };
+            ($variant:ident, $data:expr) => {
+                Ok($data.mapv(|x| x.into()).into_dimensionality()?)
+            };
         }
+        crate::macros::dyn_map!(self, DynArray, fun)
     }
 }
 
@@ -533,71 +529,19 @@ impl<D: Dimension> ArrayConvert<Array<String, D>> for DynArray {
 
 impl ArrayArithmetic for DynArray {
     fn sum(&self) -> f64 {
-        match self {
-            DynArray::I8(arr) => ArrayArithmetic::sum(arr),
-            DynArray::I16(arr) => ArrayArithmetic::sum(arr),
-            DynArray::I32(arr) => ArrayArithmetic::sum(arr),
-            DynArray::I64(arr) => ArrayArithmetic::sum(arr),
-            DynArray::U8(arr) => ArrayArithmetic::sum(arr),
-            DynArray::U16(arr) => ArrayArithmetic::sum(arr),
-            DynArray::U32(arr) => ArrayArithmetic::sum(arr),
-            DynArray::U64(arr) => ArrayArithmetic::sum(arr),
-            DynArray::F32(arr) => ArrayArithmetic::sum(arr),
-            DynArray::F64(arr) => ArrayArithmetic::sum(arr),
-            DynArray::Bool(_) => panic!("Cannot compute sum for Bool array"),
-            DynArray::String(_) => panic!("Cannot compute sum for String array"),
-        }
+        crate::macros::dyn_map!(self, DynArray, arith, panic, sum)
     }
 
     fn sum_axis(&self, axis: usize) -> Result<ArrayD<f64>> {
-        match self {
-            DynArray::I8(arr) => ArrayArithmetic::sum_axis(arr, axis),
-            DynArray::I16(arr) => ArrayArithmetic::sum_axis(arr, axis),
-            DynArray::I32(arr) => ArrayArithmetic::sum_axis(arr, axis),
-            DynArray::I64(arr) => ArrayArithmetic::sum_axis(arr, axis),
-            DynArray::U8(arr) => ArrayArithmetic::sum_axis(arr, axis),
-            DynArray::U16(arr) => ArrayArithmetic::sum_axis(arr, axis),
-            DynArray::U32(arr) => ArrayArithmetic::sum_axis(arr, axis),
-            DynArray::U64(arr) => ArrayArithmetic::sum_axis(arr, axis),
-            DynArray::F32(arr) => ArrayArithmetic::sum_axis(arr, axis),
-            DynArray::F64(arr) => ArrayArithmetic::sum_axis(arr, axis),
-            DynArray::Bool(_) => bail!("Cannot compute sum for Bool array"),
-            DynArray::String(_) => bail!("Cannot compute sum for String array"),
-        }
+        crate::macros::dyn_map!(self, DynArray, arith, bail, sum_axis, axis)
     }
 
     fn min(&self) -> f64 {
-        match self {
-            DynArray::I8(arr) => ArrayArithmetic::min(arr),
-            DynArray::I16(arr) => ArrayArithmetic::min(arr),
-            DynArray::I32(arr) => ArrayArithmetic::min(arr),
-            DynArray::I64(arr) => ArrayArithmetic::min(arr),
-            DynArray::U8(arr) => ArrayArithmetic::min(arr),
-            DynArray::U16(arr) => ArrayArithmetic::min(arr),
-            DynArray::U32(arr) => ArrayArithmetic::min(arr),
-            DynArray::U64(arr) => ArrayArithmetic::min(arr),
-            DynArray::F32(arr) => ArrayArithmetic::min(arr),
-            DynArray::F64(arr) => ArrayArithmetic::min(arr),
-            DynArray::Bool(_) => panic!("Cannot compute min for Bool array"),
-            DynArray::String(_) => panic!("Cannot compute min for String array"),
-        }
+        crate::macros::dyn_map!(self, DynArray, arith, panic, min)
     }
 
     fn max(&self) -> f64 {
-        match self {
-            DynArray::I8(arr) => ArrayArithmetic::max(arr),
-            DynArray::I16(arr) => ArrayArithmetic::max(arr),
-            DynArray::I32(arr) => ArrayArithmetic::max(arr),
-            DynArray::I64(arr) => ArrayArithmetic::max(arr),
-            DynArray::U8(arr) => ArrayArithmetic::max(arr),
-            DynArray::U16(arr) => ArrayArithmetic::max(arr),
-            DynArray::U32(arr) => ArrayArithmetic::max(arr),
-            DynArray::U64(arr) => ArrayArithmetic::max(arr),
-            DynArray::F32(arr) => ArrayArithmetic::max(arr),
-            DynArray::F64(arr) => ArrayArithmetic::max(arr),
-            DynArray::Bool(_) => panic!("Cannot compute max for Bool array"),
-            DynArray::String(_) => panic!("Cannot compute max for String array"),
-        }
+        crate::macros::dyn_map!(self, DynArray, arith, panic, max)
     }
 }
 

@@ -6,12 +6,13 @@ use crate::data::{
     data_traits::*,
     slice::{SelectInfoElem, Shape},
 };
+use crate::macros::arith;
 
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail};
 use nalgebra_sparse::csc::CscMatrix;
 use nalgebra_sparse::csr::CsrMatrix;
 use ndarray::ArrayD;
-use num::FromPrimitive;
+use num::NumCast;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DynCsrMatrix {
@@ -138,71 +139,19 @@ impl Stackable for DynCsrMatrix {
 
 impl ArrayArithmetic for DynCsrMatrix {
     fn sum(&self) -> f64 {
-        match self {
-            DynCsrMatrix::I8(arr) => ArrayArithmetic::sum(arr),
-            DynCsrMatrix::I16(arr) => ArrayArithmetic::sum(arr),
-            DynCsrMatrix::I32(arr) => ArrayArithmetic::sum(arr),
-            DynCsrMatrix::I64(arr) => ArrayArithmetic::sum(arr),
-            DynCsrMatrix::U8(arr) => ArrayArithmetic::sum(arr),
-            DynCsrMatrix::U16(arr) => ArrayArithmetic::sum(arr),
-            DynCsrMatrix::U32(arr) => ArrayArithmetic::sum(arr),
-            DynCsrMatrix::U64(arr) => ArrayArithmetic::sum(arr),
-            DynCsrMatrix::F32(arr) => ArrayArithmetic::sum(arr),
-            DynCsrMatrix::F64(arr) => ArrayArithmetic::sum(arr),
-            DynCsrMatrix::Bool(_) => panic!("Cannot compute sum for Bool csr matrix"),
-            DynCsrMatrix::String(_) => panic!("Cannot compute sum for String csr matrix"),
-        }
+        crate::macros::dyn_map!(self, DynCsrMatrix, arith, panic, sum)
     }
 
     fn sum_axis(&self, axis: usize) -> Result<ArrayD<f64>> {
-        match self {
-            DynCsrMatrix::I8(arr) => ArrayArithmetic::sum_axis(arr, axis),
-            DynCsrMatrix::I16(arr) => ArrayArithmetic::sum_axis(arr, axis),
-            DynCsrMatrix::I32(arr) => ArrayArithmetic::sum_axis(arr, axis),
-            DynCsrMatrix::I64(arr) => ArrayArithmetic::sum_axis(arr, axis),
-            DynCsrMatrix::U8(arr) => ArrayArithmetic::sum_axis(arr, axis),
-            DynCsrMatrix::U16(arr) => ArrayArithmetic::sum_axis(arr, axis),
-            DynCsrMatrix::U32(arr) => ArrayArithmetic::sum_axis(arr, axis),
-            DynCsrMatrix::U64(arr) => ArrayArithmetic::sum_axis(arr, axis),
-            DynCsrMatrix::F32(arr) => ArrayArithmetic::sum_axis(arr, axis),
-            DynCsrMatrix::F64(arr) => ArrayArithmetic::sum_axis(arr, axis),
-            DynCsrMatrix::Bool(_) => panic!("Cannot compute sum for Bool csr matrix"),
-            DynCsrMatrix::String(_) => bail!("Cannot compute sum for String csr matrix"),
-        }
+        crate::macros::dyn_map!(self, DynCsrMatrix, arith, bail, sum_axis, axis)
     }
 
     fn min(&self) -> f64 {
-        match self {
-            DynCsrMatrix::I8(arr) => ArrayArithmetic::min(arr),
-            DynCsrMatrix::I16(arr) => ArrayArithmetic::min(arr),
-            DynCsrMatrix::I32(arr) => ArrayArithmetic::min(arr),
-            DynCsrMatrix::I64(arr) => ArrayArithmetic::min(arr),
-            DynCsrMatrix::U8(arr) => ArrayArithmetic::min(arr),
-            DynCsrMatrix::U16(arr) => ArrayArithmetic::min(arr),
-            DynCsrMatrix::U32(arr) => ArrayArithmetic::min(arr),
-            DynCsrMatrix::U64(arr) => ArrayArithmetic::min(arr),
-            DynCsrMatrix::F32(arr) => ArrayArithmetic::min(arr),
-            DynCsrMatrix::F64(arr) => ArrayArithmetic::min(arr),
-            DynCsrMatrix::Bool(_) => panic!("Cannot compute min for Bool csr matrix"),
-            DynCsrMatrix::String(_) => panic!("Cannot compute min for String csr matrix"),
-        }
+        crate::macros::dyn_map!(self, DynCsrMatrix, arith, panic, min)
     }
 
     fn max(&self) -> f64 {
-        match self {
-            DynCsrMatrix::I8(arr) => ArrayArithmetic::max(arr),
-            DynCsrMatrix::I16(arr) => ArrayArithmetic::max(arr),
-            DynCsrMatrix::I32(arr) => ArrayArithmetic::max(arr),
-            DynCsrMatrix::I64(arr) => ArrayArithmetic::max(arr),
-            DynCsrMatrix::U8(arr) => ArrayArithmetic::max(arr),
-            DynCsrMatrix::U16(arr) => ArrayArithmetic::max(arr),
-            DynCsrMatrix::U32(arr) => ArrayArithmetic::max(arr),
-            DynCsrMatrix::U64(arr) => ArrayArithmetic::max(arr),
-            DynCsrMatrix::F32(arr) => ArrayArithmetic::max(arr),
-            DynCsrMatrix::F64(arr) => ArrayArithmetic::max(arr),
-            DynCsrMatrix::Bool(_) => panic!("Cannot compute max for Bool csr matrix"),
-            DynCsrMatrix::String(_) => panic!("Cannot compute max for String csr matrix"),
-        }
+        crate::macros::dyn_map!(self, DynCsrMatrix, arith, panic, max)
     }
 }
 
@@ -371,6 +320,34 @@ impl ReadableArray for DynCscMatrix {
 // ArrayConvert implementations
 //-----------------------------------------------------------------------------
 
+/// Inner macros for `dyn_map!`, converting `$data` with `$fun` (`convert_csr_with` or `convert_csc_with`).
+macro_rules! int_cast {
+    (F32, $data:expr, $fun:expr) => {
+        unreachable!()
+    };
+    (F64, $data:expr, $fun:expr) => {
+        unreachable!()
+    };
+    (String, $data:expr, $fun:expr) => {
+        unreachable!()
+    };
+    ($variant:ident, $data:expr, $fun:expr) => {
+        $fun($data, |x| Ok(x.try_into()?))
+    };
+}
+
+macro_rules! float_cast {
+    (Bool, $data:expr, $fun:expr) => {
+        $fun($data, |x| Ok(x.into()))
+    };
+    (String, $data:expr, $fun:expr) => {
+        unreachable!()
+    };
+    ($variant:ident, $data:expr, $fun:expr) => {
+        $fun($data, |x| NumCast::from(x).context("value out of range"))
+    };
+}
+
 macro_rules! impl_arrayconvert {
     ($($ty:ident => $fun:expr),*) => {
         $( impl_arrayconvert!($ty, $fun); )*
@@ -381,15 +358,10 @@ macro_rules! impl_arrayconvert {
                 fn try_convert(self) -> Result<$ty<u32>> {
                     match self {
                         [<Dyn $ty>]::U32(data) => Ok(data),
-                        [<Dyn $ty>]::I8(data) => $fun(data, |x| Ok(x.try_into()?)),
-                        [<Dyn $ty>]::I16(data) => $fun(data, |x| Ok(x.try_into()?)),
-                        [<Dyn $ty>]::I32(data) => $fun(data, |x| Ok(x.try_into()?)),
-                        [<Dyn $ty>]::I64(data) => $fun(data, |x| Ok(x.try_into()?)),
-                        [<Dyn $ty>]::U8(data) => $fun(data, |x| Ok(x.into())),
-                        [<Dyn $ty>]::U16(data) => $fun(data, |x| Ok(x.into())),
-                        [<Dyn $ty>]::U64(data) => $fun(data, |x| Ok(x.try_into()?)),
-                        [<Dyn $ty>]::Bool(data) => $fun(data, |x| Ok(x.into())),
-                        v => bail!("Cannot convert {} to {}<u32>", v.data_type(), stringify!($ty)),
+                        v @ ([<Dyn $ty>]::F32(_) | [<Dyn $ty>]::F64(_) | [<Dyn $ty>]::String(_)) => {
+                            bail!("Cannot convert {} to {}<u32>", v.data_type(), stringify!($ty))
+                        }
+                        other => crate::macros::dyn_map!(other, [<Dyn $ty>], int_cast, $fun),
                     }
                 }
             }
@@ -398,17 +370,10 @@ macro_rules! impl_arrayconvert {
                 fn try_convert(self) -> Result<$ty<f32>> {
                     match self {
                         [<Dyn $ty>]::F32(data) => Ok(data),
-                        [<Dyn $ty>]::I8(data) => $fun(data, |x| Ok(x.into())),
-                        [<Dyn $ty>]::I16(data) => $fun(data, |x| Ok(x.into())),
-                        [<Dyn $ty>]::I32(data) => $fun(data, |x| Ok(f32::from_i32(x).unwrap())),
-                        [<Dyn $ty>]::I64(data) => $fun(data, |x| Ok(f32::from_i64(x).unwrap())),
-                        [<Dyn $ty>]::U8(data) => $fun(data, |x| Ok(x.into())),
-                        [<Dyn $ty>]::U16(data) => $fun(data, |x| Ok(x.into())),
-                        [<Dyn $ty>]::U32(data) => $fun(data, |x| Ok(f32::from_u32(x).unwrap())),
-                        [<Dyn $ty>]::U64(data) => $fun(data, |x| Ok(f32::from_u64(x).unwrap())),
-                        [<Dyn $ty>]::F64(data) => $fun(data, |x| Ok(f32::from_f64(x).unwrap())),
-                        [<Dyn $ty>]::Bool(data) => $fun(data, |x| Ok(x.into())),
-                        v => bail!("Cannot convert {} to {}<f32>", v.data_type(), stringify!($ty)),
+                        v @ [<Dyn $ty>]::String(_) => {
+                            bail!("Cannot convert {} to {}<f32>", v.data_type(), stringify!($ty))
+                        }
+                        other => crate::macros::dyn_map!(other, [<Dyn $ty>], float_cast, $fun),
                     }
                 }
             }
@@ -417,17 +382,10 @@ macro_rules! impl_arrayconvert {
                 fn try_convert(self) -> Result<$ty<f64>> {
                     match self {
                         [<Dyn $ty>]::F64(data) => Ok(data),
-                        [<Dyn $ty>]::I8(data) => $fun(data, |x| Ok(x.into())),
-                        [<Dyn $ty>]::I16(data) => $fun(data, |x| Ok(x.into())),
-                        [<Dyn $ty>]::I32(data) => $fun(data, |x| Ok(x.into())),
-                        [<Dyn $ty>]::I64(data) => $fun(data, |x| Ok(f64::from_i64(x).unwrap())),
-                        [<Dyn $ty>]::U8(data) => $fun(data, |x| Ok(x.into())),
-                        [<Dyn $ty>]::U16(data) => $fun(data, |x| Ok(x.into())),
-                        [<Dyn $ty>]::U32(data) => $fun(data, |x| Ok(x.into())),
-                        [<Dyn $ty>]::U64(data) => $fun(data, |x| Ok(f64::from_u64(x).unwrap())),
-                        [<Dyn $ty>]::F32(data) => $fun(data, |x| Ok(x.into())),
-                        [<Dyn $ty>]::Bool(data) => $fun(data, |x| Ok(x.into())),
-                        v => bail!("Cannot convert {} to {}<f64>", v.data_type(), stringify!($ty)),
+                        v @ [<Dyn $ty>]::String(_) => {
+                            bail!("Cannot convert {} to {}<f64>", v.data_type(), stringify!($ty))
+                        }
+                        other => crate::macros::dyn_map!(other, [<Dyn $ty>], float_cast, $fun),
                     }
                 }
             }
@@ -461,4 +419,30 @@ where
     )
     .unwrap();
     Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn csr<T>(vals: Vec<T>) -> CsrMatrix<T> {
+        let n = vals.len();
+        CsrMatrix::try_from_csr_data(1, n, vec![0, n], (0..n).collect(), vals).unwrap()
+    }
+
+    #[test]
+    fn convert_and_arith() {
+        let m = DynCsrMatrix::I64(csr(vec![1i64, 2]));
+        let r: CsrMatrix<f32> = m.clone().try_convert().unwrap();
+        assert_eq!(r.values(), &[1.0, 2.0]);
+        let r: CsrMatrix<u32> = m.try_convert().unwrap();
+        assert_eq!(r.values(), &[1, 2]);
+        let r: Result<CsrMatrix<u32>> = DynCsrMatrix::I8(csr(vec![-1i8])).try_convert();
+        assert!(r.is_err());
+        let r: CsrMatrix<f64> = DynCsrMatrix::Bool(csr(vec![true])).try_convert().unwrap();
+        assert_eq!(r.values(), &[1.0]);
+        let s = DynCsrMatrix::String(csr(vec!["a".to_owned()]));
+        assert!(s.sum_axis(0).is_err());
+        assert!(DynCsrMatrix::U8(csr(vec![3u8])).sum_axis(1).is_ok());
+    }
 }
