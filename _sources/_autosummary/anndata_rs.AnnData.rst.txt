@@ -1,0 +1,166 @@
+﻿anndata\_rs.AnnData
+===================
+
+.. currentmodule:: anndata_rs
+
+.. add toctree option to make autodoc generate the pages
+
+.. autoclass:: anndata_rs.AnnData
+
+
+
+
+
+
+
+    Attributes table
+    ~~~~~~~~~~~~~~~~
+
+    .. autosummary::
+
+       ~AnnData.X
+
+       ~AnnData.backend
+
+       ~AnnData.filename
+
+       ~AnnData.isbacked
+
+       ~AnnData.layers
+
+       ~AnnData.n_obs
+
+       ~AnnData.n_vars
+
+       ~AnnData.obs
+
+       ~AnnData.obs_names
+
+       ~AnnData.obsm
+
+       ~AnnData.obsp
+
+       ~AnnData.shape
+
+       ~AnnData.uns
+
+       ~AnnData.var
+
+       ~AnnData.var_names
+
+       ~AnnData.varm
+
+       ~AnnData.varp
+
+
+
+
+
+    Methods table
+    ~~~~~~~~~~~~~
+
+    .. autosummary::
+
+       ~AnnData.chunked_X
+
+
+       ~AnnData.close
+
+
+       ~AnnData.copy
+
+
+       ~AnnData.is_closed
+
+
+       ~AnnData.obs_ix
+
+
+       ~AnnData.open
+
+
+       ~AnnData.split_obs_by
+
+
+       ~AnnData.subset
+
+
+       ~AnnData.to_memory
+
+
+       ~AnnData.var_ix
+
+
+       ~AnnData.write
+
+
+
+
+
+
+    Attributes
+    ~~~~~~~~~~
+
+
+    .. autoattribute:: anndata_rs.AnnData.X
+
+    .. autoattribute:: anndata_rs.AnnData.backend
+
+    .. autoattribute:: anndata_rs.AnnData.filename
+
+    .. autoattribute:: anndata_rs.AnnData.isbacked
+
+    .. autoattribute:: anndata_rs.AnnData.layers
+
+    .. autoattribute:: anndata_rs.AnnData.n_obs
+
+    .. autoattribute:: anndata_rs.AnnData.n_vars
+
+    .. autoattribute:: anndata_rs.AnnData.obs
+
+    .. autoattribute:: anndata_rs.AnnData.obs_names
+
+    .. autoattribute:: anndata_rs.AnnData.obsm
+
+    .. autoattribute:: anndata_rs.AnnData.obsp
+
+    .. autoattribute:: anndata_rs.AnnData.shape
+
+    .. autoattribute:: anndata_rs.AnnData.uns
+
+    .. autoattribute:: anndata_rs.AnnData.var
+
+    .. autoattribute:: anndata_rs.AnnData.var_names
+
+    .. autoattribute:: anndata_rs.AnnData.varm
+
+    .. autoattribute:: anndata_rs.AnnData.varp
+
+
+
+
+
+    Methods
+    ~~~~~~~
+
+    .. automethod:: anndata_rs.AnnData.chunked_X
+
+    .. automethod:: anndata_rs.AnnData.close
+
+    .. automethod:: anndata_rs.AnnData.copy
+
+    .. automethod:: anndata_rs.AnnData.is_closed
+
+    .. automethod:: anndata_rs.AnnData.obs_ix
+
+    .. automethod:: anndata_rs.AnnData.open
+
+    .. automethod:: anndata_rs.AnnData.split_obs_by
+
+    .. automethod:: anndata_rs.AnnData.subset
+
+    .. automethod:: anndata_rs.AnnData.to_memory
+
+    .. automethod:: anndata_rs.AnnData.var_ix
+
+    .. automethod:: anndata_rs.AnnData.write

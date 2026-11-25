@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" data-theme="auto">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta property="og:title" content="anndata_rs.AnnDataSet" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="_autosummary/anndata_rs.AnnDataSet.html" />
+<meta property="og:site_name" content="anndata-rs" />
+
+    <title>anndata_rs.AnnDataSet &#8212; anndata-rs</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/scverse.min.css?v=6f1ee714" />
+    <link rel="stylesheet" type="text/css" href="../_static/mathmlfixes.css?v=76367e60" />
+    <link rel="stylesheet" type="text/css" href="../_static/math_core.css?v=a02cc06f" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=6a604523" />
+    <link rel="stylesheet" type="text/css" href="../_static/scverse-accent.css?v=63f4bee0" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../_static/scripts/fontawesome.js?digest=75c7c72ae941e8b558d8"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8" />
+
+    <script src="../_static/documentation_options.js?v=1c28bd9a"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script data-sd-tabs-storage-prefix="sphinx-design-tab-id-" src="../_static/design-tabs.js?v=fcb327ea"></script>
+    <script type="module" src="../_static/scripts/readthedocs-integration.js?v=474a8e60"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_autosummary/anndata_rs.AnnDataSet';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="anndata_rs.read" href="anndata_rs.read.html" />
+    <link rel="prev" title="anndata_rs.AnnData" href="anndata_rs.AnnData.html" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="color-scheme" content="light dark"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.6.2" />
+  
+    
+    <script src="../_static/searchtools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script src="../searchindex.js"></script>
+  
+  <meta name="readthedocs-addons-api-version" content="1" />
+  </head>
+  <body data-default-mode="auto">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal" tabindex="-1"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">anndata-rs</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links" aria-label="Site navigation">
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../api.html">API</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2 current active has-children"><details open="open"><summary><p class="caption toctree-l2">Core AnnData classes</p><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary>
+<ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="anndata_rs.AnnData.html">anndata_rs.AnnData</a></li>
+<li class="toctree-l3 current active"><a aria-current="page" class="current reference internal" href="#">anndata_rs.AnnDataSet</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><details><summary><p class="caption toctree-l2">IO</p><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary>
+<ul>
+<li class="toctree-l3"><a class="reference internal" href="anndata_rs.read.html">anndata_rs.read</a></li>
+<li class="toctree-l3"><a class="reference internal" href="anndata_rs.read_mtx.html">anndata_rs.read_mtx</a></li>
+<li class="toctree-l3"><a class="reference internal" href="anndata_rs.read_dataset.html">anndata_rs.read_dataset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="anndata_rs.concat.html">anndata_rs.concat</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+      <div class="sidebar-primary-item"><readthedocs-flyout></readthedocs-flyout></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button
+  type="button"
+  class="pst-navbar-icon sidebar-toggle primary-toggle"
+  aria-label="Site navigation"
+>
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-house"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../api.html" class="nav-link">API</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">anndata_rs.AnnDataSet</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+      
+        <div class="header-article-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/scverse/anndata-rs" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+</ul></div>
+      
+        <div class="header-article-item"><button
+  type="button"
+  class="pst-navbar-icon sidebar-toggle secondary-toggle"
+  aria-label="On this page"
+>
+  <span class="fa-solid fa-outdent"></span>
+</button></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="anndata-rs-anndataset">
+<h1>anndata_rs.AnnDataSet<a class="headerlink" href="#anndata-rs-anndataset" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="anndata_rs.AnnDataSet">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">anndata_rs.</span></span><span class="sig-name descname"><span class="pre">AnnDataSet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">adatas</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'sample'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_absolute_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">backend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#anndata_rs.AnnDataSet" title="Link to this definition">#</a></dt>
+<dd><p>Similar to <code class="docutils literal notranslate"><span class="pre">AnnData</span></code>, <code class="docutils literal notranslate"><span class="pre">AnnDataSet</span></code> contains annotations of
+observations <code class="docutils literal notranslate"><span class="pre">obs</span></code> (<code class="docutils literal notranslate"><span class="pre">obsm</span></code>, <code class="docutils literal notranslate"><span class="pre">obsp</span></code>), variables <code class="docutils literal notranslate"><span class="pre">var</span></code> (<code class="docutils literal notranslate"><span class="pre">varm</span></code>, <code class="docutils literal notranslate"><span class="pre">varp</span></code>),
+and unstructured annotations <code class="docutils literal notranslate"><span class="pre">uns</span></code>. Additionally it provides lazy access to
+concatenated component AnnData objects, including <code class="docutils literal notranslate"><span class="pre">X</span></code>, <code class="docutils literal notranslate"><span class="pre">obs</span></code>, <code class="docutils literal notranslate"><span class="pre">obsm</span></code>, <code class="docutils literal notranslate"><span class="pre">obsp</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>adatas</strong> <span class="classifier"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.15)"><em>list</em></a><em>[</em><em>(</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><em>Path</em></a><em>)</em><em>] </em><em>| </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.15)"><em>list</em></a><em>[</em><em>(</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em>, </em><a class="reference internal" href="anndata_rs.AnnData.html#anndata_rs.AnnData" title="anndata_rs.AnnData"><em>AnnData</em></a><em>)</em><em>]</em></span></dt></dt><dd><p>List of key and file name (or backed AnnData object) pairs.</p>
+</dd>
+<dt><strong>filename</strong> <span class="classifier"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><em>Path</em></a></span></dt></dt><dd><p>File name of the output file containing the AnnDataSet object.</p>
+</dd>
+<dt><strong>add_key</strong> <span class="classifier"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a></span></dt></dt><dd><p>The column name in obs to store the keys</p>
+</dd>
+<dt><strong>use_abolute_path</strong> <span class="classifier"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><em>bool</em></a></span></dt></dt><dd><p>Whether to store absolute paths of the component anndata files.</p>
+</dd>
+<dt><strong>backend</strong> <span class="classifier"><em>Literal</em><em>[</em><em>'hdf5'</em><em>, </em><em>'zarr'</em><em>]</em></span></dt></dt><dd><p>The backend to use for the AnnDataSet object.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>AnnDataSet does not copy underlying AnnData objects. It stores the references
+to individual anndata files. If you move the anndata files to a new location,
+remember to update the anndata file locations when opening an AnnDataSet object.</p></li>
+<li><p>AnnDataSet requires all component anndata files to have the same set of var names.
+To concatenate AnnData objects with different var names, please use <code class="docutils literal notranslate"><span class="pre">concat</span></code> function.</p></li>
+</ul>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><a class="reference internal" href="anndata_rs.read_dataset.html#anndata_rs.read_dataset" title="anndata_rs.read_dataset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_dataset</span></code></a>, <a class="reference internal" href="anndata_rs.concat.html#anndata_rs.concat" title="anndata_rs.concat"><code class="xref py py-obj docutils literal notranslate"><span class="pre">concat</span></code></a></p>
+</div>
+<section id="attributes-table">
+<h2>Attributes table<a class="headerlink" href="#attributes-table" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#anndata_rs.AnnDataSet.X" title="anndata_rs.AnnDataSet.X"><code class="xref py py-obj docutils literal notranslate"><span class="pre">X</span></code></a></p></td>
+<td><p>Data matrix of shape n_obs × n_vars.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#anndata_rs.AnnDataSet.adatas" title="anndata_rs.AnnDataSet.adatas"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adatas</span></code></a></p></td>
+<td><p>View into the component AnnData objects.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#anndata_rs.AnnDataSet.backend" title="anndata_rs.AnnDataSet.backend"><code class="xref py py-obj docutils literal notranslate"><span class="pre">backend</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#anndata_rs.AnnDataSet.isbacked" title="anndata_rs.AnnDataSet.isbacked"><code class="xref py py-obj docutils literal notranslate"><span class="pre">isbacked</span></code></a></p></td>
+<td><p>Whether the AnnDataSet object is backed.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#anndata_rs.AnnDataSet.n_obs" title="anndata_rs.AnnDataSet.n_obs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_obs</span></code></a></p></td>
+<td><p>Number of observations.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#anndata_rs.AnnDataSet.n_vars" title="anndata_rs.AnnDataSet.n_vars"><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_vars</span></code></a></p></td>
+<td><p>Number of variables/features.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#anndata_rs.AnnDataSet.obs" title="anndata_rs.AnnDataSet.obs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">obs</span></code></a></p></td>
+<td><p>Observation annotations.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#anndata_rs.AnnDataSet.obs_names" title="anndata_rs.AnnDataSet.obs_names"><code class="xref py py-obj docutils literal notranslate"><span class="pre">obs_names</span></code></a></p></td>
+<td><p>Names of observations.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#anndata_rs.AnnDataSet.obsm" title="anndata_rs.AnnDataSet.obsm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">obsm</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#anndata_rs.AnnDataSet.obsp" title="anndata_rs.AnnDataSet.obsp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">obsp</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#anndata_rs.AnnDataSet.shape" title="anndata_rs.AnnDataSet.shape"><code class="xref py py-obj docutils literal notranslate"><span class="pre">shape</span></code></a></p></td>
+<td><p>Shape of data matrix (<code class="docutils literal notranslate"><span class="pre">n_obs</span></code>, <code class="docutils literal notranslate"><span class="pre">n_vars</span></code>).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#anndata_rs.AnnDataSet.uns" title="anndata_rs.AnnDataSet.uns"><code class="xref py py-obj docutils literal notranslate"><span class="pre">uns</span></code></a></p></td>
+<td><p>Unstructured annotation (ordered dictionary).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#anndata_rs.AnnDataSet.var" title="anndata_rs.AnnDataSet.var"><code class="xref py py-obj docutils literal notranslate"><span class="pre">var</span></code></a></p></td>
+<td><p>Variable annotations.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#anndata_rs.AnnDataSet.var_names" title="anndata_rs.AnnDataSet.var_names"><code class="xref py py-obj docutils literal notranslate"><span class="pre">var_names</span></code></a></p></td>
+<td><p>Names of variables.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#anndata_rs.AnnDataSet.varm" title="anndata_rs.AnnDataSet.varm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">varm</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#anndata_rs.AnnDataSet.varp" title="anndata_rs.AnnDataSet.varp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">varp</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="methods-table">
+<h2>Methods table<a class="headerlink" href="#methods-table" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#anndata_rs.AnnDataSet.chunked_X" title="anndata_rs.AnnDataSet.chunked_X"><code class="xref py py-obj docutils literal notranslate"><span class="pre">chunked_X</span></code></a>([chunk_size])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#anndata_rs.AnnDataSet.close" title="anndata_rs.AnnDataSet.close"><code class="xref py py-obj docutils literal notranslate"><span class="pre">close</span></code></a>()</p></td>
+<td><p>Close the AnnDataSet object.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#anndata_rs.AnnDataSet.is_closed" title="anndata_rs.AnnDataSet.is_closed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_closed</span></code></a>()</p></td>
+<td><p>If the AnnDataSet object has been closed.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#anndata_rs.AnnDataSet.obs_ix" title="anndata_rs.AnnDataSet.obs_ix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">obs_ix</span></code></a>(names)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#anndata_rs.AnnDataSet.split_obs_by" title="anndata_rs.AnnDataSet.split_obs_by"><code class="xref py py-obj docutils literal notranslate"><span class="pre">split_obs_by</span></code></a>(key[, out_dir])</p></td>
+<td><p>Split the AnnDataSet object into multiple AnnData objects based on grouping keys.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#anndata_rs.AnnDataSet.to_adata" title="anndata_rs.AnnDataSet.to_adata"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_adata</span></code></a>([obs_indices, var_indices, copy_x, ...])</p></td>
+<td><p>Convert AnnDataSet to AnnData object.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#anndata_rs.AnnDataSet.var_ix" title="anndata_rs.AnnDataSet.var_ix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">var_ix</span></code></a>(names)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="attributes">
+<h2>Attributes<a class="headerlink" href="#attributes" title="Link to this heading">#</a></h2>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="anndata_rs.AnnDataSet.X">
+<span class="sig-name descname"><span class="pre">X</span></span><a class="headerlink" href="#anndata_rs.AnnDataSet.X" title="Link to this definition">#</a></dt>
+<dd><p>Data matrix of shape n_obs × n_vars.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PyArrayElem</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="anndata_rs.AnnDataSet.adatas">
+<span class="sig-name descname"><span class="pre">adatas</span></span><a class="headerlink" href="#anndata_rs.AnnDataSet.adatas" title="Link to this definition">#</a></dt>
+<dd><p>View into the component AnnData objects.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>StackedAnnData</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="anndata_rs.AnnDataSet.backend">
+<span class="sig-name descname"><span class="pre">backend</span></span><a class="headerlink" href="#anndata_rs.AnnDataSet.backend" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="anndata_rs.AnnDataSet.isbacked">
+<span class="sig-name descname"><span class="pre">isbacked</span></span><a class="headerlink" href="#anndata_rs.AnnDataSet.isbacked" title="Link to this definition">#</a></dt>
+<dd><p>Whether the AnnDataSet object is backed. This is always true.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="anndata_rs.AnnDataSet.n_obs">
+<span class="sig-name descname"><span class="pre">n_obs</span></span><a class="headerlink" href="#anndata_rs.AnnDataSet.n_obs" title="Link to this definition">#</a></dt>
+<dd><p>Number of observations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="anndata_rs.AnnDataSet.n_vars">
+<span class="sig-name descname"><span class="pre">n_vars</span></span><a class="headerlink" href="#anndata_rs.AnnDataSet.n_vars" title="Link to this definition">#</a></dt>
+<dd><p>Number of variables/features.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="anndata_rs.AnnDataSet.obs">
+<span class="sig-name descname"><span class="pre">obs</span></span><a class="headerlink" href="#anndata_rs.AnnDataSet.obs" title="Link to this definition">#</a></dt>
+<dd><p>Observation annotations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PyDataFrameElem</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="anndata_rs.AnnDataSet.obs_names">
+<span class="sig-name descname"><span class="pre">obs_names</span></span><a class="headerlink" href="#anndata_rs.AnnDataSet.obs_names" title="Link to this definition">#</a></dt>
+<dd><p>Names of observations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="anndata_rs.AnnDataSet.obsm">
+<span class="sig-name descname"><span class="pre">obsm</span></span><a class="headerlink" href="#anndata_rs.AnnDataSet.obsm" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="anndata_rs.AnnDataSet.obsp">
+<span class="sig-name descname"><span class="pre">obsp</span></span><a class="headerlink" href="#anndata_rs.AnnDataSet.obsp" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="anndata_rs.AnnDataSet.shape">
+<span class="sig-name descname"><span class="pre">shape</span></span><a class="headerlink" href="#anndata_rs.AnnDataSet.shape" title="Link to this definition">#</a></dt>
+<dd><p>Shape of data matrix (<code class="docutils literal notranslate"><span class="pre">n_obs</span></code>, <code class="docutils literal notranslate"><span class="pre">n_vars</span></code>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple[int, int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="anndata_rs.AnnDataSet.uns">
+<span class="sig-name descname"><span class="pre">uns</span></span><a class="headerlink" href="#anndata_rs.AnnDataSet.uns" title="Link to this definition">#</a></dt>
+<dd><p>Unstructured annotation (ordered dictionary).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PyElemCollection</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="anndata_rs.AnnDataSet.var">
+<span class="sig-name descname"><span class="pre">var</span></span><a class="headerlink" href="#anndata_rs.AnnDataSet.var" title="Link to this definition">#</a></dt>
+<dd><p>Variable annotations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PyDataFrameElem</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="anndata_rs.AnnDataSet.var_names">
+<span class="sig-name descname"><span class="pre">var_names</span></span><a class="headerlink" href="#anndata_rs.AnnDataSet.var_names" title="Link to this definition">#</a></dt>
+<dd><p>Names of variables.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="anndata_rs.AnnDataSet.varm">
+<span class="sig-name descname"><span class="pre">varm</span></span><a class="headerlink" href="#anndata_rs.AnnDataSet.varm" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="anndata_rs.AnnDataSet.varp">
+<span class="sig-name descname"><span class="pre">varp</span></span><a class="headerlink" href="#anndata_rs.AnnDataSet.varp" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="methods">
+<h2>Methods<a class="headerlink" href="#methods" title="Link to this heading">#</a></h2>
+<dl class="py method">
+<dt class="sig sig-object py" id="anndata_rs.AnnDataSet.chunked_X">
+<span class="sig-name descname"><span class="pre">chunked_X</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#anndata_rs.AnnDataSet.chunked_X" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>chunk_size</strong> <span class="classifier"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a></span></dt></dt><dd><p>Row size of a single chunk. Default: 500.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="anndata_rs.AnnDataSet.close">
+<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#anndata_rs.AnnDataSet.close" title="Link to this definition">#</a></dt>
+<dd><p>Close the AnnDataSet object.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="anndata_rs.AnnDataSet.is_closed">
+<span class="sig-name descname"><span class="pre">is_closed</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#anndata_rs.AnnDataSet.is_closed" title="Link to this definition">#</a></dt>
+<dd><p>If the AnnDataSet object has been closed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="anndata_rs.AnnDataSet.obs_ix">
+<span class="sig-name descname"><span class="pre">obs_ix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">names</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#anndata_rs.AnnDataSet.obs_ix" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="anndata_rs.AnnDataSet.split_obs_by">
+<span class="sig-name descname"><span class="pre">split_obs_by</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#anndata_rs.AnnDataSet.split_obs_by" title="Link to this definition">#</a></dt>
+<dd><p>Split the AnnDataSet object into multiple AnnData objects based on grouping keys.
+The length of the grouping keys must match the number of observations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>key</strong> <span class="classifier"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.15)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em>]</em></span></dt></dt><dd><p>Grouping key(s). Can be a single column name or a list of column names in <code class="docutils literal notranslate"><span class="pre">obs</span></code>.
+The grouping keys may contain <code class="docutils literal notranslate"><span class="pre">None</span></code> values, in which case the corresponding
+observations are ignored.</p>
+</dd>
+<dt><strong>out_dir</strong> <span class="classifier"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><em>Path</em></a></span></dt></dt><dd><p>Output directory to save the split AnnData files.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[str, AnnData]
+A dictionary mapping each unique key to its corresponding AnnData object.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="anndata_rs.AnnDataSet.to_adata">
+<span class="sig-name descname"><span class="pre">to_adata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obs_indices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">var_indices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy_x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">backed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#anndata_rs.AnnDataSet.to_adata" title="Link to this definition">#</a></dt>
+<dd><p>Convert AnnDataSet to AnnData object.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="anndata_rs.AnnDataSet.var_ix">
+<span class="sig-name descname"><span class="pre">var_ix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">names</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#anndata_rs.AnnDataSet.var_ix" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</section>
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="anndata_rs.AnnData.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">anndata_rs.AnnData</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="anndata_rs.read.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">anndata_rs.read</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal" tabindex="-1"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#anndata_rs.AnnDataSet"><code class="docutils literal notranslate"><span class="pre">AnnDataSet</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#anndata_rs.AnnDataSet.X"><code class="docutils literal notranslate"><span class="pre">AnnDataSet.X</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#anndata_rs.AnnDataSet.adatas"><code class="docutils literal notranslate"><span class="pre">AnnDataSet.adatas</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#anndata_rs.AnnDataSet.backend"><code class="docutils literal notranslate"><span class="pre">AnnDataSet.backend</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#anndata_rs.AnnDataSet.isbacked"><code class="docutils literal notranslate"><span class="pre">AnnDataSet.isbacked</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#anndata_rs.AnnDataSet.n_obs"><code class="docutils literal notranslate"><span class="pre">AnnDataSet.n_obs</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#anndata_rs.AnnDataSet.n_vars"><code class="docutils literal notranslate"><span class="pre">AnnDataSet.n_vars</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#anndata_rs.AnnDataSet.obs"><code class="docutils literal notranslate"><span class="pre">AnnDataSet.obs</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#anndata_rs.AnnDataSet.obs_names"><code class="docutils literal notranslate"><span class="pre">AnnDataSet.obs_names</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#anndata_rs.AnnDataSet.obsm"><code class="docutils literal notranslate"><span class="pre">AnnDataSet.obsm</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#anndata_rs.AnnDataSet.obsp"><code class="docutils literal notranslate"><span class="pre">AnnDataSet.obsp</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#anndata_rs.AnnDataSet.shape"><code class="docutils literal notranslate"><span class="pre">AnnDataSet.shape</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#anndata_rs.AnnDataSet.uns"><code class="docutils literal notranslate"><span class="pre">AnnDataSet.uns</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#anndata_rs.AnnDataSet.var"><code class="docutils literal notranslate"><span class="pre">AnnDataSet.var</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#anndata_rs.AnnDataSet.var_names"><code class="docutils literal notranslate"><span class="pre">AnnDataSet.var_names</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#anndata_rs.AnnDataSet.varm"><code class="docutils literal notranslate"><span class="pre">AnnDataSet.varm</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#anndata_rs.AnnDataSet.varp"><code class="docutils literal notranslate"><span class="pre">AnnDataSet.varp</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#anndata_rs.AnnDataSet.chunked_X"><code class="docutils literal notranslate"><span class="pre">AnnDataSet.chunked_X()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#anndata_rs.AnnDataSet.close"><code class="docutils literal notranslate"><span class="pre">AnnDataSet.close()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#anndata_rs.AnnDataSet.is_closed"><code class="docutils literal notranslate"><span class="pre">AnnDataSet.is_closed()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#anndata_rs.AnnDataSet.obs_ix"><code class="docutils literal notranslate"><span class="pre">AnnDataSet.obs_ix()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#anndata_rs.AnnDataSet.split_obs_by"><code class="docutils literal notranslate"><span class="pre">AnnDataSet.split_obs_by()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#anndata_rs.AnnDataSet.to_adata"><code class="docutils literal notranslate"><span class="pre">AnnDataSet.to_adata()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#anndata_rs.AnnDataSet.var_ix"><code class="docutils literal notranslate"><span class="pre">AnnDataSet.var_ix()</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  <div class="tocsection sourcelink">
+    <a href="../_sources/_autosummary/anndata_rs.AnnDataSet.rst.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item"><div class="scverse-footer-brand">
+  <span>© 2022, Kai Zhang</span>
+</div></div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

@@ -1,0 +1,7 @@
+:root {
+  --scverse-color-accent-decorative: oklch(0.405 0.205 270);
+  --scverse-color-accent-text: light-dark(
+    oklch(from var(--scverse-color-accent-decorative) min(l, 0.54) c h),
+    oklch(from var(--scverse-color-accent-decorative) max(l, 0.66) c h)
+  );
+}
