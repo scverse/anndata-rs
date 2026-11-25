@@ -25,6 +25,8 @@ name = "pyanndata"
 # not on crates.io either.
 # Needs tags so old commits don’t end up in the anndata_rs changelog via `changelog_include`
 git_only = true
+# nobody depends on its Rust API, and checking it is slow (builds pyo3, numpy, …)
+semver_check = false
 
 [[package]]
 name = "anndata-test-utils"
